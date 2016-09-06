@@ -17,7 +17,6 @@ import time
 import os
 import shutil
 from scipy.optimize import curve_fit
-import scisoftpy as dnp
 
 def myerf(x,A, mu, sigma):# Function required to express S-curve 
     return A/2. * (1+math.erf((x-mu)/(math.sqrt(2)*sigma)))
@@ -1167,7 +1166,7 @@ class excaliburRX(object):
         image=dnp.squeeze(imageRaw.astype(np.int))
         dnp.plot.clear()
         dnp.plot.image(image,name='Image data')
-        #return image
+        return image
 
     def shoot(self,acqtime):
         """
@@ -1928,9 +1927,9 @@ class excaliburRX(object):
         CAS_Dacs[2,:]=[181,201,177,184,194,193,193,210]
         
         # @ Moly temp: 28 degC on node 2
-        GND_Dacs[3,:]=[140,145,139,146,139,148,142,143]
-        FBK_Dacs[3,:]=[193,199,188,196,185,219,190,190]
-        CAS_Dacs[3,:]=[189,192,188,181,181,207,189,186]
+        GND_Dacs[3,:]=[143,156,139,150,144,150,149,158]
+        FBK_Dacs[3,:]=[189,213,185,193,204,207,198,220]
+        CAS_Dacs[3,:]=[181,201,177,184,194,193,193,210]
         """
         BOTTOM MODULE: AC-EXC-4
         """
@@ -2028,7 +2027,7 @@ class excaliburRX(object):
 
              
 
-#x=excaliburRX(0)
+# x=excaliburRX(0)
 
 #x=excaliburRX(1)
 #x.threshold_calibration()
