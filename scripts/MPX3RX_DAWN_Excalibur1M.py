@@ -630,8 +630,6 @@ class excaliburRX(object):
         self.save_keV2dac_calib(Threshold, slope, offset)
         print(str(slope) + str(offset))
         
-        return 
-        
     def save_keV2dac_calib(self, Threshold, gain, offset):
         """
         Each Threshold calibration file consists of 2 rows of 8 floating point
@@ -813,8 +811,6 @@ class excaliburRX(object):
 
         self.settings['filename'] = 'image'
 
-        return 
-
     def multipleEnergy_ThreshCalib(self, chips=range(8), Threshold="0"):
         """
         This functions produces threshold calibration files using DAC scans
@@ -965,8 +961,6 @@ class excaliburRX(object):
         
         print(str(gain) + str(offset))
         print(self.settings['gain'])
-
-        return
 
     def setTh0(self, threshEnergy=5):
         """
@@ -1132,8 +1126,6 @@ class excaliburRX(object):
         self.settings['imagepath'] = imgpath
         self.settings['filename'] = 'image'
         self.settings['acqtime'] = '100'
-
-        return
     
     def setDac(self, chips, dacName="Threshold0", dacValue=40):
         """
@@ -1160,7 +1152,6 @@ class excaliburRX(object):
                              "-p", self.port,
                              "-m", self.mask(range(chip, chip + 1)),
                              "--dacs=" + dacFile])
-        return
 
     def readDac(self, chips, dacName):
         """
@@ -1182,7 +1173,6 @@ class excaliburRX(object):
                          "-m", self.mask(self.chipRange),
                          "--sensedac=" + str(np.int(self.dacCode[dacName])),
                          "--slow"])
-        return
 
     def plotDacScan(self, chips, dacScanData, dacRange):
         """
@@ -1469,8 +1459,6 @@ class excaliburRX(object):
         self.setDac(range(8), "Threshold1", 100)
         self.setDac(range(8), "Threshold0", 40)
         self.expose()
-
-        return
         
     def updateFilenameIndex(self):
         """
@@ -1670,8 +1658,6 @@ class excaliburRX(object):
         for p in range(plots):
             # dnp.plot.clear()
             dnp.plot.image(image[p, :, :], name='Image data ' + str(p))
-
-        return 
     
     def contBurst(self, frames, acqtime):
         """
@@ -1721,8 +1707,6 @@ class excaliburRX(object):
             dnp.plot.image(FF[0:256, chip*256:chip*256 + 256],
                            name='Image data Cor')
             time.sleep(1)
-
-        return 
 
     def logoTest(self):
         """
@@ -2679,8 +2663,6 @@ class excaliburRX(object):
         self.loadConfig(chips)  # Load threshold_equalization files created
         self.copy_SLGM_into_other_gain_modes()  # Copy slgm threshold
         # equalization folder to other gain threshold_equalization folders
-
-        return 
     
     def loop(self, ni):
         """
@@ -2848,8 +2830,6 @@ class excaliburRX(object):
         # self.readDac(range(8), 'FBK')
         # self.readDac(range(8), 'Cas')
 
-        return
-
     def rotateConfig(self, configFile):
 
         print(configFile)
@@ -2858,8 +2838,6 @@ class excaliburRX(object):
         configBits = np.loadtxt(configFile)
         np.savetxt(configFile, np.rot90(configBits, 2), fmt='%.18g',
                    delimiter=' ')
-
-        return
 
     def rotateAllConfigs(self):
         """
@@ -2899,4 +2877,3 @@ class excaliburRX(object):
                     if os.path.isfile(pixelmaskFile):
                         self.rotateConfig(pixelmaskFile)
                         print(pixelmaskFile + "rotated")
-        return 
