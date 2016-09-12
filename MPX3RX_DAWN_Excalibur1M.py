@@ -404,11 +404,9 @@ class excaliburRX(object):
     # Number of chips in 1/2 module
     nbOfChips = 8
 
-    # TODO: Wasn't sure what the '/tmp/' entry was/is so left it there; fix.
     # Settings used during threshold equalization and calibration
     calibSettings = {'calibDir': '/dls/detectors/support/silicon_pixels/'
                                  'excaliburRX/3M-RX001/calib/',
-                     #'/tmp/'
                      'configDir': '/dls/detectors/support/silicon_pixels/'
                                   'excaliburRX/TestApplication_15012015/'
                                   'config/',
@@ -509,7 +507,7 @@ class excaliburRX(object):
         node 1 (i13-1-excalibur01) and the bottom fem to node
         (i13-1-excalibur06).
         When running Python calibration scripts on node i13-1-excalibur0X
-        (with X in [1:6]), you should use: x=excaliburRX(X)
+        (with X in [1:6]), you should use: x = excaliburRX(X)
         """
 
         self.fem = node
@@ -521,20 +519,21 @@ class excaliburRX(object):
 
     def threshold_equalization(self, chips=range(8)):
         """
-        To calibrate all chips: x.threshold_equalization() or
-            x.threshold_equalization(range(8)) or
-            x.threshold_equalization([0, 1, 2, 3, 4, 5, 6, 7])
-        To calibrate chip 0: x.threshold_equalization([0])
-        To calibrate chip 0 , 2 and 5 : x.threshold_equalization([0,2,5])
+        Set the
+
         You need to edit this function to define which mode (SPM or CSM) and
         which gains you want to calibrate during the threshold_equalization
         sequence
+
+        Args:
+            chips(list(int)): Chips to calibrate
         """
 
         self.settings['mode'] = 'spm'
-        self.settings['gain'] = 'slgm'  # Checks whether a
-        # threshold_equalization directory exists, if not it creates one with
-        # default dacs
+        self.settings['gain'] = 'slgm'
+
+        # Checks whether a threshold_equalization directory exists, if not it
+        # creates one with default dacs
         self.checkCalibDir()
         self.logChipId()  # Log chip IDs in threshold_equalization folder
         self.setdacs(chips)  # Set DACs recommended by Rafa in May 2015
@@ -562,8 +561,6 @@ class excaliburRX(object):
 
         # EG (13/06/2016) creates mask for horizonal noise
         # badPixels = self.maskRowBlock(range(4), 256-20, 256)
-        
-        return 
 
     def threshold_calibration_allGains(self, chips=range(8), Threshold="0"):
         """
@@ -622,15 +619,15 @@ class excaliburRX(object):
             Dac1 = Dac0 + 0.25*(default6keVDAC-Dac0) * \
                           np.ones([6, 8]).astype('float')
         
-        print str(E0)
-        print str(Dac0)
-        print str(E1)
-        print str(Dac1)
+        print(str(E0))
+        print(str(Dac0))
+        print(str(E1))
+        print(str(Dac1))
         
-        slope = (Dac1[self.fem - 1, :] - Dac0[self.fem-1, :])/(E1-E0)
-        offset = Dac0[self.fem-1, :]
+        slope = (Dac1[self.fem - 1, :] - Dac0[self.fem - 1, :])/(E1 - E0)
+        offset = Dac0[self.fem - 1, :]
         self.save_keV2dac_calib(Threshold, slope, offset)
-        print str(slope) + str(offset)
+        print(str(slope) + str(offset))
         
         return 
         
@@ -652,9 +649,8 @@ class excaliburRX(object):
 
         threshCoeff[1, :] = offset
         threshFilename = self.calibSettings['calibDir'] + 'fem' + \
-                         str(self.fem) + '/' + self.settings['mode'] + '/' + \
-                         self.settings['gain'] + '/' + 'threshold' +\
-                         str(Threshold)
+            str(self.fem) + '/' + self.settings['mode'] + '/' + \
+            self.settings['gain'] + '/' + 'threshold' + str(Threshold)
 
         print(threshFilename)
 
@@ -692,10 +688,12 @@ class excaliburRX(object):
         [chipDacScan, dacAxis] = x.plotDacScan(chips, dacscanData, scanRange)
         self.fitDacScan(chips, chipDacScan, dacAxis)
         
-        # edgeDacs=self.findEdge(chips,dacscanData,dacRange,2)
-        # chipEdgeDacs=np.zeros(range(8))
+        # edgeDacs = self.findEdge(chips, dacscanData, dacRange, 2)
+        # chipEdgeDacs = np.zeros(range(8))
         # for chip in chips:
-        #     chipEdgeDacs[chip]=edgeDacs[0:256,chip*256:chip*256+256].mean()
+        #     chipEdgeDacs[chip] = edgeDacs[0:256,
+        #                          chip*256:chip*256 + 256].mean()
+
         return chipDacScan, dacAxis
 
     def fitDacScan(self, chips, chipDacScan, dacAxis):
@@ -874,9 +872,8 @@ class excaliburRX(object):
             E1_Dac[3, :] = [60, 35, 64, 64, 64, 64, 64, 64]
             E1_Dac[4, :] = [64, 64, 64, 64, 64, 64, 64, 64]
             E1_Dac[5, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-        
-        
-        E2_Dac = np.ones([6,8]).astype('float')
+
+        E2_Dac = np.ones([6, 8]).astype('float')
         E2_E = 12  # keV
 
         if self.settings['gain'] == 'shgm':
@@ -981,13 +978,13 @@ class excaliburRX(object):
         x.settings['Threshold'] = '5'
         x.setThreshEnergy(0, float(x.settings['Threshold']))
         
-    def setThreshEnergy(self, Threshold="0",threshEnergy=5.0):
+    def setThreshEnergy(self, Threshold="0", threshEnergy=5.0):
         """
         Sets Threshold0 or Threshold1 in keV 
         ThresholdX dacs are calculated using thresholdX calibration file
         located in the calibration directory corresponding to the current mode
         and gain setting
-        Usage: x.setThreshEnergy(Threshold,threshEnergy) where
+        Usage: x.setThreshEnergy(Threshold, threshEnergy) where
         Threshold is "0" or "1"
         threshEnergy is in keV
         """
@@ -1054,7 +1051,7 @@ class excaliburRX(object):
     def mask(self, chips):
         """
         Creates hexadecimal chip mask corresponding to chips to be enabled when
-         sending commands to the front-end
+        sending commands to the front-end
         Usage: maskHex=x.mask([0]) to  get the mask value to enable chip 0 only
         ('0x80') maskHex=x.mask([0,1,2,3,4,5,6,7]) or maskHex=x.mask(range(8))
         to get the mask value to enable all chips ('0xff')
@@ -1062,7 +1059,7 @@ class excaliburRX(object):
 
         maskHex = 0
         for chip in chips:
-            maskHex = 2**(self.nbOfChips - chip - 1) + maskHex
+            maskHex += 2**(self.nbOfChips - chip - 1)
 
         return str(hex(maskHex))
 
@@ -1085,7 +1082,7 @@ class excaliburRX(object):
         """
 
         logfilename = self.calibSettings['calibDir'] + 'fem' + \
-                      str(self.fem) + '/efuseIDs'
+            str(self.fem) + '/efuseIDs'
         with open(logfilename, "w") as outfile:
             subprocess.call([self.command, "-i", self.ipaddress,
                              "-p", self.port, "-m", self.mask(self.chipRange),
@@ -1171,9 +1168,8 @@ class excaliburRX(object):
         """
 
         dacFile = self.calibSettings['calibDir'] + 'fem' + str(self.fem) + \
-                  '/' +  self.settings['mode'] + '/' + \
-                  self.settings['gain'] + '/' + \
-                  self.calibSettings['dacfilename']
+            '/' + self.settings['mode'] + '/' + self.settings['gain'] + \
+            '/' + self.calibSettings['dacfilename']
 
         subprocess.call([self.command, "-i", self.ipaddress, "-p", self.port,
                          "-m", self.mask(chips),
@@ -1379,7 +1375,7 @@ class excaliburRX(object):
     def loadConfigbits(self, chips, discLbits, discHbits, maskbits):
         """
         Load specific detector configuration files (discbits, masbits) 
-        Usage: x.loadConfig(chips,discLbits,discHbits,maskbits)
+        Usage: x.loadConfig(chips,discLbits, discHbits, maskbits)
         where chips is a list of chips [0,1,2,3,4]
         discLbits and discHbits are 256 x 256 array with integers between
         0 and 31 maskbits if a 256x256 array of 0 and 1
@@ -1634,7 +1630,7 @@ class excaliburRX(object):
     def cont(self, frames, acqtime):
         """
         Acquires images in continuous mode
-        Usage:x.cont(frames,acqtime) where frames is the number of frames and
+        Usage:x.cont(frames, acqtime) where frames is the number of frames and
         acqtime the acquisition time in ms
         """
 
@@ -1737,7 +1733,7 @@ class excaliburRX(object):
         x.shoot(10)
         LogoTP = np.ones([256, 8*256])
         logoSmall = np.loadtxt(self.calibSettings['configDir'] + 'logo.txt')
-        LogoTP[7:250, 225:1823] =logoSmall
+        LogoTP[7:250, 225:1823] = logoSmall
         LogoTP[LogoTP > 0] = 1
         LogoTP = 1 - LogoTP
         
@@ -1801,7 +1797,7 @@ class excaliburRX(object):
 
         dh = dnp.io.load(self.settings['imagepath'] +
                          self.settings['fullFilename'])
-        imageRaw =  dh.image[...]
+        imageRaw = dh.image[...]
         image = dnp.squeeze(imageRaw.astype(np.int))
         dnp.plot.image(image, name='Image data')
 
@@ -2135,7 +2131,7 @@ class excaliburRX(object):
                 str(self.fem) + '/' + self.settings['mode'] + '/' + \
                 self.settings['gain'] + '/' + \
                 discbitsFilename + '.chip' + str(chip)
-            discbits[0:256, chip*256:chip*256+256] = np.loadtxt(discbitsFile)
+            discbits[0:256, chip*256:chip*256 + 256] = np.loadtxt(discbitsFile)
 
         return discbits
 
@@ -2336,8 +2332,8 @@ class excaliburRX(object):
               "unit for discbits=15:")
 
         for chip in chips:
-            print "Chip" + str(chip) + ' : ' + str(round(gain[chip], 2)) + \
-                  ' Threshold DAC units'
+            print("Chip" + str(chip) + ' : ' + str(round(gain[chip], 2)) +
+                  ' Threshold DAC units')
 
         # Fit range should be adjusted to remove outliers at 0 and max DAC 150
 
@@ -2498,7 +2494,7 @@ class excaliburRX(object):
         dnp.plot.image(roiFullMask, name='roi')
         eqPixels = 0*np.ones([self.chipSize,
                               self.chipSize*self.nbOfChips]) * \
-                   (1 - roiFullMask)
+                       (1 - roiFullMask)
         equPixTot = np.zeros(self.nbOfChips)
         discbitsTmpSum = 0
 
@@ -2676,7 +2672,7 @@ class excaliburRX(object):
             self.saveDiscbits(chips, discbits,
                               discName + 'bits_roi_' + str(step))
         discbits = self.combineRois(chips, discName, steps, roiType)
-        
+
         self.saveDiscbits(chips, discbits, discName + 'bits')
         self.loadConfig(chips)  # Load threshold_equalization files created
         self.copy_SLGM_into_other_gain_modes()  # Copy slgm threshold
@@ -2903,8 +2899,7 @@ class excaliburRX(object):
                         print(pixelmaskFile + "rotated")
         return 
 
-# x=excaliburRX(0)
+# x = excaliburRX(0)
 
-# x=excaliburRX(1)
+# x = excaliburRX(1)
 # x.threshold_calibration()
-
