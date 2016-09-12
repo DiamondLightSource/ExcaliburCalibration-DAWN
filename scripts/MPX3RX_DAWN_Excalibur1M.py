@@ -693,7 +693,8 @@ class ExcaliburRX(object):
 
         return chip_dac_scan, dac_axis
 
-    def fit_dac_scan(self, chips, chip_dac_scan, dac_axis):
+    @staticmethod
+    def fit_dac_scan(chips, chip_dac_scan, dac_axis):
         """
         ############## NOT TESTED
         """
@@ -1173,7 +1174,8 @@ class ExcaliburRX(object):
                          "--sensedac=" + str(np.int(self.dac_code[dac_name])),
                          "--slow"])
 
-    def plot_dac_scan(self, chips, dac_scan_data, dac_range):
+    @staticmethod
+    def plot_dac_scan(chips, dac_scan_data, dac_range):
         """
         Plots the results of threshold dac scan in an integrated spectrum plot
         window (dacscan) and a differential spectrum (spectrum)
@@ -1347,8 +1349,9 @@ class ExcaliburRX(object):
                     spectrum[1:], name="Spectrum")
 
         return [dac_scan_data, dac_range]
-    
-    def show_pixel(self, dac_scan_data, dac_range, pixel):
+
+    @staticmethod
+    def show_pixel(dac_scan_data, dac_range, pixel):
         """
         Plots individual pixel dac scan
         Example: x.show_pixel(dacScanData,[0,30,1],[20,20])
@@ -1742,7 +1745,7 @@ class ExcaliburRX(object):
                 '/' + self.settings['gain'] + \
                 '/' + 'discHbits.chip' + str(chip)
             discLbits_file = self.calib_settings['calibDir'] + 'fem' + \
-                str(self.fem) + '/' +self.settings['mode'] + \
+                str(self.fem) + '/' + self.settings['mode'] + \
                 '/' + self.settings['gain'] + \
                 '/' + 'discLbits.chip' + str(chip)
             pixel_mask_file = self.calib_settings['calibDir'] + 'fem' + \
@@ -2164,7 +2167,8 @@ class ExcaliburRX(object):
 
         return discbits
 
-    def find_edge(self, chips, dac_scan_data, dac_range, edge_val):
+    @staticmethod
+    def find_edge(chips, dac_scan_data, dac_range, edge_val):
         """
         Find noise or X-ray edge in threshold DAC scan
         """
@@ -2187,7 +2191,8 @@ class ExcaliburRX(object):
                              name="noise edges histogram")
         return edge_dacs
 
-    def find_max(self, chips, dac_scan_data, dac_range):
+    @staticmethod
+    def find_max(chips, dac_scan_data, dac_range):
         """
         Find noise max in threshold dac scan
         """
@@ -2848,7 +2853,8 @@ class ExcaliburRX(object):
         # self.read_dac(range(8), 'FBK')
         # self.read_dac(range(8), 'Cas')
 
-    def rotate_config(self, config_file):
+    @staticmethod
+    def rotate_config(config_file):
 
         print(config_file)
 
