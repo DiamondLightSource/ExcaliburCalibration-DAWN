@@ -20,6 +20,7 @@ import subprocess
 
 import numpy as np
 from scipy.optimize import curve_fit
+import scisoftpy as dnp
 
 
 def myerf(x, A, mu, sigma):
@@ -537,8 +538,8 @@ class excaliburRX(object):
         self.checkCalibDir()
         self.logChipId()  # Log chip IDs in threshold_equalization folder
         self.setdacs(chips)  # Set DACs recommended by Rafa in May 2015
-        self.set_GND_FBK_CAS_ExcaliburRX001(chips, x.fem)  # This will load the
-        # DAC values specific to each chip to have FBK, CAS and GND reading
+        self.set_GND_FBK_CAS_ExcaliburRX001(chips, self.fem)  # This will load
+        # the DAC values specific to each chip to have FBK, CAS and GND reading
         # back the recommended analogue value
 
         # IMPORTANT NOTE: These values of GND, FBK and CAS Dacs were adjusted
@@ -596,7 +597,7 @@ class excaliburRX(object):
         parameters (dacTarget=10 and nbOfSigma=3.2).
         """
 
-        x.checkCalibDir()
+        self.checkCalibDir()
         
         NbofEnergyPoints = 1
         default6keVDAC = 62
@@ -676,7 +677,7 @@ class excaliburRX(object):
         """
 
         self.settings['acqtime'] = 100
-        if x.settings['gain'] == 'shgm':
+        if self.settings['gain'] == 'shgm':
             dacRange = (self.dacTarget + 100, self.dacTarget + 20, 2)
         
         self.loadConfig(chips)
@@ -685,7 +686,8 @@ class excaliburRX(object):
         [dacscanData, scanRange] = self.scanDac(chips, "Threshold" +
                                                 str(Threshold), dacRange)
         dacscanData[dacscanData > 200] = 0
-        [chipDacScan, dacAxis] = x.plotDacScan(chips, dacscanData, scanRange)
+        [chipDacScan, dacAxis] = self.plotDacScan(chips,
+                                                  dacscanData, scanRange)
         self.fitDacScan(chips, chipDacScan, dacAxis)
         
         # edgeDacs = self.findEdge(chips, dacscanData, dacRange, 2)
@@ -719,7 +721,7 @@ class excaliburRX(object):
         rows or the first 4 chips
         """
 
-        badPixels = np.zeros([x.chipSize, x.chipSize * x.nbOfChips])
+        badPixels = np.zeros([self.chipSize, self.chipSize * self.nbOfChips])
         for chip in chips:
             badPixels[RowMin:RowMax, chip*256:chip*256+256] = 1
         for chip in chips:
@@ -731,7 +733,7 @@ class excaliburRX(object):
                        fmt='%.18g', delimiter=' ')
 
         dnp.plot.image(badPixels)
-        x.loadConfig(chips)
+        self.loadConfig(chips)
 
         return badPixels
 
@@ -975,8 +977,8 @@ class excaliburRX(object):
         Usage: x.setTh0(E) with E in keV   
         """
 
-        x.settings['Threshold'] = '5'
-        x.setThreshEnergy(0, float(x.settings['Threshold']))
+        self.settings['Threshold'] = '5'
+        self.setThreshEnergy(0, float(self.settings['Threshold']))
         
     def setThreshEnergy(self, Threshold="0", threshEnergy=5.0):
         """
@@ -1104,7 +1106,7 @@ class excaliburRX(object):
         """
 
         self.setDac(chips, 'Threshold0', dacValue)
-        x.expose()
+        self.expose()
 
     def Fe55imageRX001(self, chips=range(8), exptime=60000):
         """
@@ -1728,9 +1730,9 @@ class excaliburRX(object):
         Usage: x.logoTest()
         """
 
-        chips = range(x.nbOfChips)
-        x.setDac(chips, "Threshold0", 40)
-        x.shoot(10)
+        chips = range(self.nbOfChips)
+        self.setDac(chips, "Threshold0", 40)
+        self.shoot(10)
         LogoTP = np.ones([256, 8*256])
         logoSmall = np.loadtxt(self.calibSettings['configDir'] + 'logo.txt')
         LogoTP[7:250, 225:1823] = logoSmall
@@ -1810,7 +1812,7 @@ class excaliburRX(object):
             testbitsFile = testbits
         else:
             discLbitsFile = self.calibSettings['calibDir'] + 'fem' + \
-                            str(xclbr.fem) + '/' + self.settings['mode'] + \
+                            str(self.fem) + '/' + self.settings['mode'] + \
                             '/' + self.settings['gain'] + '/' + 'testbits.tmp'
             np.savetxt(testbitsFile, testbits, fmt='%.18g', delimiter=' ')
 
@@ -1874,11 +1876,11 @@ class excaliburRX(object):
         supCol in an integer between 0 and 7
         """
 
-        badPixels = np.zeros([xclbr.chipSize, xclbr.chipSize*xclbr.nbOfChips])
+        badPixels = np.zeros([self.chipSize, self.chipSize*self.nbOfChips])
         badPixels[:, chip*256 + supCol*32:chip*256 + supCol*32 + 64] = 1
 
         discLbitsFile = self.calibSettings['calibDir'] + 'fem' + \
-            str(xclbr.fem) + '/' + self.settings['mode'] + \
+            str(self.fem) + '/' + self.settings['mode'] + \
             '/' + self.settings['gain'] + '/' + 'discLbits.chip' + str(chip)
         pixelmaskFile = self.calibSettings['calibDir'] + 'fem' + \
             str(self.fem) + '/' + self.settings['mode'] + '/' + \
@@ -1934,7 +1936,7 @@ class excaliburRX(object):
         dnp.plot.image(badPixels, name='Bad pixels')
         for chip in chips:
             discLbitsFile = self.calibSettings['calibDir'] + 'fem' + \
-                            str(xclbr.fem) + '/' + self.settings['mode'] + \
+                            str(self.fem) + '/' + self.settings['mode'] + \
                             '/' + self.settings['gain'] + \
                             '/' + 'discLbits.chip' + str(chip)
             badPixTot[chip] = badPixels[0:256, chip*256:chip*256 + 256].sum()
@@ -1943,9 +1945,9 @@ class excaliburRX(object):
                   ' noisy pixels in chip ' + str(chip) +
                   ' (' + str(100*badPixTot[chip]/(256**2)) + '%)')
 
-            pixelmaskFile = xclbr.calibSettings['calibDir'] + 'fem' + \
-                str(xclbr.fem) + '/' + xclbr.settings['mode'] + '/' + \
-                xclbr.settings['gain'] + '/' + 'pixelmask.chip' + str(chip)
+            pixelmaskFile = self.calibSettings['calibDir'] + 'fem' + \
+                str(self.fem) + '/' + self.settings['mode'] + '/' + \
+                self.settings['gain'] + '/' + 'pixelmask.chip' + str(chip)
 
             np.savetxt(pixelmaskFile,
                        badPixels[0:256, chip*256:chip*256 + 256],
@@ -2015,11 +2017,11 @@ class excaliburRX(object):
         Unmasks all pixels and updates maskfile in calibration directory 
         """
 
-        badPixels = np.zeros([xclbr.chipSize, xclbr.chipSize*xclbr.nbOfChips])
+        badPixels = np.zeros([self.chipSize, self.chipSize*self.nbOfChips])
 
         for chip in chips:
             discLbitsFile = self.calibSettings['calibDir'] + 'fem' + \
-                str(xclbr.fem) + '/' + self.settings['mode'] + '/' + \
+                str(self.fem) + '/' + self.settings['mode'] + '/' + \
                 self.settings['gain'] + '/' + 'discLbits.chip' + str(chip)
             pixelmaskFile = self.calibSettings['calibDir'] + 'fem' + \
                 str(self.fem) + '/' + self.settings['mode'] + '/' + \
@@ -2041,8 +2043,8 @@ class excaliburRX(object):
         Resets discLbits and pixelmask bits to 0 
         """
 
-        discLbits = 31*np.zeros([xclbr.chipSize,
-                                 xclbr.chipSize*xclbr.nbOfChips])
+        discLbits = 31*np.zeros([self.chipSize,
+                                 self.chipSize*self.nbOfChips])
         for chip in chips:
             discLbitsFile = self.calibSettings['calibDir'] + 'fem' + \
                 str(self.fem) + '/' + self.settings['mode'] + '/' + \
@@ -2589,7 +2591,7 @@ class excaliburRX(object):
         """
 
         self.loadConfig(chips) 
-        equPixTot = np.zeros(xclbr.nbOfChips)
+        equPixTot = np.zeros(self.nbOfChips)
         self.settings['filename'] = 'dacscan'
         [dacscanData, scanRange] = self.scanDac(chips, "Threshold0", dacRange)
         self.plotname = self.settings['filename']
@@ -2898,8 +2900,3 @@ class excaliburRX(object):
                         self.rotateConfig(pixelmaskFile)
                         print(pixelmaskFile + "rotated")
         return 
-
-# x = excaliburRX(0)
-
-# x = excaliburRX(1)
-# x.threshold_calibration()
