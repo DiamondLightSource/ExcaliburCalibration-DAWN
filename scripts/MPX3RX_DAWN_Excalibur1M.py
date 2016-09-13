@@ -560,7 +560,7 @@ class ExcaliburRX(object):
         # self.calibrate_disc(chips,'discL',1,'rect')
         # self.calibrate_disc(chips,'discH',1,'rect')
 
-        # EG (13/06/2016) creates mask for horizonal noise
+        # EG (13/06/2016) creates mask for horizontal noise
         # badPixels = self.mask_row_block(range(4), 256-20, 256)
 
     def threshold_calibration_all_gains(self, threshold="0"):
@@ -641,8 +641,6 @@ class ExcaliburRX(object):
         thresh_coeff = np.zeros([2, 8])
         thresh_coeff[0, :] = gain
 
-        print(gain)
-
         thresh_coeff[1, :] = offset
         thresh_filename = self.calib_settings['calibDir'] + 'fem' + \
             str(self.fem) + '/' + self.settings['mode'] + '/' + \
@@ -710,24 +708,37 @@ class ExcaliburRX(object):
 
         return chip_dac_scan, dac_axis
 
-    def mask_row_block(self, chips, row_min, row_max):
+    def mask_row_block(self, chips, start, stop):
         """
-        x.mask_row_block([0],0,2) to mask the first 3 rows of chip 0
-        bad_pixels=x.mask_row_block(range(4),256-20,256)) to mask the first 20
-        rows or the first 4 chips
+        Mask a block of rows of pixels on the given chips
+
+        Args:
+            chips(list(int)): List of indexes of chips to mask
+            start(int): Index of starting row of mask
+            stop(int):  Index of final row to be included in mask
+
+        Returns:
+            numpy.array: Array mask that was written to config
         """
 
         bad_pixels = np.zeros([self.chip_size,
                                self.chip_size * self.num_chips])
-        for chip in chips:
-            bad_pixels[row_min:row_max, chip * 256:chip * 256 + 256] = 1
-        for chip in chips:
+
+        chip_size = self.chip_size
+        for chip_idx in chips:
+            # Slicing doesn't include the end, so add 1 to stop; chip_size is
+            # in number, not index, so already has the necessary increment
+            bad_pixels[start:stop + 1,
+                       chip_idx*chip_size:(chip_idx + 1)*chip_size] = 1
+
+        for chip_idx in chips:
             pixel_mask_file = self.calib_settings['calibDir'] + 'fem' + \
                 str(self.fem) + '/' + self.settings['mode'] + \
                 '/' + self.settings['gain'] + '/' + \
-                'pixelmask.chip' + str(chip)
-            np.savetxt(pixel_mask_file, bad_pixels[0:256,
-                                                   chip*256:chip*256+256],
+                'pixelmask.chip' + str(chip_idx)
+            np.savetxt(pixel_mask_file,
+                       bad_pixels[0:chip_size,
+                                  chip_idx*chip_size:(chip_idx + 1)*chip_size],
                        fmt='%.18g', delimiter=' ')
 
         dnp.plot.image(bad_pixels)
@@ -1469,7 +1480,7 @@ class ExcaliburRX(object):
     def update_filename_index(self):
         """
         Automatically increments filename index in filename.idx file in
-        imagepath before writing image data file
+        image path before writing image data file
         """
 
         idx_filename = self.settings['imagepath'] + \
