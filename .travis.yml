@@ -1,0 +1,19 @@
+sudo: false
+language: python
+python:
+  - "2.7"
+
+before_install:
+  - git clone --depth=50 --branch=master https://github.com/DawnScience/scisoft-core.git scisoft-core
+  - export PYTHONPATH=$PYTHONPATH:scisoft-core/uk.ac.diamond.scisoft.python/src/
+
+install:
+  - pip install -r requirements.txt
+  - pip install coveralls coverage
+  - python setup.py bdist_egg
+
+# command to run tests
+script: nosetests tests/
+
+after_success:
+    - coveralls
