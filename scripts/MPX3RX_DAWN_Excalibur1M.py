@@ -960,16 +960,17 @@ class ExcaliburRX(object):
         dnp.plot.clear('DAC vs energy fits')
         for chip in chips:
             x = np.array([E1_E, E2_E, E3_E])
-            y = np.array([E1_Dac[self.fem-1, chip], E2_Dac[self.fem-1, chip],
-                          E3_Dac[self.fem-1, chip]])
+            y = np.array([E1_Dac[self.fem - 1, chip],
+                          E2_Dac[self.fem - 1, chip],
+                          E3_Dac[self.fem - 1, chip]])
             dnp.plot.addline(x, y, name='DAC vs energy')
-        
+
             popt, pcov = curve_fit(lin_function, x, y, [0, 1])
             offset[chip] = popt[0]
             gain[chip] = popt[1]
             dnp.plot.addline(x, lin_function(x, offset[chip], gain[chip]),
                              name='DAC vs energy fits')
-            
+
         self.save_kev2dac_calib(threshold, gain, offset)
         
         print(str(gain) + str(offset))
@@ -1065,9 +1066,19 @@ class ExcaliburRX(object):
         chips ('0xff')
         """
 
+        if len(chips) != len(set(chips)):
+            raise ValueError("Given list must not contain duplicate values")
+
+        valid_index_range = [0, 1, 2, 3, 4, 5, 6, 7]
+        max_chip_index = self.num_chips - 1
+
         mask_hex = 0
-        for chip in chips:
-            mask_hex += 2**(self.num_chips - chip - 1)
+        for chip_index in chips:
+            if chip_index not in valid_index_range:
+                raise ValueError("Invalid index given, must be in " +
+                                 str(valid_index_range))
+            else:
+                mask_hex += 2**(max_chip_index - chip_index)
 
         return str(hex(mask_hex))
 
@@ -1258,11 +1269,11 @@ class ExcaliburRX(object):
         """
         Performs a dac scan and plot the result (mean counts as a function of
         DAC values)
-        Usage: x.scan_dac(chips, dacName, dacRange) where
+        Usage: x.scan_dac(chips, dac_name, dac_range) where
         chips is a list of chips [0, 1, 2, 3]
-        dacRange = (DAC_start_value, DAC_stop_value, DAC_step_value)
+        dac_range = (DAC_start_value, DAC_stop_value, DAC_step_value)
         DACs can be scanned in both directions
-        dacName is one of the following dacs 
+        dac_name is one of the following dacs
             'Threshold0'
             'Threshold1'
             'Threshold2'
@@ -1365,7 +1376,7 @@ class ExcaliburRX(object):
     def show_pixel(dac_scan_data, dac_range, pixel):
         """
         Plots individual pixel dac scan
-        Example: x.show_pixel(dacScanData,[0,30,1],[20,20])
+        Example: x.show_pixel(dac_scan_data, [0, 30, 1], [20, 20])
         """
 
         dnp.plot.addline(
