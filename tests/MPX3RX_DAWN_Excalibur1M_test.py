@@ -114,11 +114,11 @@ class InitTest(unittest.TestCase):
         self.assertEqual(e.ipaddress, "192.168.0.10-1")
 
 
-@patch('MPX3RX_DAWN_Excalibur1M.ExcaliburRX.check_calib_dir')
-@patch('MPX3RX_DAWN_Excalibur1M.ExcaliburRX.log_chip_id')
-@patch('MPX3RX_DAWN_Excalibur1M.ExcaliburRX.set_dacs')
-@patch('MPX3RX_DAWN_Excalibur1M.ExcaliburRX.set_gnd_fbk_cas_excalibur_rx001')
-@patch('MPX3RX_DAWN_Excalibur1M.ExcaliburRX.calibrate_disc')
+@patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.check_calib_dir')
+@patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.log_chip_id')
+@patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.set_dacs')
+@patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.set_gnd_fbk_cas_excalibur_rx001')
+@patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.calibrate_disc')
 class ThresholdEqualizationTest(unittest.TestCase):
 
     def test_correct_calls_made(self, cal_disc_mock, set_gnd_mock,
@@ -202,7 +202,7 @@ class SaveKev2DacCalibTest(unittest.TestCase):
 
 class MaskRowBlockTest(unittest.TestCase):
 
-    @patch('MPX3RX_DAWN_Excalibur1M.ExcaliburRX.load_config')
+    @patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.load_config')
     @patch('numpy.savetxt')
     @patch('scisoftpy.plot')
     def test_correct_calls_made(self, plot_mock, save_mock, load_mock):
@@ -242,7 +242,7 @@ class MaskRowBlockTest(unittest.TestCase):
         load_mock.assert_called_once_with(chips)
 
 
-@patch('MPX3RX_DAWN_Excalibur1M.ExcaliburRX.set_thresh_energy')
+@patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.set_thresh_energy')
 class SetThreshold0Test(unittest.TestCase):
 
     def test_correct_calls_made(self, set_thresh_energy_mock):
@@ -261,8 +261,8 @@ class SetThreshold0Test(unittest.TestCase):
         set_thresh_energy_mock.assert_called_once_with('0', 5.0)
 
 
-@patch('MPX3RX_DAWN_Excalibur1M.ExcaliburRX.expose')
-@patch('MPX3RX_DAWN_Excalibur1M.ExcaliburRX.set_dac')
+@patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.expose')
+@patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.set_dac')
 class SetThreshold0DacTest(unittest.TestCase):
 
     def test_correct_calls_made(self, set_dac_mock, expose_mock):
@@ -286,8 +286,8 @@ class SetThreshold0DacTest(unittest.TestCase):
 
 
 @patch('numpy.genfromtxt')
-@patch('MPX3RX_DAWN_Excalibur1M.ExcaliburRX.set_dac')
-@patch('MPX3RX_DAWN_Excalibur1M.ExcaliburRX.expose')
+@patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.set_dac')
+@patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.expose')
 class SetThreshEnergyTest(unittest.TestCase):
 
     def test_correct_calls_made(self, expose_mock, set_dac_mock, gen_mock):
@@ -314,7 +314,7 @@ class SetThreshEnergyTest(unittest.TestCase):
 
 class SetDacsTest(unittest.TestCase):
 
-    @patch('MPX3RX_DAWN_Excalibur1M.ExcaliburRX.set_dac')
+    @patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.set_dac')
     def test_correct_calls_made(self, set_dac_mock):
         e = ExcaliburRX(0)
         chips = [0]
@@ -462,9 +462,9 @@ class SubprocessCallsTest(unittest.TestCase):
         self.assertEqual({}, call_args[1])
 
 
-@patch('MPX3RX_DAWN_Excalibur1M.ExcaliburRX.load_config')
-@patch('MPX3RX_DAWN_Excalibur1M.ExcaliburRX.set_threshold0_dac')
-@patch('MPX3RX_DAWN_Excalibur1M.ExcaliburRX.expose')
+@patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.load_config')
+@patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.set_threshold0_dac')
+@patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.expose')
 class ThresholdEqualizationTest(unittest.TestCase):
 
     def test_correct_calls_made(self, expose_mock, set_threshhold_mock,
@@ -513,7 +513,7 @@ class PlotDacScanTest(unittest.TestCase):
         # TODO: Figure out how this functions works and finish tests
 
 
-@patch('MPX3RX_DAWN_Excalibur1M.ExcaliburRX.update_filename_index')
+@patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.update_filename_index')
 @patch('scisoftpy.plot')
 @patch('scisoftpy.io')
 @patch('subprocess.call')
@@ -528,6 +528,7 @@ class ScanDacTest(unittest.TestCase):
         e.scan_dac(chips, 'Threshold0', dac_range)
 
         # TODO: Combine with duplicated plotdacscan before writing tests
+
 
 class ShowPixelTest(unittest.TestCase):
 
