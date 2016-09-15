@@ -1394,8 +1394,8 @@ class ExcaliburRX(object):
 
     def load_config_bits(self, chips, discLbits, discHbits, mask_bits):
         """
-        Load specific detector configuration files (discbits, masbits) 
-        Usage: x.load_config(chips,discLbits, discHbits, maskbits)
+        Load specific detector configuration files (discbits, maskbits)
+        Usage: x.load_config(chips, discLbits, discHbits, maskbits)
         where chips is a list of chips [0,1,2,3,4]
         discLbits and discHbits are 256 x 256 array with integers between
         0 and 31 maskbits if a 256x256 array of 0 and 1
@@ -1416,13 +1416,13 @@ class ExcaliburRX(object):
         np.savetxt(mask_bits_file, mask_bits, fmt='%.18g', delimiter=' ')
 
         for chip in chips:
-                subprocess.call([self.command, "-i", self.ipaddress,
-                                 "-p", self.port,
-                                 "-m", self.mask(range(chip, chip+1)),
-                                 "--config",
-                                 "--discl=" + discL_bits_file,
-                                 "--disch=" + discH_bits_file,
-                                 "--pixelmask=" + mask_bits_file])
+            subprocess.call([self.command, "-i", self.ipaddress,
+                             "-p", self.port,
+                             "-m", self.mask(range(chip, chip+1)),
+                             "--config",
+                             "--discl=" + discL_bits_file,
+                             "--disch=" + discH_bits_file,
+                             "--pixelmask=" + mask_bits_file])
 
     def load_config(self, chips=range(8)):
         """
