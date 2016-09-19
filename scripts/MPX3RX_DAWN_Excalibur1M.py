@@ -1386,6 +1386,8 @@ class ExcaliburRX(object):
             (dac_scan_data[:, pixel[0], pixel[1]]),
             name='Pixel S curve')
 
+        # Squeeze - Remove scalar dimensions: [[1], [2], [3]] -> [1, 2, 3]
+        # Diff - Take difference of each pair along axis: [1, 5, 3] -> [4, -2]
         spectrum = -np.diff(np.squeeze(dac_scan_data[:, pixel[0], pixel[1]]))
 
         dnp.plot.addline(
@@ -1533,15 +1535,21 @@ class ExcaliburRX(object):
             image = self.expose()
             ff_image += image
 
-        chip = 3
+        chip = 3  # TODO: Why?
+        chip_size = self.chip_size
+        # Set all zero elements to the mean value
         ff_image[ff_image == 0] = \
-            ff_image[0:256, chip*256:chip*256 + 256].mean()
+            ff_image[0:chip_size, chip*chip_size:(chip + 1) * chip_size].mean()
+        # Coeff array is array of means divided by actual values
         ff_coeff = np.ones([256, 256*8]) * \
-            ff_image[0:256, chip*256:chip*256 + 256].mean()
+            ff_image[0:chip_size,
+                     chip*chip_size:(chip + 1) * chip_size].mean()
         ff_coeff = ff_coeff/ff_image
 
         dnp.plot.image(ff_coeff[0:256, chip*256:chip*256 + 256],
                        name='Flat Field coefficients')
+
+        # Set any elements outside range 0-2 to 1 TODO: Why?
         ff_coeff[ff_coeff > 2] = 1
         ff_coeff[ff_coeff < 0] = 1
 
@@ -1689,8 +1697,8 @@ class ExcaliburRX(object):
         if frames < 5:
             plots = frames
 
+        dnp.plot.clear()
         for p in range(plots):
-            # dnp.plot.clear()
             dnp.plot.image(image[p, :, :], name='Image data ' + str(p))
     
     def cont_burst(self, frames, acquire_time):
@@ -1699,6 +1707,9 @@ class ExcaliburRX(object):
         Usage:x.cont(frames,acqtime) where frames is the number of frames and
         acqtime the acquisition time in ms
         """
+
+        # TODO: Exactly the same as burst + setting of defaults from class
+        # TODO: attributes. Remove?
         
         self.settings['acqtime'] = acquire_time
         self.update_filename_index()
@@ -1822,7 +1833,7 @@ class ExcaliburRX(object):
 
     def test_pulse(self, chips, test_bits, pulses):
         """
-        Usage: x.test_pulse([0],'excaliburRx/config/triangle.mask',1000)
+        Usage: x.test_pulse([0], 'excaliburRx/config/triangle.mask', 1000)
         """
 
         if type(test_bits) == str:
@@ -1865,7 +1876,6 @@ class ExcaliburRX(object):
                          self.settings['fullFilename'])
         image_raw = dh.image[...]
         image = dnp.squeeze(image_raw.astype(np.int))
-         
         dnp.plot.image(image, name='Image data')
 
         return image
@@ -1888,7 +1898,7 @@ class ExcaliburRX(object):
         """
         masks a noisy super column in a chip (bit=1 to mask a pixel) and
         updates the corresponding  maskfile
-        Usage: x.mask_sup_col(chips,supCol) where
+        Usage: x.mask_sup_col(chips, supCol) where
         chips is a list of chips ([0,1,2,3])
         supCol in an integer between 0 and 7
         """
@@ -1896,7 +1906,7 @@ class ExcaliburRX(object):
         bad_pixels = np.zeros([self.chip_size,
                                self.chip_size * self.num_chips])
         bad_pixels[:, chip*256 + super_column * 32:chip * 256 +
-                      super_column * 32 + 64] = 1
+                   super_column * 32 + 64] = 1  # TODO: Should it be 64 wide?
 
         discLbits_file = self.calib_settings['calibDir'] + 'fem' + \
             str(self.fem) + '/' + self.settings['mode'] + \
@@ -1947,7 +1957,7 @@ class ExcaliburRX(object):
         
     def mask_pixels(self, chips, image_data, max_counts):
         """
-        masks pixels in imageData with counnts above maxCounts
+        masks pixels in imageData with counts above maxCounts
         updates the corresponding maskfile in the calibration directory
         """
 
@@ -2067,6 +2077,10 @@ class ExcaliburRX(object):
         Resets discL_bits and pixel_mask bits to 0
         """
 
+        # TODO: Unequalize discH as well?
+        # TODO: File path slightly different to above; discL_bits vs discLbits
+        # TODO: Are they supposed to be the same?
+
         discL_bits = 31*np.zeros([self.chip_size,
                                   self.chip_size * self.num_chips])
         for chip in chips:
@@ -2167,8 +2181,8 @@ class ExcaliburRX(object):
         """
         Combines intermediate discbits_roi files produced when equalizing
         various ROIs into one discbits file
-        Usage: x.combine_rois(chips,discName,steps,roiType)
-        chips is a list of chips [1,2,3,4]
+        Usage: x.combine_rois(chips, discName, steps, roiType)
+        chips is a list of chips [1, 2, 3, 4]
         discName is 'discL' or 'discH' 
         steps is the number of ROIs to merge (number of steps used during
         equalization)
@@ -2182,6 +2196,7 @@ class ExcaliburRX(object):
                                                    'bits_roi_' + str(step))
             discbits[roi_full_mask.astype(bool)] = \
                 discbits_roi[roi_full_mask.astype(bool)]
+            # TODO: Should this be +=? Currently just uses final ROI
             dnp.plot.image(discbits_roi, name='discbits')
 
         self.save_discbits(chips, discbits, disc_name + 'bits')
@@ -2223,6 +2238,7 @@ class ExcaliburRX(object):
         dnp.plot.clear("noise edges")
         edge_dacs = dac_range[1] - dac_range[2] * np.argmax(
             (dac_scan_data[::-1, :, :]), 0)
+        # TODO: Assumes high to low scan? Does it matter?
         dnp.plot.image(edge_dacs, name="noise edges")
 
         for chip in chips:
@@ -2510,8 +2526,7 @@ class ExcaliburRX(object):
                           method='stripes'):
         """
         Equalizes pixel discriminator
-        Usage: x.equalise_discbits(range(8),chips,discName.roiFullMask,method)
-        where chips is a list of chips [1,2,3,4], discName is 'discL' or
+        where chips is a list of chips [1, 2, 3, 4], discName is 'discL' or
         'discH', roiFullMask is a mask file produced with the roi function
         method is 'dacscan' or 'bitscan' or 'stripes'
         Use stripes method as default (trimbits distributed across the matrix
@@ -2616,6 +2631,7 @@ class ExcaliburRX(object):
         NOT TESTED
         Checks if dac scan looks ok after threshold calibration
         """
+        pass  # TODO: Function doesn't work, what is `roi`?
 
         self.load_config(chips)
         equ_pix_tot = np.zeros(self.num_chips)
@@ -2644,10 +2660,10 @@ class ExcaliburRX(object):
         Creates a detector ROI to be used when equalizing threshold in several
         steps
         usage: x.roi(chips, step, steps,roiType)
-        chips is a list of chips (e.g. [0,1,2,3])
+        chips is a list of chips (e.g. [0, 1, 2, 3])
         step is the current step in the equalization process
         steps is the total number of steps during the equalization process
-        roiType is 
+        roi_type is
             "rect": contiguous rectangles
             "spacing": arrays of equally-spaced pixels distributed across the
                 chip
@@ -2667,6 +2683,8 @@ class ExcaliburRX(object):
             for chip in chips:
                 roi_full_mask[step*256/steps:step*256/steps + 256/steps,
                               chip*256:chip*256 + 256] = 1
+                # TODO: This doesn't set anything to 1
+                # TODO: x range is always 256-512...
         if roi_type == 'spacing':
             spacing = steps**0.5
             roi_full_mask = np.zeros([self.chip_size,
@@ -2686,10 +2704,11 @@ class ExcaliburRX(object):
 
     def calibrate_disc(self, chips, disc_name, steps=1, roi_type='rect'):
         """
-        Usage x.calibrate_disc([0],"threshold0") to calibrate threshold 0 of
+        Usage x.calibrate_disc([0], "threshold0") to calibrate threshold 0 of
         chip 0 using the full matrix as a ROI during threshold_equalization
-        x.calibrate_disc(range(8),"threshold1") to calibrate threshold 1 of all
-        chips using the full chip matrix as a ROI during threshold_equalization
+        x.calibrate_disc(range(8), "threshold1") to calibrate threshold 1 of
+        all chips using the full chip matrix as a ROI during
+        threshold_equalization
         """
 
         self.optimize_dac_disc(chips, disc_name,
@@ -2720,7 +2739,7 @@ class ExcaliburRX(object):
             tmp = self.expose() + tmp
             dnp.plot.image(tmp, name='sum')
 
-            return
+            return  # TODO: This will always stop after first loop
         
     def csm(self, chips=range(8), gain='slgm'):
         """
@@ -2747,11 +2766,11 @@ class ExcaliburRX(object):
         swapped the DACs have to be swapped in the corresponding array. For
         example GND_DAC is an array of size 6 (fems) x 8 (chips)
         GND_DAC[x,:] will contain the GND DAC value of the 8 chips connected to
-         fem/node x+1 where x=0 corresponds to the top half of the top module
+        fem/node x+1 where x=0 corresponds to the top half of the top module
 
         [NUMBERING STARTS AT 0 IN PYTHON SCRIPTS WHERAS NODES NUMBERING STARTS
         AT 1 IN EPICS]
-         
+
         GND DAC needs to be adjusted manually to read back 0.65V 
         FBK DAC needs to be adjusted manually to read back 0.9V
         CAS DAC needs to be adjusted manually to read back 0.85V
@@ -2830,7 +2849,7 @@ class ExcaliburRX(object):
         # @ Moly temp: 31 degC on node 6
 
         # NOTE: DAC out read-back does not work for chip 2 (counting from 0) of
-        #  bottom 1/2 module
+        # bottom 1/2 module
         # Using read_dac function on chip 2 will give FEM errors and the system
         # will need to be power-cycled
         # Got error on load pixel config command for chip 7: 2 Pixel
