@@ -407,34 +407,14 @@ class ExcaliburRX(object):
 
     # Settings used during threshold equalization and calibration
     calib_settings = {'calibDir': '/dls/detectors/support/silicon_pixels/'
-                                 'excaliburRX/3M-RX001/calib/',
-                     'configDir': '/dls/detectors/support/silicon_pixels/'
+                                  'excaliburRX/3M-RX001/calib/',
+                      'configDir': '/dls/detectors/support/silicon_pixels/'
                                   'excaliburRX/TestApplication_15012015/'
                                   'config/',
-                     'dacfilename': 'dacs',
-                     'dacfile': '',
-                     'noiseEdge': '10'}
+                      'dacfilename': 'dacs',
+                      'dacfile': '',
+                      'noiseEdge': '10'}
 
-    # Detector default Settings 
-    settings = {'mode': 'spm',  # 'spm' or 'csm'
-                'gain': 'shgm',  # 'slgm', 'lgm', 'hgm' or 'shgm'
-                'bitdepth': '12',  # '1', '8', '12' or '24'; 24 bits needs
-                # disccsmspm set at 1 to use discL
-                'readmode': '0',  # '0' or '1' (cf Test-application commands)
-                'counter': '0',  # '0' or '1' (cf Test-application commands)
-                'disccsmspm': '0',  # '0' or '1' (cf Test-application commands)
-                'equalization': '0',  # '0' or '1' (cf Test-application
-                # commands)
-                'trigmode': '0',  # (cf Test-application commands)
-                'acqtime': '100',  # in ms (cf Test-application commands)
-                'frames': '1',  # Number of frames to acquires cf
-                # Test-application commands (cf Test-application commands)
-                'imagepath': '/tmp/',  # Image path
-                'filename': 'image',  # Image filename
-                'Threshold': 'Not set',  # Threshold in keV
-                'filenameIndex': ''}  # Image file index (used to avoid
-    # overwriting files)
-    
     # Conversion of human-readable settings into parameter to be passed to the
     # Test Application
     mode_code = {'spm': '0', 'csm': '1'}
@@ -510,6 +490,35 @@ class ExcaliburRX(object):
         When running Python calibration scripts on node i13-1-excalibur0X
         (with X in [1:6]), you should use: x = excaliburRX(X)
         """
+
+        # # Settings used during threshold equalization and calibration
+        # self.calib_settings = {'calibDir': '/dls/detectors/support/'
+        #                                    'silicon_pixels/excaliburRX/'
+        #                                    '3M-RX001/calib/',
+        #                        'configDir': '/dls/detectors/support/'
+        #                                     'silicon_pixels/excaliburRX/'
+        #                                     'TestApplication_15012015/config/',
+        #                        'dacfilename': 'dacs',
+        #                        'dacfile': '',
+        #                        'noiseEdge': '10'}
+
+        # Detector default Settings
+        self.settings = {'mode': 'spm',  # 'spm' or 'csm'
+                         'gain': 'shgm',  # 'slgm', 'lgm', 'hgm' or 'shgm'
+                         'bitdepth': '12',  # '1', '8', '12' or '24'; 24 bits
+                         # needs disccsmspm set at 1 to use discL
+                         'readmode': '0',  # '0' or '1'
+                         'counter': '0',  # '0' or '1'
+                         'disccsmspm': '0',  # '0' or '1'
+                         'equalization': '0',  # '0' or '1'
+                         'trigmode': '0',
+                         'acqtime': '100',  # in ms
+                         'frames': '1',  # Number of frames to acquire
+                         'imagepath': '/tmp/',  # Image path
+                         'filename': 'image',  # Image filename
+                         'Threshold': 'Not set',  # Threshold in keV
+                         'filenameIndex': ''}  # Image file index (used to
+        # avoid overwriting files)
 
         self.fem = node
         self.ipaddress = "192.168.0.10" + str(7 - self.fem)
