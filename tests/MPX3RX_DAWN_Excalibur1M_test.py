@@ -919,11 +919,14 @@ class ApplyFFCorrectionTest(unittest.TestCase):
 
 @patch('scisoftpy.plot')
 @patch('scisoftpy.io')
-@patch('numpy.loadtxt', return_value=np.random.randint(1, size=(243, 1598)))
+@patch('numpy.savetxt')
 @patch('subprocess.call')
 @patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.set_dac')
 @patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.shoot')
 class LogoTestTest(unittest.TestCase):
+
+    rand = np.random.RandomState(123)
+    mock_array = rand.randint(2, size=(243, 1598))
 
     def setUp(self):
         self.e = ExcaliburRX(0)
@@ -942,9 +945,15 @@ class LogoTestTest(unittest.TestCase):
                                 '--hdffile=image_.hdf5',
                                 '--tpcount=100']
 
+        logo_tp = np.ones([256, 8*256])
+        logo_tp[7:250, 225:1823] = self.mock_array
+        logo_tp[logo_tp > 0] = 1
+        self.logo_tp = 1 - logo_tp
+
+    @patch('numpy.loadtxt', return_value=mock_array)
     @patch('os.path.isfile', return_value=True)
-    def test_logo_test_files_exist(self, _, shoot_mock, set_mock, subp_mock,
-                                   load_mock, io_mock, plot_mock):
+    def test_logo_test_files_exist(self, _, load_mock, shoot_mock, set_mock,
+                                   subp_mock, save_mock, io_mock, plot_mock):
         expected_call_1 = ['/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
                            '-i', '192.168.0.106',
                            '-p', '6969',
@@ -966,13 +975,18 @@ class LogoTestTest(unittest.TestCase):
         # Check second subprocess call
         self.assertEqual(self.expected_call_2, subp_mock.call_args_list[1][0][0])
 
+        self.assertEqual(save_mock.call_args[0][0], '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/Logo_chip0_mask')
+        self.assertTrue((save_mock.call_args[0][1] == self.logo_tp[0:256, 0:256]).all())
+        self.assertEqual(save_mock.call_args[1], dict(fmt='%.18g', delimiter=' '))
         load_mock.assert_called_once_with('/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/config/logo.txt')
         plot_mock.image.assert_called_once_with(io_mock.load.return_value.image.__getitem__().astype().squeeze(),
                                                 name='Image data')
 
+    @patch('numpy.loadtxt', return_value=mock_array)
     @patch('os.path.isfile', return_value=False)
-    def test_logo_test_files_dont_exist(self, _, shoot_mock, set_mock, subp_mock,
-                                   load_mock, io_mock, plot_mock):
+    def test_logo_test_files_dont_exist(self, _, load_mock, shoot_mock,
+                                        set_mock, subp_mock, save_mock,
+                                        io_mock, plot_mock):
         expected_call_1 = ['/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
                            '-i', '192.168.0.106',
                            '-p', '6969',
@@ -984,6 +998,9 @@ class LogoTestTest(unittest.TestCase):
 
         self.e.logo_test()
 
+        self.assertEqual(save_mock.call_args[0][0], '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/Logo_chip0_mask')
+        self.assertTrue((save_mock.call_args[0][1] == self.logo_tp[0:256, 0:256]).all())
+        self.assertEqual(save_mock.call_args[1], dict(fmt='%.18g', delimiter=' '))
         set_mock.assert_called_once_with([0], "Threshold0", 40)
         shoot_mock.assert_called_once_with(10)
         load_mock.assert_called_once_with('/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/config/logo.txt')
