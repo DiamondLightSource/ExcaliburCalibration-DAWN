@@ -25,16 +25,7 @@ import scisoftpy as dnp
 
 def myerf(x, a, mu, sigma):
     """
-    Function required to express S-curve
-
-    Args:
-        x:
-        a:
-        mu:
-        sigma:
-
-    Returns:
-
+    Function required to express S-curve.
     """
 
     return a/2. * (1 + math.erf((x - mu) / (math.sqrt(2) * sigma)))
@@ -42,15 +33,7 @@ def myerf(x, a, mu, sigma):
 
 def lin_function(x, offset, gain):
     """
-    Function definition for linear fits
-
-    Args:
-        x:
-        offset:
-        gain:
-
-    Returns:
-
+    Function definition for linear fits.
     """
 
     return offset + gain * x
@@ -58,16 +41,7 @@ def lin_function(x, offset, gain):
 
 def gauss_function(x, a, x0, sigma):
     """
-    Function definition for Gaussian fits
-
-    Args:
-        x:
-        a:
-        x0:
-        sigma:
-
-    Returns:
-
+    Function definition for Gaussian fits.
     """
 
     return a * np.exp(-(x - x0)**2 / (2 * sigma**2))
@@ -75,17 +49,7 @@ def gauss_function(x, a, x0, sigma):
 
 def s_curve_function(x, k, delta, e, sigma):
     """
-    Function required to fit integral spectra during threshold calibration
-
-    Args:
-        x:
-        k:
-        delta:
-        e:
-        sigma:
-
-    Returns:
-
+    Function required to fit integral spectra during threshold calibration.
     """
 
     return k * ((1 - 2*delta*(x/e - 0.5)) ** 2) * (1 - myerf(x, k, e, sigma))
@@ -491,17 +455,6 @@ class ExcaliburRX(object):
         (with X in [1:6]), you should use: x = excaliburRX(X)
         """
 
-        # # Settings used during threshold equalization and calibration
-        # self.calib_settings = {'calibDir': '/dls/detectors/support/'
-        #                                    'silicon_pixels/excaliburRX/'
-        #                                    '3M-RX001/calib/',
-        #                        'configDir': '/dls/detectors/support/'
-        #                                     'silicon_pixels/excaliburRX/'
-        #                                     'TestApplication_15012015/config/',
-        #                        'dacfilename': 'dacs',
-        #                        'dacfile': '',
-        #                        'noiseEdge': '10'}
-
         # Detector default Settings
         self.settings = {'mode': 'spm',  # 'spm' or 'csm'
                          'gain': 'shgm',  # 'slgm', 'lgm', 'hgm' or 'shgm'
@@ -673,7 +626,7 @@ class ExcaliburRX(object):
         Performs a DAC scan and fits monochromatic spectra in order to find the
         DAC value corresponding to the X-ray energy
         Usage: x.find_xray_energy_dac(chips, Threshold, energy) where:
-        chips is a list of chips (e.g. [0,1,2,3])
+        chips is a list of chips (e.g. [0, 1, 2, 3])
         Threshold is "0" or "1" for Threshold0 or Threshold1
         energy is the energy of the monochromatic X-rays used in the spectrum
         """
@@ -761,7 +714,7 @@ class ExcaliburRX(object):
         performed with a monochromatic X-ray source. Dac scans and spectrum are
         performed and plotted in dacscan and spectrum plots. You need to
         inspect the spectra and edit manually the array oneE_DAC with the DAC
-        value corresponding to teh X-ray energy for each chip
+        value corresponding to the X-ray energy for each chip
         
         This method will use 2 points for calculating Energy to DAC conversion
         coefficients:
@@ -2922,7 +2875,7 @@ class ExcaliburRX(object):
         node 1, 3, and 5
         """
 
-        chips = [0, 1, 2, 3, 4, 5, 6, 7]
+        chips = range(self.num_chips)
         EPICS_calib_path = self.calib_settings['calibDir'][:-1] + '_epics'
         shutil.copytree(self.calib_settings['calibDir'], EPICS_calib_path)
 

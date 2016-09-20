@@ -4,7 +4,22 @@ from pkg_resources import require
 require("mock")
 from mock import patch, MagicMock, ANY
 
-from scripts.MPX3RX_DAWN_Excalibur1M import ExcaliburRX, np
+from scripts.MPX3RX_DAWN_Excalibur1M import *
+
+
+class FunctionsTest(unittest.TestCase):
+
+    def test_myerf(self):
+        self.assertEqual(1.8904014166008838, myerf(1, 2, 0.2, 0.5))
+
+    def test_lin_function(self):
+        self.assertEqual(110, lin_function(5, 100, 2))
+
+    def test_gauss_function(self):
+        self.assertEqual(0.55607460090638816, gauss_function(1, 2, 0.2, 0.5))
+
+    def test_s_curve_function(self):
+        self.assertEqual(242.0, s_curve_function(1, 2, 10, 20, 0.5))
 
 
 class InitTest(unittest.TestCase):
@@ -123,7 +138,7 @@ class ThresholdEqualizationTest(unittest.TestCase):
 
     def test_correct_calls_made(self, cal_disc_mock, set_gnd_mock,
                                 set_dacs_mock, log_mock, check_mock):
-        e = ExcaliburRX(0)
+        e = ExcaliburRX()
         chips = [1, 4, 6, 7]
 
         e.threshold_equalization(chips)
@@ -137,30 +152,101 @@ class ThresholdEqualizationTest(unittest.TestCase):
         set_gnd_mock.assert_called_once_with(chips, e.fem)
         cal_disc_mock.assert_called_once_with(chips, 'discL')
 
-    def test_correct_calls_made_using_default_param(self, cal_disc_mock,
-                                                    set_gnd_mock,
-                                                    set_dacs_mock,
-                                                    log_mock,
-                                                    check_mock):
-        e = ExcaliburRX(0)
-        chips = range(8)
 
-        e.threshold_equalization()
+@patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.check_calib_dir')
+@patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.save_kev2dac_calib')
+class ThresholdCalibrationTest(unittest.TestCase):
 
-        self.assertEqual('slgm', e.settings['gain'])
-        self.assertEqual('spm', e.settings['mode'])
+    def setUp(self):
+        self.e = ExcaliburRX()
+
+    def test_threshold_calibration_shgm(self, save_mock, check_mock):
+        expected_slope = np.array([8.81355932203]*8)
+        expected_offset = np.array([10.0]*8)
+
+        self.e.settings['gain'] = 'shgm'
+        self.e.threshold_calibration('0.1')
 
         check_mock.assert_called_once_with()
-        log_mock.assert_called_once_with()
-        set_dacs_mock.assert_called_once_with(chips)
-        set_gnd_mock.assert_called_once_with(chips, e.fem)
-        cal_disc_mock.assert_called_once_with(chips, 'discL')
+        self.assertEqual(save_mock.call_args[0][0], '0.1')
+        np.testing.assert_array_almost_equal(expected_slope, save_mock.call_args[0][1][0])
+        self.assertTrue((save_mock.call_args[0][2] == expected_offset).all())
+
+    def test_threshold_calibration_hgm(self, save_mock, check_mock):
+        expected_slope = np.array([6.61016949]*8)
+        expected_offset = np.array([10.0]*8)
+
+        self.e.settings['gain'] = 'hgm'
+        self.e.threshold_calibration('0.1')
+
+        check_mock.assert_called_once_with()
+        self.assertEqual(save_mock.call_args[0][0], '0.1')
+        np.testing.assert_array_almost_equal(expected_slope, save_mock.call_args[0][1][0])
+        self.assertTrue((save_mock.call_args[0][2] == expected_offset).all())
+
+    def test_threshold_calibration_lgm(self, save_mock, check_mock):
+        expected_slope = np.array([4.40677966]*8)
+        expected_offset = np.array([10.0]*8)
+
+        self.e.settings['gain'] = 'lgm'
+        self.e.threshold_calibration('0.1')
+
+        check_mock.assert_called_once_with()
+        self.assertEqual(save_mock.call_args[0][0], '0.1')
+        np.testing.assert_array_almost_equal(expected_slope, save_mock.call_args[0][1][0])
+        self.assertTrue((save_mock.call_args[0][2] == expected_offset).all())
+
+    def test_threshold_calibration_slgm(self, save_mock, check_mock):
+        expected_slope = np.array([2.20338983]*8)
+        expected_offset = np.array([10.0]*8)
+
+        self.e.settings['gain'] = 'slgm'
+        self.e.threshold_calibration('0.1')
+
+        check_mock.assert_called_once_with()
+        self.assertEqual(save_mock.call_args[0][0], '0.1')
+        np.testing.assert_array_almost_equal(expected_slope, save_mock.call_args[0][1][0])
+        self.assertTrue((save_mock.call_args[0][2] == expected_offset).all())
+
+    @patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.threshold_calibration')
+    def test_threshold_calibration_all_gains(self, calibration_mock, _, _2):
+        self.e.threshold_calibration_all_gains()
+
+        self.assertEqual(4, calibration_mock.call_count)
+
+    def test_one_energy_thresh_calib(self, save_mock, _):
+        # TODO: Test actual values used once not hard-coded in
+        expected_slope = np.array([9.0]*8)
+        expected_offset = np.array([10.0]*8)
+
+        self.e.settings['gain'] = 'slgm'
+        self.e.one_energy_thresh_calib('0.1')
+
+        self.assertEqual(save_mock.call_args[0][0], '0.1')
+        np.testing.assert_array_almost_equal(expected_slope, save_mock.call_args[0][1][0])
+        self.assertTrue((save_mock.call_args[0][2] == expected_offset).all())
+
+    @patch('scisoftpy.plot')
+    def test_multiple_energy_thresh_calib(self, plot_mock, save_mock, _):
+        # TODO: Test actual values used once not hard-coded in
+        expected_slope = np.array([0.0]*8)
+        expected_offset = np.array([64.0] + [0.0]*7)
+
+        self.e.settings['gain'] = 'slgm'
+        self.e.multiple_energy_thresh_calib([0], '0.1')
+
+        self.assertEqual((ANY, ANY), plot_mock.addline.call_args_list[0][0])
+        self.assertEqual(dict(name='DAC vs energy'), plot_mock.addline.call_args_list[0][1])
+        self.assertEqual(save_mock.call_args[0][0], '0.1')
+        np.testing.assert_array_almost_equal(expected_slope, save_mock.call_args[0][1])
+        np.testing.assert_array_almost_equal(expected_offset, save_mock.call_args[0][2])
+        self.assertEqual(dict(name='DAC vs energy fits'), plot_mock.addline.call_args_list[1][1])
 
 
 class SaveKev2DacCalibTest(unittest.TestCase):
 
     def setUp(self):
-        self.e = ExcaliburRX(0)
+        self.e = ExcaliburRX()
         self.threshold = '0'
         self.gain = [1.1, 0.7, 1.1, 1.3, 1.0, 0.9, 1.2, 0.9]
         self.offset = [0.2, -0.7, 0.1, 0.0, 0.3, -0.1, 0.2, 0.5]
@@ -198,6 +284,55 @@ class SaveKev2DacCalibTest(unittest.TestCase):
         self.assertTrue((self.expected_array == call_args[1]).all())
         self.assertEqual(dict(fmt='%.2f'), call_kwargs)
         chmod_mock.assert_called_once_with(self.expected_filename, 0777)
+
+
+@patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.fit_dac_scan')
+@patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.load_config')
+class FindXrayEnergyDacTest(unittest.TestCase):
+
+    mock_scan_data = np.random.randint(250, size=(3, 256, 8*256))
+    mock_scan_range = MagicMock()
+
+    @patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.plot_dac_scan',
+           return_value=[MagicMock(), MagicMock()])
+    @patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.scan_dac',
+           return_value=[mock_scan_data.copy(), mock_scan_range])
+    def test_correct_calls_made(self, scan_mock, plot_dac_mock, load_mock,
+                                fit_dac_mock):
+        e = ExcaliburRX()
+        chips = range(8)
+        expected_array = self.mock_scan_data
+        expected_array[expected_array > 200] = 0
+
+        values = e.find_xray_energy_dac()
+
+        load_mock.assert_called_once_with(chips)
+        scan_mock.assert_called_once_with(chips, "Threshold0", (110, 30, 2))
+        plot_dac_mock.assert_called_once_with(chips, ANY, self.mock_scan_range)
+        np.testing.assert_array_equal(expected_array, plot_dac_mock.call_args[0][1])
+        fit_dac_mock.assert_called_once_with(chips, plot_dac_mock.return_value[0], plot_dac_mock.return_value[1])
+        self.assertEqual(tuple(plot_dac_mock.return_value), values)
+
+
+@patch('scripts.MPX3RX_DAWN_Excalibur1M.myerf')
+@patch('scripts.MPX3RX_DAWN_Excalibur1M.curve_fit',
+       return_value=[[1, 2, 3], None])
+@patch('scisoftpy.plot')
+class FitDacScanTest(unittest.TestCase):
+
+    mock_dac_scan = np.random.randint(10, size=(8, 20))
+    mock_dac_axis = MagicMock()
+
+    def test_correct_calls_made(self, plot_mock, fit_mock, myerf_mock):
+        e = ExcaliburRX()
+        chips = [0]
+
+        values = e.fit_dac_scan(chips, self.mock_dac_scan, self.mock_dac_axis)
+
+        fit_mock.assert_called_once_with(myerf_mock, self.mock_dac_axis, ANY, [100, 0.8, 3])
+        np.testing.assert_array_equal(self.mock_dac_scan[0, :], fit_mock.call_args[0][2])
+        plot_mock.addline.assert_called_once_with(self.mock_dac_axis, myerf_mock.return_value)
+        self.assertEqual(tuple([self.mock_dac_scan, self.mock_dac_axis]), values)
 
 
 class MaskRowBlockTest(unittest.TestCase):
@@ -1397,8 +1532,28 @@ class FindTest(unittest.TestCase):  # TODO: Improve
 
 class OptimizeDacDiscTest(unittest.TestCase):
 
-    def test(self):
-        pass  # TODO: Write tests once function is split up
+    rand = np.random.RandomState(1234)
+
+    @patch('scisoftpy.plot')
+    @patch('numpy.histogram')
+    @patch('numpy.asarray')
+    @patch('scripts.MPX3RX_DAWN_Excalibur1M.curve_fit',
+           return_value=[[1, 2, 3], None])
+    @patch('scripts.MPX3RX_DAWN_Excalibur1M.gauss_function')
+    @patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.set_dac')
+    @patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.scan_dac',
+           return_value=[rand.randint(10, size=(3, 256, 8*256)), None])
+    @patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.open_discbits_file')
+    @patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.load_config_bits')
+    @patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.find_max')
+    def test_(self, find_mock, load_mock, open_mock, scan_mock, set_mock, gauss_mock,
+              fit_mock, asarray_mock, histo_mock, plot_mock):
+        # TODO: Write proper tests once function is split up
+        e = ExcaliburRX()
+        chips = [0]
+        roi_mock = np.ones([256, 8*256])
+
+        e.optimize_dac_disc(chips, 'discL', roi_mock)
 
 
 class EqualizeDiscbitsTest(unittest.TestCase):
@@ -1414,17 +1569,18 @@ class EqualizeDiscbitsTest(unittest.TestCase):
            return_value=rand.randint(2, size=(256, 8*256)))
     @patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.scan_dac',
            return_value=[rand.randint(10, size=(3, 256, 8*256)), None])
+    @unittest.skip("Takes too long")
     def test_correct_calls_made(self, scan_mock, find_mock, load_mock,
                                 load_bits_mock, open_mock, set_mock,
                                 plot_mock):
-        pass  # TODO: Finish once run on real system, know what it does and
+        # TODO: Finish once run on real system, know what it does and
         # TODO: maybe split up / refactored.
         e = ExcaliburRX(0)
         chips = [0]
         roi = np.ones([256, 8*256])
 
-        # e.equalise_discbits(chips, 'discL', roi)
-        #
+        e.equalise_discbits(chips, 'discL', roi)
+
         # self.assertEqual(32 + 1, scan_mock.call_count)
         # find_mock.assert_called_once_with()
         # load_mock.assert_called_once_with()
@@ -1566,12 +1722,32 @@ class RotateTest(unittest.TestCase):
     @patch('numpy.rot90')
     @patch('numpy.savetxt')
     @patch('numpy.loadtxt')
-    def test_correct_calls_made(self, load_mock, save_mock, rotate_mock):
-        test_path = "path/to/config"
+    def test_rotate_config(self, load_mock, save_mock, rotate_mock):
+        test_path = 'path/to/config'
 
         self.e.rotate_config(test_path)
 
         load_mock.assert_called_once_with(test_path)
         rotate_mock.assert_called_once_with(load_mock.return_value, 2)
         save_mock.assert_called_once_with(test_path, rotate_mock.return_value,
-                                            fmt='%.18g', delimiter=' ')
+                                          fmt='%.18g', delimiter=' ')
+
+    @patch('shutil.copytree')
+    @patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.rotate_config')
+    @patch('os.path.isfile', return_value=True)
+    def test_rotate_config_files_exist(self, _, rotate_mock, copy_mock):
+        self.e.num_chips = 1  # Make test easier
+        root_path = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/'
+        expected_calib_path = root_path + 'calib/'
+        expected_epics_path = root_path + 'calib_epics'
+        expected_discL_path = expected_epics_path + '/fem1/spm/slgm/discLbits.chip0'
+        expected_discH_path = expected_epics_path + '/fem1/spm/slgm/discHbits.chip0'
+        expected_mask_path = expected_epics_path + '/fem1/spm/slgm/pixelmask.chip0'
+
+        self.e.rotate_all_configs()
+
+        copy_mock.assert_called_once_with(expected_calib_path, expected_epics_path)
+        self.assertEqual(rotate_mock.call_args_list[0][0][0], expected_discL_path)
+        self.assertEqual(rotate_mock.call_args_list[1][0][0], expected_discH_path)
+        self.assertEqual(rotate_mock.call_args_list[2][0][0], expected_mask_path)
+        self.assertEqual(9, rotate_mock.call_count)
