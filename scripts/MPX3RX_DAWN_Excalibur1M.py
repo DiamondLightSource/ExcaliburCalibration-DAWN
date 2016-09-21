@@ -709,9 +709,9 @@ class ExcaliburRX(object):
                                              'fem{fem}',
                                              self.settings['mode'],
                                              self.settings['gain'],
-                                             'pixelmask.chip{idx}').format(
-                fem=self.fem, idx=chip_idx)
-
+                                             'pixelmask.chip{idx}'
+                                             ).format(fem=self.fem,
+                                                      idx=chip_idx)
             np.savetxt(pixel_mask_file,
                        bad_pixels[0:chip_size,
                                   chip_idx*chip_size:(chip_idx + 1)*chip_size],
@@ -977,17 +977,17 @@ class ExcaliburRX(object):
                                'fem{fem}',
                                self.settings['mode'],
                                self.settings['gain'],
-                               'threshold{threshold}').format(
-            fem=self.fem, threshold=threshold)
-        thresh_coeff = np.genfromtxt(fname)
+                               'threshold{threshold}'
+                               ).format(fem=self.fem,
+                                        threshold=threshold)
 
+        thresh_coeff = np.genfromtxt(fname)
         print(thresh_coeff[0, :].astype(np.int))
 
         thresh_DACs = (thresh_energy * thresh_coeff[0, :] +
                        thresh_coeff[1, :]).astype(np.int)
-
         for chip in range(8):
-            self.set_dac(range(chip, chip + 1),
+            self.set_dac([chip],
                          "Threshold" + str(threshold), thresh_DACs[chip])
 
         time.sleep(0.2)
@@ -1037,7 +1037,7 @@ class ExcaliburRX(object):
         Creates hexadecimal chip mask corresponding to chips to be enabled when
         sending commands to the front-end
         Usage: mask_hex=x.mask([0]) to  get the mask value to enable chip 0
-        only ('0x80') mask_hex=x.mask([0,1,2,3,4,5,6,7]) or
+        only ('0x80') mask_hex=x.mask([0, 1, 2, 3, 4, 5, 6, 7]) or
         mask_hex=x.mask(range(8)) to get the mask value to enable all
         chips ('0xff')
         """
@@ -1078,7 +1078,8 @@ class ExcaliburRX(object):
 
         log_filename = posixpath.join(self.calib_settings['calibDir'],
                                       'fem{fem}',
-                                      '/efuseIDs').format(fem=self.fem)
+                                      '/efuseIDs'
+                                      ).format(fem=self.fem)
 
         with open(log_filename, "w") as outfile:
             subprocess.call([self.command,
@@ -1117,12 +1118,10 @@ class ExcaliburRX(object):
         self.load_config(chips)
         self.set_threshold0_dac(chips, 40)
         self.settings['acqtime'] = str(exp_time)
-        self.settings['filename'] = 'Fe55_image_node_' + str(self.fem) + \
-                                    '_' + str(self.settings['acqtime']) + 's'
         self.settings['filename'] = 'Fe55_image_node_{fem}_{acqtime}s'.format(
             fem=self.fem, acqtime=self.settings['acqtime'])
-        self.settings['imagepath'] = '/dls/detectors/support/silicon_pixels/' \
-                                     'excaliburRX/3M-RX001/Fe55_images/'
+        self.settings['imagepath'] = posixpath.join(self.root_path,
+                                                    'Fe55_images')
 
         print(self.settings['acqtime'])
 
@@ -1517,7 +1516,7 @@ class ExcaliburRX(object):
                      chip*chip_size:(chip + 1) * chip_size].mean()
         ff_coeff = ff_coeff/ff_image
 
-        dnp.plot.image(ff_coeff[0:256, chip*256:chip*256 + 256],
+        dnp.plot.image(ff_coeff[0:256, chip*256:(chip + 1)*256],
                        name='Flat Field coefficients')
 
         # Set any elements outside range 0-2 to 1 TODO: Why?
@@ -1679,7 +1678,7 @@ class ExcaliburRX(object):
     def cont_burst(self, frames, acquire_time):
         """
         Acquires images in continuous burst mode
-        Usage:x.cont(frames,acqtime) where frames is the number of frames and
+        Usage:x.cont(frames, acqtime) where frames is the number of frames and
         acqtime the acquisition time in ms
         """
 
@@ -1712,6 +1711,8 @@ class ExcaliburRX(object):
         Applies flat-field correction
         """
 
+        # TODO: This just plots, but doesn't apply it
+
         self.settings['fullFilename'] = '{name}_{index}.hdf5'.format(
             name=self.settings['filename'],
             index=self.settings['filenameIndex'])
@@ -1725,8 +1726,8 @@ class ExcaliburRX(object):
             ff = image[p, :, :] * ff_coeff
             ff[ff > 3000] = 0
             chip = 3
-            dnp.plot.image(ff[0:256, chip*256:chip*256 + 256],
-                           name='Image data Cor')
+            dnp.plot.image(ff[0:256, chip*256:(chip + 1)*256],
+                           name='Image data Cor')  # TODO: 'Cor'?
             time.sleep(1)
 
     def logo_test(self):
@@ -1750,7 +1751,7 @@ class ExcaliburRX(object):
             test_bits_file = posixpath.join(self.calib_settings['calibDir'],
                                             'Logo_chip{chip}_mask').format(
                 chip=chip)
-            np.savetxt(test_bits_file, logo_tp[0:256, chip*256:chip*256 + 256],
+            np.savetxt(test_bits_file, logo_tp[0:256, chip*256:(chip + 1)*256],
                        fmt='%.18g', delimiter=' ')
 
             template_path = posixpath.join(self.calib_settings['calibDir'],
@@ -1764,9 +1765,10 @@ class ExcaliburRX(object):
             pixel_mask_file = template_path.format(disc='pixelmask', chip=chip)
 
             command = [self.command, "-i", self.ipaddress, "-p", self.port,
-                       "-m", self.mask(range(chip, chip + 1)),
-                       "--dacs", posixpath.join(self.calib_settings['calibDir'],
-                                                self.calib_settings['dacfilename']),
+                       "-m", self.mask([chip]),
+                       "--dacs", posixpath.join(
+                                 self.calib_settings['calibDir'],
+                                 self.calib_settings['dacfilename']),
                        "--config",
                        "--tpmask=" + test_bits_file]
 
@@ -1827,7 +1829,7 @@ class ExcaliburRX(object):
         for chip in chips:
             subprocess.call([self.command, "-i", self.ipaddress,
                              "-p", self.port,
-                             "-m", self.mask(range(chip, chip + 1)),
+                             "-m", self.mask([chip]),
                              "--dacs", posixpath.join(
                                        self.calib_settings['calibDir'],
                                        self.calib_settings['dacfilename']),
@@ -1849,8 +1851,8 @@ class ExcaliburRX(object):
 
         print(self.settings['fullFilename'])
 
-        dh = dnp.io.load(self.settings['imagepath'] +
-                         self.settings['fullFilename'])
+        dh = dnp.io.load(posixpath.join(self.settings['imagepath'],
+                                        self.settings['fullFilename']))
         image_raw = dh.image[...]
         image = dnp.squeeze(image_raw.astype(np.int))
         dnp.plot.image(image, name='Image data')
@@ -2228,13 +2230,13 @@ class ExcaliburRX(object):
         else:
             edge_dacs = dac_range[0] - dac_range[2] * np.argmax(
                 (dac_scan_data[:, :, :] > edge_val), 0)
-            
+
         dnp.plot.image(edge_dacs, name="noise edges")
-        for chip in chips:
-            dnp.plot.addline(np.histogram(edge_dacs[0:256,
-                                          chip*256:chip*256 + 256])[1][0:-1],
-                             np.histogram(edge_dacs[0:256,
-                                          chip*256:chip*256 + 256])[0],
+
+        for chip_idx in chips:
+            histogram = np.histogram(
+                edge_dacs[0:256, chip_idx*256:(chip_idx + 1)*256])
+            dnp.plot.addline(histogram[1][0:-1],  histogram[0],
                              name="noise edges histogram")
         return edge_dacs
 
@@ -2249,14 +2251,15 @@ class ExcaliburRX(object):
         edge_dacs = dac_range[1] - dac_range[2] * np.argmax(
             (dac_scan_data[::-1, :, :]), 0)
         # TODO: Assumes high to low scan? Does it matter?
+
         dnp.plot.image(edge_dacs, name="noise edges")
 
-        for chip in chips:
-            dnp.plot.addline(np.histogram(edge_dacs[0:256,
-                                          chip*256:chip*256 + 256])[1][0:-1],
-                             np.histogram(edge_dacs[0:256,
-                                          chip*256:chip*256 + 256])[0],
+        for chip_idx in chips:
+            histogram = np.histogram(
+                edge_dacs[0:256, chip_idx*256:(chip_idx + 1)*256])
+            dnp.plot.addline(histogram[1][0:-1],  histogram[0],
                              name="noise edges histogram")
+
         return edge_dacs
 
     def optimize_dac_disc(self, chips, disc_name, roi_full_mask):
