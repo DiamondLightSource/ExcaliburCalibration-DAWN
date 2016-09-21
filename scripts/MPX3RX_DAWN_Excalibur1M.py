@@ -13,6 +13,7 @@ type of detector:
 """
 
 import os
+import posixpath
 import shutil
 import time
 import math
@@ -345,9 +346,11 @@ class ExcaliburRX(object):
     facing the front-surface of sensor
     """
 
+    root_path = '/dls/detectors/support/silicon_pixels/excaliburRX/'
+
     # Test-application executable file path
-    command = '/dls/detectors/support/silicon_pixels/excaliburRX/' \
-              'TestApplication_15012015/excaliburTestApp'
+    command = posixpath.join(root_path,
+                             'TestApplication_15012015', 'excaliburTestApp')
     # Port of FEM to connect to
     port = '6969'
 
@@ -370,11 +373,11 @@ class ExcaliburRX(object):
     num_chips = 8
 
     # Settings used during threshold equalization and calibration
-    calib_settings = {'calibDir': '/dls/detectors/support/silicon_pixels/'
-                                  'excaliburRX/3M-RX001/calib/',
-                      'configDir': '/dls/detectors/support/silicon_pixels/'
-                                  'excaliburRX/TestApplication_15012015/'
-                                  'config/',
+    calib_settings = {'calibDir': posixpath.join(root_path,
+                                                 '3M-RX001', 'calib'),
+                      'configDir': posixpath.join(root_path,
+                                                  'TestApplication_15012015',
+                                                  'config'),
                       'dacfilename': 'dacs',
                       'dacfile': '',
                       'noiseEdge': '10'}
@@ -602,12 +605,15 @@ class ExcaliburRX(object):
 
         thresh_coeff = np.zeros([2, 8])
         thresh_coeff[0, :] = gain
-
         thresh_coeff[1, :] = offset
-        thresh_filename = self.calib_settings['calibDir'] + 'fem' + \
-            str(self.fem) + '/' + self.settings['mode'] + '/' + \
-            self.settings['gain'] + '/' + 'threshold' + str(threshold)
 
+        thresh_filename = posixpath.join(self.calib_settings['calibDir'],
+                                         'fem{fem}',
+                                         self.settings['mode'],
+                                         self.settings['gain'],
+                                         'threshold{threshold}'
+                                         ).format(fem=self.fem,
+                                                  threshold=threshold)
         print(thresh_filename)
 
         if os.path.isfile(thresh_filename):
@@ -634,13 +640,18 @@ class ExcaliburRX(object):
         self.settings['acqtime'] = 100
         if self.settings['gain'] == 'shgm':
             dac_range = (self.dac_target + 100, self.dac_target + 20, 2)
+        else:
+            raise NotImplementedError()
         
         self.load_config(chips)
-        self.settings['filename'] = 'Threshold' + str(threshold) + 'Scan_' + \
-                                    str(energy) + 'keV'
+        filename = 'Threshold{threshold}Scan_{energy}keV'.format(
+            threshold=threshold,
+            energy=energy)
+        self.settings['filename'] = filename
+
         [dac_scan_data, scan_range] = self.scan_dac(chips, "Threshold" +
                                                     str(threshold), dac_range)
-        dac_scan_data[dac_scan_data > 200] = 0
+        dac_scan_data[dac_scan_data > 200] = 0  # Set elements > 200 to 0
         [chip_dac_scan, dac_axis] = self.plot_dac_scan(chips, dac_scan_data,
                                                        scan_range)
         self.fit_dac_scan(chips, chip_dac_scan, dac_axis)
@@ -662,7 +673,7 @@ class ExcaliburRX(object):
         p0 = [100, 0.8, 3]
         for chip in chips:
             # dnp.plot.addline(dacAxis,chipDacScan[chip,:])
-            popt, pcov = curve_fit(myerf, dac_axis, chip_dac_scan[chip, :], p0)
+            popt, _ = curve_fit(myerf, dac_axis, chip_dac_scan[chip, :], p0)
             # popt, pcov = curve_fit(s_curve_function, dacAxis,
             #                        chipDacScan[chip, :], p0)
             dnp.plot.addline(dac_axis, myerf(dac_axis,
@@ -694,10 +705,13 @@ class ExcaliburRX(object):
                        chip_idx*chip_size:(chip_idx + 1)*chip_size] = 1
 
         for chip_idx in chips:
-            pixel_mask_file = self.calib_settings['calibDir'] + 'fem' + \
-                str(self.fem) + '/' + self.settings['mode'] + \
-                '/' + self.settings['gain'] + '/' + \
-                'pixelmask.chip' + str(chip_idx)
+            pixel_mask_file = posixpath.join(self.calib_settings['calibDir'],
+                                             'fem{fem}',
+                                             self.settings['mode'],
+                                             self.settings['gain'],
+                                             'pixelmask.chip{idx}').format(
+                fem=self.fem, idx=chip_idx)
+
             np.savetxt(pixel_mask_file,
                        bad_pixels[0:chip_size,
                                   chip_idx*chip_size:(chip_idx + 1)*chip_size],
@@ -775,10 +789,8 @@ class ExcaliburRX(object):
             OneE_Dac[4, :] = [64, 64, 64, 64, 64, 64, 64, 64]
             OneE_Dac[5, :] = [64, 64, 64, 64, 64, 64, 64, 64]
         
-        slope = (OneE_Dac[self.fem-1, :] - self.dac_target) / OneE_E
-        offset = [self.dac_target, self.dac_target, self.dac_target,
-                  self.dac_target, self.dac_target, self.dac_target,
-                  self.dac_target, self.dac_target]
+        slope = (OneE_Dac[self.fem - 1, :] - self.dac_target) / OneE_E
+        offset = [self.dac_target]*8
         self.save_kev2dac_calib(threshold, slope, offset)
         
         print(str(slope) + str(offset))
@@ -927,7 +939,7 @@ class ExcaliburRX(object):
                           E3_Dac[self.fem - 1, chip]])
             dnp.plot.addline(x, y, name='DAC vs energy')
 
-            popt, pcov = curve_fit(lin_function, x, y, [0, 1])
+            popt, _ = curve_fit(lin_function, x, y, [0, 1])
             offset[chip] = popt[0]
             gain[chip] = popt[1]
             dnp.plot.addline(x, lin_function(x, offset[chip], gain[chip]),
@@ -961,11 +973,13 @@ class ExcaliburRX(object):
         threshEnergy is in keV
         """
 
-        thresh_coeff = np.genfromtxt(self.calib_settings['calibDir'] + 'fem' +
-                                     str(self.fem) + '/' +
-                                     self.settings['mode'] + '/' +
-                                     self.settings['gain'] + '/' +
-                                     'threshold' + str(threshold))
+        fname = posixpath.join(self.calib_settings['calibDir'],
+                               'fem{fem}',
+                               self.settings['mode'],
+                               self.settings['gain'],
+                               'threshold{threshold}').format(
+            fem=self.fem, threshold=threshold)
+        thresh_coeff = np.genfromtxt(fname)
 
         print(thresh_coeff[0, :].astype(np.int))
 
@@ -1062,12 +1076,17 @@ class ExcaliburRX(object):
         i.e. x.read_chip_id(range(8))
         """
 
-        log_filename = self.calib_settings['calibDir'] + 'fem' + \
-            str(self.fem) + '/efuseIDs'
+        log_filename = posixpath.join(self.calib_settings['calibDir'],
+                                      'fem{fem}',
+                                      '/efuseIDs').format(fem=self.fem)
+
         with open(log_filename, "w") as outfile:
-            subprocess.call([self.command, "-i", self.ipaddress,
-                             "-p", self.port, "-m", self.mask(self.chip_range),
-                             "-r", "-e"], stdout=outfile)
+            subprocess.call([self.command,
+                             "-i", self.ipaddress,
+                             "-p", self.port,
+                             "-m", self.mask(self.chip_range),
+                             "-r", "-e"],
+                            stdout=outfile)
         print(str(self.chip_range))
     
     def monitor(self):
@@ -1100,6 +1119,8 @@ class ExcaliburRX(object):
         self.settings['acqtime'] = str(exp_time)
         self.settings['filename'] = 'Fe55_image_node_' + str(self.fem) + \
                                     '_' + str(self.settings['acqtime']) + 's'
+        self.settings['filename'] = 'Fe55_image_node_{fem}_{acqtime}s'.format(
+            fem=self.fem, acqtime=self.settings['acqtime'])
         self.settings['imagepath'] = '/dls/detectors/support/silicon_pixels/' \
                                      'excaliburRX/3M-RX001/Fe55_images/'
 
@@ -1120,10 +1141,13 @@ class ExcaliburRX(object):
         """
 
         for chip in chips:
-            dac_file = self.calib_settings['calibDir'] + 'fem' + \
-                str(self.fem) + '/' + self.settings['mode'] + '/' + \
-                self.settings['gain'] + '/' + \
-                self.calib_settings['dacfilename']
+            dac_file = posixpath.join(self.calib_settings['calibDir'],
+                                      'fem{fem}',
+                                      self.settings['mode'],
+                                      self.settings['gain'],
+                                      self.calib_settings['dacfilename']
+                                      ).format(fem=self.fem)
+
             f = open(dac_file, 'r+b')
             f_content = f.readlines()
             line_nb = chip*29 + np.int(self.dac_number[dac_name])
@@ -1134,25 +1158,30 @@ class ExcaliburRX(object):
             f.close()
             subprocess.call([self.command, "-i", self.ipaddress,
                              "-p", self.port,
-                             "-m", self.mask(range(chip, chip + 1)),
+                             "-m", self.mask([chip]),
                              "--dacs=" + dac_file])
 
     def read_dac(self, chips, dac_name):
         """
         Reads back DAC analogue voltage using chip sense DAC (DAC out)  
-        Usage: x.read_dac([0],'Threshold0')
-        x.read_dac(range(8),'Threshold1')
+        Usage: x.read_dac([0], 'Threshold0')
+        x.read_dac(range(8), 'Threshold1')
         """
 
-        dac_file = self.calib_settings['calibDir'] + 'fem' + str(self.fem) + \
-            '/' + self.settings['mode'] + '/' + self.settings['gain'] + \
-            '/' + self.calib_settings['dacfilename']
+        dac_file = posixpath.join(self.calib_settings['calibDir'],
+                                  'fem{fem}',
+                                  self.settings['mode'],
+                                  self.settings['gain'],
+                                  self.calib_settings['dacfilename']
+                                  ).format(fem=self.fem)
 
         subprocess.call([self.command, "-i", self.ipaddress, "-p", self.port,
                          "-m", self.mask(chips),
                          "--sensedac=" + str(np.int(self.dac_code[dac_name])),
                          "--dacs=" + dac_file])
+
         time.sleep(1)
+
         subprocess.call([self.command, "-i", self.ipaddress, "-p", self.port,
                          "-m", self.mask(self.chip_range),
                          "--sensedac=" + str(np.int(self.dac_code[dac_name])),
@@ -1267,11 +1296,15 @@ class ExcaliburRX(object):
 
         self.update_filename_index()
 
-        dac_scan_file = self.settings['filename'] + "_" + "dacscan" + \
-            self.settings['filenameIndex'] + ".hdf5"
-        dac_file = self.calib_settings['calibDir'] + 'fem' + str(self.fem) + \
-            '/' + self.settings['mode'] + '/' + self.settings['gain'] + \
-            '/' + self.calib_settings['dacfilename']
+        dac_scan_file = '{name}_dacscan{index}.hdf5'.format(
+            name=self.settings['filename'],
+            index=self.settings['filenameIndex'])
+        dac_file = posixpath.join(self.calib_settings['calibDir'],
+                                  'fem'.format(fem=self.fem),
+                                  self.settings['mode'],
+                                  self.settings['gain'],
+                                  self.calib_settings['dacfilename'])
+
         string = str(np.int(self.dac_code[dac_name]) - 1) + ',' + \
             str(dac_range[0]) + ',' + str(dac_range[1]) + ',' + \
             str(dac_range[2])
@@ -1360,20 +1393,20 @@ class ExcaliburRX(object):
         """
         Load specific detector configuration files (discbits, maskbits)
         Usage: x.load_config(chips, discLbits, discHbits, maskbits)
-        where chips is a list of chips [0,1,2,3,4]
+        where chips is a list of chips [0, 1, 2, 3, 4]
         discLbits and discHbits are 256 x 256 array with integers between
         0 and 31 maskbits if a 256x256 array of 0 and 1
         """
 
-        discL_bits_file = self.calib_settings['calibDir'] + 'fem' + \
-            str(self.fem) + '/' + self.settings['mode'] + '/' + \
-            self.settings['gain'] + '/' + 'discLbits.tmp'
-        discH_bits_file = self.calib_settings['calibDir'] + 'fem' + \
-            str(self.fem) + '/' + self.settings['mode'] + '/' + \
-            self.settings['gain'] + '/' + 'discHbits.tmp'
-        mask_bits_file = self.calib_settings['calibDir'] + 'fem' + \
-            str(self.fem) + '/' + self.settings['mode'] + '/' + \
-            self.settings['gain'] + '/' + 'maskbits.tmp'
+        template_path = posixpath.join(self.calib_settings['calibDir'],
+                                       'fem{fem}'.format(fem=self.fem),
+                                       self.settings['mode'],
+                                       self.settings['gain'],
+                                       '{disc}.tmp')
+
+        discH_bits_file = template_path.format(disc='discHbits')
+        discL_bits_file = template_path.format(disc='discLbits')
+        mask_bits_file = template_path.format(disc='maskbits')
 
         np.savetxt(discL_bits_file, discLbits, fmt='%.18g', delimiter=' ')
         np.savetxt(discH_bits_file, discHbits, fmt='%.18g', delimiter=' ')
@@ -1382,7 +1415,7 @@ class ExcaliburRX(object):
         for chip in chips:
             subprocess.call([self.command, "-i", self.ipaddress,
                              "-p", self.port,
-                             "-m", self.mask(range(chip, chip+1)),
+                             "-m", self.mask([chip]),
                              "--config",
                              "--discl=" + discL_bits_file,
                              "--disch=" + discH_bits_file,
@@ -1390,62 +1423,38 @@ class ExcaliburRX(object):
 
     def load_config(self, chips=range(8)):
         """
-        Load detector configuration files (discbits, masbits) and default
+        Load detector configuration files (discbits, maskbits) and default
         thresholds from calibration directory corresponding to selected mode
         and gain
         Usage x.load_config()
         """
 
+        template_path = posixpath.join(self.calib_settings['calibDir'],
+                                       'fem{fem}'.format(fem=self.fem),
+                                       self.settings['mode'],
+                                       self.settings['gain'],
+                                       '{disc}.chip{chip}')
+
         for chip in chips:
-            discHbits_file = self.calib_settings['calibDir'] + 'fem' + \
-                str(self.fem) + '/' + self.settings['mode'] + \
-                '/' + self.settings['gain'] + '/' + 'discHbits.chip' + \
-                str(chip)
-            discLbits_file = self.calib_settings['calibDir'] + 'fem' + \
-                str(self.fem) + '/' + self.settings['mode'] + \
-                '/' + self.settings['gain'] + '/' + 'discLbits.chip' + \
-                str(chip)
-            pixel_mask_file = self.calib_settings['calibDir'] + 'fem' + \
-                str(self.fem) + '/' + self.settings['mode'] + \
-                '/' + self.settings['gain'] + '/' + 'pixelmask.chip' + \
-                str(chip)
+            discHbits_file = template_path.format(disc='discHbits', chip=chip)
+            discLbits_file = template_path.format(disc='discLbits', chip=chip)
+            pixel_mask_file = template_path.format(disc='pixelmask', chip=chip)
+
+            command = [self.command, "-i", self.ipaddress, "-p", self.port,
+                       "-m", self.mask(range(chip, chip + 1)),
+                       "--config"]
             
             if os.path.isfile(discLbits_file):
+                command.append("--discl=" + discLbits_file)
+
                 if os.path.isfile(discHbits_file):
-                    if os.path.isfile(pixel_mask_file):
-                        subprocess.call([self.command, "-i", self.ipaddress,
-                                         "-p", self.port,
-                                         "-m", self.mask(
-                                                   range(chip, chip + 1)),
-                                         "--config",
-                                         "--discl=" + discLbits_file,
-                                         "--disch=" + discHbits_file,
-                                         "--pixelmask=" + pixel_mask_file])
-                    else:
-                        subprocess.call([self.command, "-i", self.ipaddress,
-                                         "-p", self.port,
-                                         "-m", self.mask(
-                                                   range(chip, chip + 1)),
-                                         "--config",
-                                         "--discl=" + discLbits_file,
-                                         "--disch=" + discHbits_file])
-                else:
-                    if os.path.isfile(pixel_mask_file):
-                        subprocess.call([self.command, "-i", self.ipaddress,
-                                         "-p", self.port,
-                                         "-m", self.mask(
-                                                   range(chip, chip + 1)),
-                                         "--config",
-                                         "--discl=" + discLbits_file,
-                                         "--pixelmask=" + pixel_mask_file])
-                    else:
-                        subprocess.call([self.command, "-i", self.ipaddress,
-                                         "-p", self.port,
-                                         "-m", self.mask(
-                                                   range(chip, chip + 1)),
-                                         "--config",
-                                         "--discl=" + discLbits_file])
-            else: 
+                    command.append("--disch=" + discHbits_file)
+
+                if os.path.isfile(pixel_mask_file):
+                    command.append("--pixelmask=" + pixel_mask_file)
+
+                subprocess.call(command)
+            else:
                 print(str(discLbits_file) + " does not exist !")
 
         self.set_dac(range(8), "Threshold1", 100)
@@ -1525,8 +1534,9 @@ class ExcaliburRX(object):
         self.settings['acqtime'] = acquire_time
         self.update_filename_index()
         self.settings['frames'] = frames
-        self.settings['fullFilename'] = self.settings['filename'] + "_" + \
-            self.settings['filenameIndex'] + ".hdf5"
+        self.settings['fullFilename'] = '{name}_{index}.hdf5'.format(
+            name=self.settings['filename'],
+            index=self.settings['filenameIndex'])
 
         command = [self.command, "-i", self.ipaddress, "-p", self.port,
                    "-m", self.mask(self.chip_range),
@@ -1557,8 +1567,9 @@ class ExcaliburRX(object):
 
         self.update_filename_index()
         self.settings['frames'] = '1'
-        self.settings['fullFilename'] = self.settings['filename'] + "_" + \
-            self.settings['filenameIndex'] + ".hdf5"
+        self.settings['fullFilename'] = '{name}_{index}.hdf5'.format(
+            name=self.settings['filename'],
+            index=self.settings['filenameIndex'])
 
         subprocess.call([self.command, "-i", self.ipaddress, "-p", self.port,
                          "-m", self.mask(self.chip_range),
@@ -1595,8 +1606,9 @@ class ExcaliburRX(object):
         self.settings['acqtime'] = acquire_time
         self.settings['frames'] = '1'
         self.update_filename_index()
-        self.settings['fullFilename'] = self.settings['filename'] + "_" + \
-            self.settings['filenameIndex']+".hdf5"
+        self.settings['fullFilename'] = '{name}_{index}.hdf5'.format(
+            name=self.settings['filename'],
+            index=self.settings['filenameIndex'])
 
         subprocess.call([self.command, "-i", self.ipaddress, "-p", self.port,
                          "-m", self.mask(self.chip_range),
@@ -1631,8 +1643,9 @@ class ExcaliburRX(object):
         self.update_filename_index()
         self.settings['frames'] = frames
         self.settings['readmode'] = '1'
-        self.settings['fullFilename'] = self.settings['filename'] + "_" + \
-            self.settings['filenameIndex'] + ".hdf5"
+        self.settings['fullFilename'] = '{name}_{index}.hdf5'.format(
+            name=self.settings['filename'],
+            index=self.settings['filenameIndex'])
 
         subprocess.call([self.command, "-i", self.ipaddress, "-p", self.port,
                          "-m", self.mask(self.chip_range),
@@ -1676,8 +1689,9 @@ class ExcaliburRX(object):
         self.settings['acqtime'] = acquire_time
         self.update_filename_index()
         self.settings['frames'] = frames
-        self.settings['fullFilename'] = self.settings['filename'] + "_" + \
-            self.settings['filenameIndex'] + ".hdf5"
+        self.settings['fullFilename'] = '{name}_{index}.hdf5'.format(
+            name=self.settings['filename'],
+            index=self.settings['filenameIndex'])
 
         subprocess.call([self.command, "-i", self.ipaddress, "-p", self.port,
                          "-m", self.mask(self.chip_range),
@@ -1698,8 +1712,9 @@ class ExcaliburRX(object):
         Applies flat-field correction
         """
 
-        self.settings['fullFilename'] = self.settings['filename'] + "_" + \
-            self.settings['filenameIndex'] + ".hdf5"
+        self.settings['fullFilename'] = '{name}_{index}.hdf5'.format(
+            name=self.settings['filename'],
+            index=self.settings['filenameIndex'])
         dh = dnp.io.load(self.settings['imagepath'] +
                          self.settings['fullFilename'])
         image_raw = dh.image[...]
@@ -1724,56 +1739,53 @@ class ExcaliburRX(object):
         self.set_dac(chips, "Threshold0", 40)
         self.shoot(10)
         logo_tp = np.ones([256, 8*256])
-        logo_small = np.loadtxt(self.calib_settings['configDir'] + 'logo.txt')
+        logo_file = posixpath.join(self.calib_settings['configDir'],
+                                   'logo.txt')
+        logo_small = np.loadtxt(logo_file)
         logo_tp[7:250, 225:1823] = logo_small
         logo_tp[logo_tp > 0] = 1
         logo_tp = 1 - logo_tp
         
         for chip in chips:
-            test_bits_file = self.calib_settings['calibDir'] + 'Logo_chip' + \
-                str(chip) + '_mask'
+            test_bits_file = posixpath.join(self.calib_settings['calibDir'],
+                                            'Logo_chip{chip}_mask').format(
+                chip=chip)
             np.savetxt(test_bits_file, logo_tp[0:256, chip*256:chip*256 + 256],
                        fmt='%.18g', delimiter=' ')
-            
-            discHbits_file = self.calib_settings['calibDir'] + 'fem' + \
-                str(self.fem) + '/' + self.settings['mode'] + \
-                '/' + self.settings['gain'] + \
-                '/' + 'discHbits.chip' + str(chip)
-            discLbits_file = self.calib_settings['calibDir'] + 'fem' + \
-                str(self.fem) + '/' + self.settings['mode'] + \
-                '/' + self.settings['gain'] + \
-                '/' + 'discLbits.chip' + str(chip)
-            pixel_mask_file = self.calib_settings['calibDir'] + 'fem' + \
-                str(self.fem) + '/' + self.settings['mode'] + \
-                '/' + self.settings['gain'] + \
-                '/' + 'pixelmask.chip' + str(chip)
-            
-            if os.path.isfile(discLbits_file) \
-                    and os.path.isfile(discHbits_file) \
-                    and os.path.isfile(pixel_mask_file):
-                subprocess.call([self.command, "-i", self.ipaddress,
-                                 "-p", self.port,
-                                 "-m", self.mask(range(chip, chip + 1)),
-                                 "--dacs", self.calib_settings['calibDir'] +
-                                 self.calib_settings['dacfilename'],
-                                 "--config",
-                                 "--discl=" + discLbits_file,
-                                 "--disch=" + discHbits_file,
-                                 "--pixelmask=" + pixel_mask_file,
-                                 "--tpmask=" + test_bits_file])
-            else:
-                subprocess.call([self.command, "-i", self.ipaddress,
-                                 "-p", self.port,
-                                 "-m", self.mask(range(chip, chip + 1)),
-                                 "--dacs", self.calib_settings['calibDir'] +
-                                 self.calib_settings['dacfilename'],
-                                 "--config",
-                                 "--tpmask=" + test_bits_file])
 
-        self.settings['fullFilename'] = \
-            self.settings['filename'] + "_" + \
-            self.settings['filenameIndex'] + ".hdf5"
+            template_path = posixpath.join(self.calib_settings['calibDir'],
+                                           'fem{fem}'.format(fem=self.fem),
+                                           self.settings['mode'],
+                                           self.settings['gain'],
+                                           '{disc}.chip{chip}')
+
+            discHbits_file = template_path.format(disc='discHbits', chip=chip)
+            discLbits_file = template_path.format(disc='discLbits', chip=chip)
+            pixel_mask_file = template_path.format(disc='pixelmask', chip=chip)
+
+            command = [self.command, "-i", self.ipaddress, "-p", self.port,
+                       "-m", self.mask(range(chip, chip + 1)),
+                       "--dacs", posixpath.join(self.calib_settings['calibDir'],
+                                                self.calib_settings['dacfilename']),
+                       "--config",
+                       "--tpmask=" + test_bits_file]
+
+            if os.path.isfile(discLbits_file) \
+                and os.path.isfile(discHbits_file)  \
+                    and os.path.isfile(pixel_mask_file):
+                command[-1:-1] = ["--discl=" + discLbits_file,
+                                  "--disch=" + discHbits_file,
+                                  "--pixelmask=" + pixel_mask_file]
+                # TODO: Check if order matters; just extend if not
+
+            subprocess.call(command)
+
+        self.settings['fullFilename'] = "{name}_{index}.hdf5".format(
+                                        name=self.settings['filename'],
+                                        index=self.settings['filenameIndex'])
+
         time.sleep(0.2)
+
         subprocess.call([self.command, "-i", self.ipaddress,
                          "-p", self.port,
                          "-m", self.mask(chips),
@@ -1787,8 +1799,8 @@ class ExcaliburRX(object):
                          "--hdffile=" + self.settings['fullFilename'],
                          "--tpcount=" + str(100)])
 
-        dh = dnp.io.load(self.settings['imagepath'] +
-                         self.settings['fullFilename'])
+        dh = dnp.io.load(posixpath.join(self.settings['imagepath'],
+                                        self.settings['fullFilename']))
         image_raw = dh.image[...]
         image = dnp.squeeze(image_raw.astype(np.int))
         dnp.plot.image(image, name='Image data')
@@ -1808,17 +1820,20 @@ class ExcaliburRX(object):
 
         dnp.plot.clear()
         # self.update_filename_index()
-        self.settings['fullFilename'] = self.settings['filename'] + "_" + \
-            self.settings['filenameIndex'] + ".hdf5"
+        self.settings['fullFilename'] = "{name}_{index}.hdf5".format(
+                                        name=self.settings['filename'],
+                                        index=self.settings['filenameIndex'])
 
         for chip in chips:
             subprocess.call([self.command, "-i", self.ipaddress,
                              "-p", self.port,
                              "-m", self.mask(range(chip, chip + 1)),
-                             "--dacs", self.calib_settings['calibDir'] +
-                             self.calib_settings['dacfilename'],
+                             "--dacs", posixpath.join(
+                                       self.calib_settings['calibDir'],
+                                       self.calib_settings['dacfilename']),
                              "--config",
                              "--tpmask=" + test_bits_file])
+
         subprocess.call([self.command, "-i", self.ipaddress,
                          "-p", self.port,
                          "-m", self.mask(chips),
@@ -1847,13 +1862,18 @@ class ExcaliburRX(object):
         saves discbit array into discbit file in current calibration directory
         """
 
-        for chip in chips:
-            discbits_file = self.calib_settings['calibDir'] + 'fem' + \
-                str(self.fem) + '/' + self.settings['mode'] + \
-                '/' + self.settings['gain'] + '/' + discbitsFilename + \
-                '.chip' + str(chip)
+        for chip_idx in chips:
 
-            np.savetxt(discbits_file, discbits[0:256, chip*256:chip*256 + 256],
+            discbits_file = posixpath.join(self.calib_settings['calibDir'],
+                                           'fem{fem}',
+                                           self.settings['mode'],
+                                           self.settings['gain'],
+                                           '{disc}.chip{chip}'
+                                           ).format(fem=self.fem,
+                                                    disc=discbitsFilename,
+                                                    chip=chip_idx)
+
+            np.savetxt(discbits_file, discbits[0:256, chip_idx*256:chip_idx*256 + 256],
                        fmt='%.18g', delimiter=' ')
 
     def mask_sup_col(self, chip, super_column):
@@ -1870,14 +1890,16 @@ class ExcaliburRX(object):
         bad_pixels[:, chip*256 + super_column * 32:chip * 256 +
                    super_column * 32 + 64] = 1  # TODO: Should it be 64 wide?
 
-        discLbits_file = self.calib_settings['calibDir'] + 'fem' + \
-            str(self.fem) + '/' + self.settings['mode'] + \
-            '/' + self.settings['gain'] + '/' + 'discLbits.chip' + str(chip)
-        pixel_mask_file = self.calib_settings['calibDir'] + 'fem' + \
-            str(self.fem) + '/' + self.settings['mode'] + '/' + \
-            self.settings['gain'] + '/' + 'pixelmask.chip' + str(chip)
+        template_path = posixpath.join(self.calib_settings['calibDir'],
+                                       'fem{fem}'.format(fem=self.fem),
+                                       self.settings['mode'],
+                                       self.settings['gain'],
+                                       '{disc}.chip{chip}')
 
-        np.savetxt(pixel_mask_file, bad_pixels[0:256, chip*256:chip*256 + 256],
+        discLbits_file = template_path.format(disc='discLbits', chip=chip)
+        pixel_mask_file = template_path.format(disc='pixelmask', chip=chip)
+
+        np.savetxt(pixel_mask_file, bad_pixels[0:256, chip*256:(chip + 1)*256],
                    fmt='%.18g', delimiter=' ')
         subprocess.call([self.command, "-i", self.ipaddress, "-p", self.port,
                          "-m", self.mask(range(chip, chip + 1)),
@@ -1900,21 +1922,25 @@ class ExcaliburRX(object):
                                self.chip_size * self.num_chips])
         bad_pixels[:, col] = 1
 
-        discLbits_file = self.calib_settings['calibDir'] + 'fem' + \
-            str(self.fem) + '/' + self.settings['mode'] + '/' + \
-            self.settings['gain'] + '/' + 'discLbits.chip' + str(chip)
-        pixel_mask_file = self.calib_settings['calibDir'] + 'fem' + \
-            str(self.fem) + '/' + self.settings['mode'] + '/' + \
-            self.settings['gain'] + '/' + 'pixelmask.chip' + str(chip)
+        template_path = posixpath.join(self.calib_settings['calibDir'],
+                                       'fem{fem}'.format(fem=self.fem),
+                                       self.settings['mode'],
+                                       self.settings['gain'],
+                                       '{disc}.chip{chip}')
+
+        discLbits_file = template_path.format(disc='discLbits', chip=chip)
+        pixel_mask_file = template_path.format(disc='pixelmask', chip=chip)
 
         np.savetxt(pixel_mask_file, bad_pixels[0:256, chip*256:chip*256 + 256],
                    fmt='%.18g', delimiter=' ')
+
         subprocess.call([self.command, "-i", self.ipaddress, "-p", self.port,
                          "-m", self.mask(range(chip, chip + 1)),
                          "--config",
                          "--pixelmask=" + pixel_mask_file,
                          "--config",
                          "--discl=" + discLbits_file])
+
         dnp.plot.image(bad_pixels, name='Bad pixels')
         
     def mask_pixels(self, chips, image_data, max_counts):
@@ -1926,78 +1952,84 @@ class ExcaliburRX(object):
         bad_pix_tot = np.zeros(8)
         bad_pixels = image_data > max_counts
         dnp.plot.image(bad_pixels, name='Bad pixels')
-        for chip in chips:
-            discLbits_file = self.calib_settings['calibDir'] + 'fem' + \
-                str(self.fem) + '/' + self.settings['mode'] + \
-                '/' + self.settings['gain'] + '/' + 'discLbits.chip' + \
-                str(chip)
-            bad_pix_tot[chip] = bad_pixels[0:256,
-                                           chip*256:chip*256 + 256].sum()
+        for chip_idx in chips:
+            template_path = posixpath.join(self.calib_settings['calibDir'],
+                                           'fem{fem}'.format(fem=self.fem),
+                                           self.settings['mode'],
+                                           self.settings['gain'],
+                                           '{disc}.chip{chip}')
 
-            print('####### ' + str(bad_pix_tot[chip]) +
-                  ' noisy pixels in chip ' + str(chip) +
-                  ' (' + str(100*bad_pix_tot[chip]/(256**2)) + '%)')
+            discLbits_file = template_path.format(disc='discLbits',
+                                                  chip=chip_idx)
+            pixel_mask_file = template_path.format(disc='pixelmask',
+                                                   chip=chip_idx)
 
-            pixel_mask_file = self.calib_settings['calibDir'] + 'fem' + \
-                str(self.fem) + '/' + self.settings['mode'] + '/' + \
-                self.settings['gain'] + '/' + 'pixelmask.chip' + str(chip)
+            bad_pix_tot[chip_idx] = \
+                bad_pixels[0:256, chip_idx*256:(chip_idx + 1)*256].sum()
+
+            print('####### ' + str(bad_pix_tot[chip_idx]) +
+                  ' noisy pixels in chip ' + str(chip_idx) +
+                  ' (' + str(100*bad_pix_tot[chip_idx]/(256**2)) + '%)')
 
             np.savetxt(pixel_mask_file,
-                       bad_pixels[0:256, chip*256:chip*256 + 256],
+                       bad_pixels[0:256, chip_idx*256:chip_idx*256 + 256],
                        fmt='%.18g', delimiter=' ')
             subprocess.call([self.command, "-i", self.ipaddress,
                              "-p", self.port,
-                             "-m", self.mask(range(chip, chip + 1)),
+                             "-m", self.mask(range(chip_idx, chip_idx + 1)),
                              "--config",
                              "--pixelmask=" + pixel_mask_file,
-                             "--config",
+                             "--config",  # TODO: Does 2nd have any effect?
                              "--discl=" + discLbits_file])
 
         print('####### ' + str(bad_pix_tot.sum()) +
               ' noisy pixels in half module ' +
-              ' (' + str(100*bad_pix_tot.sum()/(8*256**2)) + '%)')
+              ' (' + str(100 * bad_pix_tot.sum()/(8 * 256**2)) + '%)')
 
     def mask_pixels_using_dac_scan(self, chips=range(8),
                                    threshold="Threshold0",
                                    dac_range=(20, 120, 2)):
         """
-        Performs threshold dac scan and masks pixels in with counnts above a
+        Performs threshold dac scan and masks pixels in with counts above a
         max_counts value in any of the dac scan images
         updates the corresponding maskfile in the calibration directory
-        Usage: x.mask_pixels_using_dac_scan(chips,Threshold,dacRange) where
-        chips is a list of chips [0,1,2,3]
+        Usage: x.mask_pixels_using_dac_scan(chips, Threshold, dacRange) where
+        chips is a list of chips [0, 1, 2, 3]
         Threshold = "Threshold0" or "Threshold1"
-        dacRange = (DAC_start_value,DAC_stop_value,DAC_step_value) DACs can be
+        dacRange = (DAC_start_value, DAC_stop_value,DAC_step_value) DACs can be
         scanned in both directions
-        # dacRange=(20,120,2)
+        # dacRange=(20, 120, 2)
         """
 
         max_counts = 1
         bad_pix_tot = np.zeros(8)
         self.settings['acqtime'] = 100
-        [dac_scan_data, scan_range] = self.scan_dac(chips, threshold,
-                                                    dac_range)
+        [dac_scan_data, _] = self.scan_dac(chips, threshold, dac_range)
         bad_pixels = dac_scan_data.sum(0) > max_counts
         dnp.plot.image(bad_pixels, name='Bad pixels')
     
-        for chip in chips:
-            bad_pix_tot[chip] = \
-                bad_pixels[0:256, chip*256:chip*256 + 256].sum()
+        for chip_idx in chips:
+            bad_pix_tot[chip_idx] = \
+                bad_pixels[0:256, chip_idx*256:chip_idx*256 + 256].sum()
 
-            print('####### ' + str(bad_pix_tot[chip]) +
-                  ' noisy pixels in chip ' + str(chip) +
-                  ' (' + str(100*bad_pix_tot[chip]/(256**2)) + '%)')
+            print('####### ' + str(bad_pix_tot[chip_idx]) +
+                  ' noisy pixels in chip_idx ' + str(chip_idx) +
+                  ' (' + str(100 * bad_pix_tot[chip_idx]/(256**2)) + '%)')
 
-            pixel_mask_file = self.calib_settings['calibDir'] + 'fem' + \
-                str(self.fem) + '/' + self.settings['mode'] + '/' + \
-                self.settings['gain'] + '/' + 'pixelmask.chip' + str(chip)
+            pixel_mask_file = posixpath.join(self.calib_settings['calibDir'],
+                                             'fem{fem}'.format(fem=self.fem),
+                                             self.settings['mode'],
+                                             self.settings['gain'],
+                                             '{disc}.chip{chip}').format(
+                disc='pixelmask',
+                chip=chip_idx)
 
             np.savetxt(pixel_mask_file,
-                       bad_pixels[0:256, chip*256:chip*256 + 256],
+                       bad_pixels[0:256, chip_idx*256:(chip_idx + 1)*256],
                        fmt='%.18g', delimiter=' ')
             # subprocess.call([self.command, "-i", self.ipaddress,
             #                  "-p", self.port,
-            #                  "-m", self.mask(range(chip, chip + 1)),
+            #                  "-m", self.mask(range(chip_idx, chip_idx + 1)),
             #                  "--config",
             #                  "--pixelmask=" + pixel_mask_file,
             #                  "--config",
@@ -2005,7 +2037,7 @@ class ExcaliburRX(object):
 
         print('####### ' + str(bad_pix_tot.sum()) +
               ' noisy pixels in half module ' +
-              ' (' + str(100*bad_pix_tot.sum() / (8*256**2)) + '%)')
+              ' (' + str(100 * bad_pix_tot.sum() / (8 * 256**2)) + '%)')
 
     def unmask_all_pixels(self, chips):
         """
@@ -2015,20 +2047,24 @@ class ExcaliburRX(object):
         bad_pixels = np.zeros([self.chip_size,
                                self.chip_size * self.num_chips])
 
-        for chip in chips:
-            discLbits_file = self.calib_settings['calibDir'] + 'fem' + \
-                str(self.fem) + '/' + self.settings['mode'] + '/' + \
-                self.settings['gain'] + '/' + 'discLbits.chip' + str(chip)
-            pixel_mask_file = self.calib_settings['calibDir'] + 'fem' + \
-                str(self.fem) + '/' + self.settings['mode'] + '/' + \
-                self.settings['gain'] + '/' + 'pixelmask.chip' + str(chip)
+        for chip_idx in chips:
+            template_path = posixpath.join(self.calib_settings['calibDir'],
+                                           'fem{fem}'.format(fem=self.fem),
+                                           self.settings['mode'],
+                                           self.settings['gain'],
+                                           '{disc}.chip{chip}')
+
+            discLbits_file = template_path.format(disc='discLbits',
+                                                  chip=chip_idx)
+            pixel_mask_file = template_path.format(disc='pixelmask',
+                                                   chip=chip_idx)
 
             np.savetxt(pixel_mask_file,
-                       bad_pixels[0:256, chip*256:chip*256 + 256],
+                       bad_pixels[0:256, chip_idx*256:chip_idx*256 + 256],
                        fmt='%.18g', delimiter=' ')
             subprocess.call([self.command, "-i", self.ipaddress,
                              "-p", self.port,
-                             "-m", self.mask(range(chip, chip + 1)),
+                             "-m", self.mask([chip_idx]),
                              "--config",
                              "--pixelmask=" + pixel_mask_file,
                              "--config",
@@ -2045,20 +2081,24 @@ class ExcaliburRX(object):
 
         discL_bits = 31*np.zeros([self.chip_size,
                                   self.chip_size * self.num_chips])
-        for chip in chips:
-            discLbits_file = self.calib_settings['calibDir'] + 'fem' + \
-                str(self.fem) + '/' + self.settings['mode'] + '/' + \
-                self.settings['gain'] + '/' + 'discL_bits.chip' + str(chip)
-            pixel_mask_file = self.calib_settings['calibDir'] + 'fem' + \
-                str(self.fem) + '/' + self.settings['mode'] + '/' + \
-                self.settings['gain'] + '/' + 'pixelmask.chip' + str(chip)
+        for chip_idx in chips:
+            template_path = posixpath.join(self.calib_settings['calibDir'],
+                                           'fem{fem}'.format(fem=self.fem),
+                                           self.settings['mode'],
+                                           self.settings['gain'],
+                                           '{disc}.chip{chip}')
+
+            discLbits_file = template_path.format(disc='discL_bits',
+                                                  chip=chip_idx)
+            pixel_mask_file = template_path.format(disc='pixelmask',
+                                                   chip=chip_idx)
 
             np.savetxt(discLbits_file,
-                       discL_bits[0:256, chip*256:chip*256 + 256],
+                       discL_bits[0:256, chip_idx*256:(chip_idx + 1)*256],
                        fmt='%.18g', delimiter=' ')
             subprocess.call([self.command, "-i", self.ipaddress,
                              "-p", self.port,
-                             "-m", self.mask(range(chip, chip + 1)),
+                             "-m", self.mask(range(chip_idx, chip_idx + 1)),
                              "--config",
                              "--pixelmask=" + pixel_mask_file,
                              "--config",
@@ -2070,23 +2110,27 @@ class ExcaliburRX(object):
         otherwise creates it
         """
 
-        calib_dir = (self.calib_settings['calibDir'] + 'fem' + str(self.fem) +
-                     '/' + self.settings['mode'] +
-                     '/' + self.settings['gain'] + '/')
+        calib_dir = posixpath.join(self.calib_settings['calibDir'],
+                                   'fem{fem}',
+                                   self.settings['mode'],
+                                   self.settings['gain']).format(
+            fem=self.fem)
 
         if (os.path.isdir(calib_dir)) == 0:
             os.makedirs(calib_dir)
         else:
-            backup_dir = self.calib_settings['calibDir'][:-1] + '_backup_' + \
+            backup_dir = self.calib_settings['calibDir'] + '_backup_' + \
                          time.asctime()
             shutil.copytree(self.calib_settings['calibDir'], backup_dir)
 
             print(backup_dir)
 
-        dac_file = calib_dir + self.calib_settings['dacfilename']
+        dac_file = posixpath.join(
+            calib_dir, self.calib_settings['dacfilename'])
         if os.path.isfile(dac_file) == 0:
-            shutil.copy(self.calib_settings['configDir'] +
-                        self.calib_settings['dacfilename'], calib_dir)
+            shutil.copy(posixpath.join(self.calib_settings['configDir'],
+                                       self.calib_settings['dacfilename']),
+                        calib_dir)
 
         # if os.path.isfile(dac_file) == 0:
         #     shutil.copy(self.calibSettings['configDir'] + 'zeros.mask',
@@ -2103,14 +2147,15 @@ class ExcaliburRX(object):
         threshold equalization data is independent of the gain mode
         """
 
-        lgm_dir = (self.calib_settings['calibDir'] + 'fem' + str(self.fem) +
-                   '/' + self.settings['mode'] + '/' + 'lgm' + '/')
-        hgm_dir = (self.calib_settings['calibDir'] + 'fem' + str(self.fem) +
-                   '/' + self.settings['mode'] + '/' + 'hgm' + '/')
-        slgm_dir = (self.calib_settings['calibDir'] + 'fem' + str(self.fem) +
-                    '/' + self.settings['mode'] + '/' + 'slgm' + '/')
-        shgm_dir = (self.calib_settings['calibDir'] + 'fem' + str(self.fem) +
-                    '/' + self.settings['mode'] + '/' + 'shgm' + '/')
+        template_path = posixpath.join(self.calib_settings['calibDir'],
+                                       'fem{fem}'.format(fem=self.fem),
+                                       self.settings['mode'],
+                                       '{gain_mode}')
+
+        lgm_dir = template_path.format(gain_mode='lgm')
+        hgm_dir = template_path.format(gain_mode='hgm')
+        slgm_dir = template_path.format(gain_mode='slgm')
+        shgm_dir = template_path.format(gain_mode='shgm')
 
         if os.path.exists(lgm_dir):
             shutil.rmtree(lgm_dir)
@@ -2129,12 +2174,15 @@ class ExcaliburRX(object):
         """
 
         discbits = np.zeros([self.chip_size, self.chip_size * self.num_chips])
-        for chip in chips:
-            discbits_file = self.calib_settings['calibDir'] + 'fem' + \
-                str(self.fem) + '/' + self.settings['mode'] + '/' + \
-                self.settings['gain'] + '/' + \
-                discbits_filename + '.chip' + str(chip)
-            discbits[0:256, chip*256:chip*256 + 256] = \
+        for chip_idx in chips:
+            discbits_file = posixpath.join(self.calib_settings['calibDir'],
+                                           'fem{fem}',
+                                           self.settings['mode'],
+                                           self.settings['gain'],
+                                           '{disc}.chip{chip}').format(
+                fem=self.fem, disc=discbits_filename, chip=chip_idx)
+
+            discbits[0:256, chip_idx*256:(chip_idx + 1)*256] = \
                 np.loadtxt(discbits_file)
 
         return discbits
@@ -2876,31 +2924,41 @@ class ExcaliburRX(object):
         """
 
         chips = range(self.num_chips)
-        EPICS_calib_path = self.calib_settings['calibDir'][:-1] + '_epics'
+        EPICS_calib_path = self.calib_settings['calibDir'] + '_epics'
         shutil.copytree(self.calib_settings['calibDir'], EPICS_calib_path)
 
         print(EPICS_calib_path)
+
+        template_path = posixpath.join(EPICS_calib_path,
+                                       'fem{fem}',
+                                       'spm',
+                                       'slgm',
+                                       '{disc}.chip{chip}'
+                                       )
         
-        for fem in range(6):
-            if fem % 2 == 1:
+        for fem in [1, 3, 5]:
 
-                print("Config files of node" + str(fem) +
-                      " have to be rotated in EPICS calibration folder " +
-                      str(self.fem))
+            print("Config files of node" + str(fem) +
+                  " have to be rotated in EPICS calibration folder " +
+                  str(self.fem))
 
-                for chip in chips:
-                    discLbits_file = EPICS_calib_path + "/fem" + str(fem) + \
-                        "/spm/slgm/discLbits.chip" + str(chip)
-                    if os.path.isfile(discLbits_file):
-                        self.rotate_config(discLbits_file)
-                        print(discLbits_file + "rotated")
-                    discHbits_file = EPICS_calib_path + "/fem" + str(fem) + \
-                        "/spm/slgm/discHbits.chip" + str(chip)
-                    if os.path.isfile(discHbits_file):
-                        print(discHbits_file + "rotated")
-                        self.rotate_config(discHbits_file)
-                    pixel_mask_file = EPICS_calib_path + "/fem" + str(fem) + \
-                        "/spm/slgm/pixelmask.chip" + str(chip)
-                    if os.path.isfile(pixel_mask_file):
-                        self.rotate_config(pixel_mask_file)
-                        print(pixel_mask_file + "rotated")
+            for chip_idx in chips:
+
+                discLbits_file = template_path.format(fem=fem,
+                                                      disc='discLbits',
+                                                      chip=chip_idx)
+                discHbits_file = template_path.format(fem=fem,
+                                                      disc='discHbits',
+                                                      chip=chip_idx)
+                pixel_mask_file = template_path.format(fem=fem,
+                                                       disc='pixelmask',
+                                                       chip=chip_idx)
+                if os.path.isfile(discLbits_file):
+                    self.rotate_config(discLbits_file)
+                    print(discLbits_file + "rotated")
+                if os.path.isfile(discHbits_file):
+                    self.rotate_config(discHbits_file)
+                    print(discHbits_file + "rotated")
+                if os.path.isfile(pixel_mask_file):
+                    self.rotate_config(pixel_mask_file)
+                    print(pixel_mask_file + "rotated")
