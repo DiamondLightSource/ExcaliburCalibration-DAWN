@@ -37,8 +37,8 @@ class InitTest(unittest.TestCase):
         self.assertEqual(self.e.nb_of_sigma, 3.2)
         self.assertEqual(self.e.edge_val, 10)
         self.assertEqual(self.e.acc_dist, 4)
-        self.assertEqual(self.e.calib_settings, {'calibDir': "/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/",
-                                                 'configDir': "/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/config/",
+        self.assertEqual(self.e.calib_settings, {'calibDir': "/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib",
+                                                 'configDir': "/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/config",
                                                  'dacfilename': "dacs",
                                                  'dacfile': "",
                                                  'noiseEdge': "10"})
@@ -1102,6 +1102,8 @@ class LogoTestTest(unittest.TestCase):
 
         self.e.logo_test()
 
+        self.maxDiff = None
+
         set_mock.assert_called_once_with([0], "Threshold0", 40)
         shoot_mock.assert_called_once_with(10)
         load_mock.assert_called_once_with('/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/config/logo.txt')
@@ -1157,7 +1159,7 @@ class TestPulseTest(unittest.TestCase):
     @patch('scisoftpy.io')
     @patch('numpy.savetxt')
     @patch('subprocess.call')
-    def test_test_plot(self, subp_mock, save_mock, io_mock, plot_mock):
+    def test_test_pulse(self, subp_mock, save_mock, io_mock, plot_mock):
         expected_call_1 = ['/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
                            '-i', '192.168.0.106',
                            '-p', '6969',
@@ -1375,13 +1377,13 @@ class CheckCalibDirTest(unittest.TestCase):
     @patch('os.path.isdir', return_value=False)
     def test_doesnt_exist_then_create(self, isdir_mock, isfile_mock,
                                       make_mock, copy_mock, copy_tree_mock):
-        expected_path = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/'
+        expected_path = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm'
         e = ExcaliburRX(0)
 
         e.check_calib_dir()
 
         isdir_mock.assert_called_once_with(expected_path)
-        isfile_mock.assert_called_once_with(expected_path + 'dacs')
+        isfile_mock.assert_called_once_with(expected_path + '/dacs')
         make_mock.assert_called_once_with(expected_path)
         copy_mock.assert_called_once_with('/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/config/dacs',
                                           expected_path)
@@ -1392,15 +1394,15 @@ class CheckCalibDirTest(unittest.TestCase):
     @patch('os.path.isdir', return_value=True)
     def test_does_exist_then_backup(self, isdir_mock, isfile_mock, _,
                                     make_mock, copy_mock, copy_tree_mock):
-        expected_path = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/'
+        expected_path = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm'
         e = ExcaliburRX(0)
 
         e.check_calib_dir()
 
         isdir_mock.assert_called_once_with(expected_path)
-        isfile_mock.assert_called_once_with(expected_path + 'dacs')
+        isfile_mock.assert_called_once_with(expected_path + '/dacs')
         self.assertFalse(make_mock.call_count)
-        copy_tree_mock.assert_called_once_with('/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/',
+        copy_tree_mock.assert_called_once_with('/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib',
                                                '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib_backup_Fri Sep 16 14:59:18 2016')
         self.assertFalse(copy_mock.call_count)
 
@@ -1417,17 +1419,17 @@ class CopySLGMIntoOtherGainModesTest(unittest.TestCase):
         e.copy_slgm_into_other_gain_modes()
 
         # Check exists calls
-        self.assertEqual(expected_path + 'lgm/', exists_mock.call_args_list[0][0][0])
-        self.assertEqual(expected_path + 'hgm/', exists_mock.call_args_list[1][0][0])
-        self.assertEqual(expected_path + 'shgm/', exists_mock.call_args_list[2][0][0])
+        self.assertEqual(expected_path + 'lgm', exists_mock.call_args_list[0][0][0])
+        self.assertEqual(expected_path + 'hgm', exists_mock.call_args_list[1][0][0])
+        self.assertEqual(expected_path + 'shgm', exists_mock.call_args_list[2][0][0])
         # Check rm calls
-        self.assertEqual(expected_path + 'lgm/', rm_mock.call_args_list[0][0][0])
-        self.assertEqual(expected_path + 'hgm/', rm_mock.call_args_list[1][0][0])
-        self.assertEqual(expected_path + 'shgm/', rm_mock.call_args_list[2][0][0])
+        self.assertEqual(expected_path + 'lgm', rm_mock.call_args_list[0][0][0])
+        self.assertEqual(expected_path + 'hgm', rm_mock.call_args_list[1][0][0])
+        self.assertEqual(expected_path + 'shgm', rm_mock.call_args_list[2][0][0])
         # Check copytree calls
-        self.assertEqual((expected_path + 'slgm/', expected_path + 'lgm/'), copytree_mock.call_args_list[0][0])
-        self.assertEqual((expected_path + 'slgm/', expected_path + 'hgm/'), copytree_mock.call_args_list[1][0])
-        self.assertEqual((expected_path + 'slgm/', expected_path + 'shgm/'), copytree_mock.call_args_list[2][0])
+        self.assertEqual((expected_path + 'slgm', expected_path + 'lgm'), copytree_mock.call_args_list[0][0])
+        self.assertEqual((expected_path + 'slgm', expected_path + 'hgm'), copytree_mock.call_args_list[1][0])
+        self.assertEqual((expected_path + 'slgm', expected_path + 'shgm'), copytree_mock.call_args_list[2][0])
 
     @patch('os.path.exists', return_value=False)
     def test_dont_exist_then_just_copy(self, exists_mock, rm_mock,
@@ -1438,15 +1440,15 @@ class CopySLGMIntoOtherGainModesTest(unittest.TestCase):
         e.copy_slgm_into_other_gain_modes()
 
         # Check exists calls
-        self.assertEqual(expected_path + 'lgm/', exists_mock.call_args_list[0][0][0])
-        self.assertEqual(expected_path + 'hgm/', exists_mock.call_args_list[1][0][0])
-        self.assertEqual(expected_path + 'shgm/', exists_mock.call_args_list[2][0][0])
+        self.assertEqual(expected_path + 'lgm', exists_mock.call_args_list[0][0][0])
+        self.assertEqual(expected_path + 'hgm', exists_mock.call_args_list[1][0][0])
+        self.assertEqual(expected_path + 'shgm', exists_mock.call_args_list[2][0][0])
         # Check rm calls
         self.assertFalse(rm_mock.call_count)
         # Check copytree calls
-        self.assertEqual((expected_path + 'slgm/', expected_path + 'lgm/'), copytree_mock.call_args_list[0][0])
-        self.assertEqual((expected_path + 'slgm/', expected_path + 'hgm/'), copytree_mock.call_args_list[1][0])
-        self.assertEqual((expected_path + 'slgm/', expected_path + 'shgm/'), copytree_mock.call_args_list[2][0])
+        self.assertEqual((expected_path + 'slgm', expected_path + 'lgm'), copytree_mock.call_args_list[0][0])
+        self.assertEqual((expected_path + 'slgm', expected_path + 'hgm'), copytree_mock.call_args_list[1][0])
+        self.assertEqual((expected_path + 'slgm', expected_path + 'shgm'), copytree_mock.call_args_list[2][0])
 
 
 class OpenDiscbitsFileTest(unittest.TestCase):
@@ -1738,7 +1740,7 @@ class RotateTest(unittest.TestCase):
     def test_rotate_config_files_exist(self, _, rotate_mock, copy_mock):
         self.e.num_chips = 1  # Make test easier
         root_path = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/'
-        expected_calib_path = root_path + 'calib/'
+        expected_calib_path = root_path + 'calib'
         expected_epics_path = root_path + 'calib_epics'
         expected_discL_path = expected_epics_path + '/fem1/spm/slgm/discLbits.chip0'
         expected_discH_path = expected_epics_path + '/fem1/spm/slgm/discHbits.chip0'
