@@ -17,11 +17,14 @@ import posixpath
 import shutil
 import time
 import math
-import subprocess
+
+from collections import namedtuple
 
 import numpy as np
 from scipy.optimize import curve_fit
 import scisoftpy as dnp
+
+from scripts.ExcaliburTestAppInterface import ExcaliburTestAppInterface
 
 
 def myerf(x, a, mu, sigma):
@@ -54,6 +57,14 @@ def s_curve_function(x, k, delta, e, sigma):
     """
 
     return k * ((1 - 2*delta*(x/e - 0.5)) ** 2) * (1 - myerf(x, k, e, sigma))
+
+
+Settings = namedtuple("Settings", "mode gain bitdepth readmode counter "
+                                  "disccsmspm equalization trigmode acqtime "
+                                  "frames imagepath filename threshold "
+                                  "filename_index")
+
+Range = namedtuple("Range", "start stop step")
 
 
 class ExcaliburRX(object):
@@ -459,6 +470,12 @@ class ExcaliburRX(object):
         """
 
         # Detector default Settings
+        self.settings = Settings(mode='spm', gain='shgm', bitdepth='12',
+                                 readmode='0', counter='0', disccsmspm='0',
+                                 equalization='0', trigmode='0', acqtime='100',
+                                 frames='1', imagepath='/tmp',
+                                 filename='image', threshold='Not set',
+                                 filename_index='')
         self.settings = {'mode': 'spm',  # 'spm' or 'csm'
                          'gain': 'shgm',  # 'slgm', 'lgm', 'hgm' or 'shgm'
                          'bitdepth': '12',  # '1', '8', '12' or '24'; 24 bits
@@ -481,7 +498,9 @@ class ExcaliburRX(object):
         if self.fem == 0:
             self.ipaddress = "192.168.0.106"
 
-        # self.read_chip_id()
+        self.app = ExcaliburTestAppInterface(self.ipaddress, self.port)
+
+        # self.read_chip_ids()
 
     def threshold_equalization(self, chips=range(8)):
         """
@@ -1032,48 +1051,17 @@ class ExcaliburRX(object):
         self.set_dac(chips, 'TPREFA', 500)
         self.set_dac(chips, 'TPREFB', 500)
 
-    def mask(self, chips):
-        """
-        Creates hexadecimal chip mask corresponding to chips to be enabled when
-        sending commands to the front-end
-        Usage: mask_hex=x.mask([0]) to  get the mask value to enable chip 0
-        only ('0x80') mask_hex=x.mask([0, 1, 2, 3, 4, 5, 6, 7]) or
-        mask_hex=x.mask(range(8)) to get the mask value to enable all
-        chips ('0xff')
-        """
-
-        if len(chips) != len(set(chips)):
-            raise ValueError("Given list must not contain duplicate values")
-
-        valid_index_range = [0, 1, 2, 3, 4, 5, 6, 7]
-        max_chip_index = self.num_chips - 1
-
-        mask_hex = 0
-        for chip_index in chips:
-            if chip_index not in valid_index_range:
-                raise ValueError("Invalid index given, must be in " +
-                                 str(valid_index_range))
-            else:
-                mask_hex += 2**(max_chip_index - chip_index)
-
-        return str(hex(mask_hex))
-
-    def read_chip_id(self):
+    def read_chip_ids(self):
         """
         Reads chip IDs
-        Usage: x.read_chip_id(chips) where chips is a list of chips
-        i.e. x.read_chip_id(range(8))
         """
 
-        subprocess.call([self.command, "-i", self.ipaddress, "-p", self.port,
-                         "-m", self.mask(self.chip_range), "-r", "-e"])
+        self.app.read_chip_ids()
         print(str(self.chip_range))
     
     def log_chip_id(self):
         """
         Reads chip IDs and logs chipIDs in calibration directory
-        Usage: x.log_chip_id(chips) where chips is a list of chips
-        i.e. x.read_chip_id(range(8))
         """
 
         log_filename = posixpath.join(self.calib_settings['calibDir'],
@@ -1082,12 +1070,8 @@ class ExcaliburRX(object):
                                       ).format(fem=self.fem)
 
         with open(log_filename, "w") as outfile:
-            subprocess.call([self.command,
-                             "-i", self.ipaddress,
-                             "-p", self.port,
-                             "-m", self.mask(self.chip_range),
-                             "-r", "-e"],
-                            stdout=outfile)
+            self.app.read_chip_ids(stdout=outfile)
+
         print(str(self.chip_range))
     
     def monitor(self):
@@ -1095,13 +1079,12 @@ class ExcaliburRX(object):
         Monitors Temperature, Humidity, front-end module voltage regulator
         status and DAC out
         """
-        subprocess.call([self.command, "-i", self.ipaddress, "-p", self.port,
-                         "-m", self.mask(self.chip_range), "--slow"])
+
+        self.app.read_slow_control_parameters()
     
     def set_threshold0_dac(self, chips=range(8), dac_value=40):
         """
-        This function sets Threshold 0 DAC to a selected value for all chips  
-        Usage: x.set_threshold0_dac(30)
+        Sets Threshold 0 DAC to a selected value for given chips
         """
 
         self.set_dac(chips, 'Threshold0', dac_value)
@@ -1135,8 +1118,8 @@ class ExcaliburRX(object):
     def set_dac(self, chips, dac_name="Threshold0", dac_value=40):
         """
         Sets any chip DAC at a given value 
-        Usage: x.set_dac([0],'Threshold0', 30)
-               x.set_dac(range(8),'Threshold1', 100)
+        Usage: x.set_dac([0], 'Threshold0', 30)
+               x.set_dac(range(8), 'Threshold1', 100)
         """
 
         for chip in chips:
@@ -1155,10 +1138,8 @@ class ExcaliburRX(object):
             f.seek(0)
             f.writelines(f_content)
             f.close()
-            subprocess.call([self.command, "-i", self.ipaddress,
-                             "-p", self.port,
-                             "-m", self.mask([chip]),
-                             "--dacs=" + dac_file])
+
+            self.app.load_dacs([chip], dac_file)
 
     def read_dac(self, chips, dac_name):
         """
@@ -1174,17 +1155,7 @@ class ExcaliburRX(object):
                                   self.calib_settings['dacfilename']
                                   ).format(fem=self.fem)
 
-        subprocess.call([self.command, "-i", self.ipaddress, "-p", self.port,
-                         "-m", self.mask(chips),
-                         "--sensedac=" + str(np.int(self.dac_code[dac_name])),
-                         "--dacs=" + dac_file])
-
-        time.sleep(1)
-
-        subprocess.call([self.command, "-i", self.ipaddress, "-p", self.port,
-                         "-m", self.mask(self.chip_range),
-                         "--sensedac=" + str(np.int(self.dac_code[dac_name])),
-                         "--slow"])
+        self.app.sense(chips, self.dac_code[dac_name], dac_file)
 
     @staticmethod
     def plot_dac_scan(chips, dac_scan_data, dac_range):
@@ -1303,24 +1274,11 @@ class ExcaliburRX(object):
                                   self.settings['mode'],
                                   self.settings['gain'],
                                   self.calib_settings['dacfilename'])
+        scan_range = Range(dac_range[0], dac_range[1], dac_range[2])
 
-        string = str(np.int(self.dac_code[dac_name]) - 1) + ',' + \
-            str(dac_range[0]) + ',' + str(dac_range[1]) + ',' + \
-            str(dac_range[2])
+        self.app.perform_dac_scan(chips, self.dac_code[dac_name], scan_range,
+                                  dac_file)
 
-        subprocess.call([self.command, "-i", self.ipaddress, "-p", self.port,
-                         "-m", self.mask(chips),
-                         "--dacs=" + dac_file,
-                         "--csmspm=" + self.mode_code[self.settings['mode']],
-                         "--disccsmspm=" + self.settings['disccsmspm'],
-                         "--depth=12",
-                         "--equalization=" + self.settings['equalization'],
-                         "--counter=" + self.settings['counter'],
-                         "--acqtime=" + str(self.settings['acqtime']),
-                         "--gainmode=" + self.gain_code[self.settings['gain']],
-                         "--dacscan", string,
-                         "--path=" + self.settings['imagepath'],
-                         "--hdffile=" + dac_scan_file])
         time.sleep(1)
 
         dh = dnp.io.load(self.settings['imagepath'] + dac_scan_file)
@@ -1412,13 +1370,8 @@ class ExcaliburRX(object):
         np.savetxt(mask_bits_file, mask_bits, fmt='%.18g', delimiter=' ')
 
         for chip in chips:
-            subprocess.call([self.command, "-i", self.ipaddress,
-                             "-p", self.port,
-                             "-m", self.mask([chip]),
-                             "--config",
-                             "--discl=" + discL_bits_file,
-                             "--disch=" + discH_bits_file,
-                             "--pixelmask=" + mask_bits_file])
+            self.app.load_config([chip], discL_bits_file, discH_bits_file,
+                                 mask_bits_file)
 
     def load_config(self, chips=range(8)):
         """
@@ -1438,23 +1391,9 @@ class ExcaliburRX(object):
             discHbits_file = template_path.format(disc='discHbits', chip=chip)
             discLbits_file = template_path.format(disc='discLbits', chip=chip)
             pixel_mask_file = template_path.format(disc='pixelmask', chip=chip)
-
-            command = [self.command, "-i", self.ipaddress, "-p", self.port,
-                       "-m", self.mask(range(chip, chip + 1)),
-                       "--config"]
             
-            if os.path.isfile(discLbits_file):
-                command.append("--discl=" + discLbits_file)
-
-                if os.path.isfile(discHbits_file):
-                    command.append("--disch=" + discHbits_file)
-
-                if os.path.isfile(pixel_mask_file):
-                    command.append("--pixelmask=" + pixel_mask_file)
-
-                subprocess.call(command)
-            else:
-                print(str(discLbits_file) + " does not exist !")
+            self.app.load_config([chip], discLbits_file, discHbits_file,
+                                 pixel_mask_file)
 
         self.set_dac(range(8), "Threshold1", 100)
         self.set_dac(range(8), "Threshold0", 40)
@@ -1530,30 +1469,20 @@ class ExcaliburRX(object):
         Acquires images in burst mode
         """
 
-        self.settings['acqtime'] = acquire_time
-        self.update_filename_index()
         self.settings['frames'] = frames
+        self.settings['acqtime'] = acquire_time
+
+        self.update_filename_index()
         self.settings['fullFilename'] = '{name}_{index}.hdf5'.format(
             name=self.settings['filename'],
             index=self.settings['filenameIndex'])
 
-        command = [self.command, "-i", self.ipaddress, "-p", self.port,
-                   "-m", self.mask(self.chip_range),
-                   "--depth=" + self.settings['bitdepth'],
-                   "--csmspm=" + self.mode_code[self.settings['mode']],
-                   "--disccsmspm=" + self.settings['disccsmspm'],
-                   "--equalization=" + self.settings['equalization'],
-                   "--gainmode=" + self.gain_code[self.settings['gain']],
-                   "--burst",
-                   "--frames=" + str(self.settings['frames']),
-                   "--acqtime=" + str(self.settings['acqtime']),
-                   "--trigmode=" + self.settings['trigmode'],
-                   "--path=" + self.settings['imagepath'],
-                   "--hdffile=" + self.settings['fullFilename']]
+        self.app.acquire(self.chip_range,
+                         frames,
+                         acquire_time,
+                         burst=True,
+                         hdffile=self.settings['fullFilename'])
 
-        print(command)
-
-        subprocess.call(command)
         time.sleep(0.5)
 
     def expose(self):
@@ -1561,6 +1490,9 @@ class ExcaliburRX(object):
         Acquires single images using current detector settings (x.settings)
         Usage: x.expose()
         """
+
+        # TODO: This is the same as shoot fi the user doesn't edit the settings
+        # TODO: manually from the console
 
         print(self.settings)
 
@@ -1570,19 +1502,10 @@ class ExcaliburRX(object):
             name=self.settings['filename'],
             index=self.settings['filenameIndex'])
 
-        subprocess.call([self.command, "-i", self.ipaddress, "-p", self.port,
-                         "-m", self.mask(self.chip_range),
-                         "--depth=" + self.settings['bitdepth'],
-                         "--csmspm=" + self.mode_code[self.settings['mode']],
-                         "--disccsmspm=" + self.settings['disccsmspm'],
-                         "--equalization=" + self.settings['equalization'],
-                         "--gainmode=" + self.gain_code[self.settings['gain']],
-                         "--acquire",
-                         "--frames=" + str(self.settings['frames']),
-                         "--acqtime=" + str(self.settings['acqtime']),
-                         "--trigmode=" + self.settings['trigmode'],
-                         "--path=" + self.settings['imagepath'],
-                         "--hdffile=" + self.settings['fullFilename']])
+        self.app.acquire(self.chip_range,
+                         str(self.settings['frames']),
+                         str(self.settings['acqtime']),
+                         hdffile=self.settings['fullFilename'])
 
         print(self.settings['filename'])
 
@@ -1609,15 +1532,10 @@ class ExcaliburRX(object):
             name=self.settings['filename'],
             index=self.settings['filenameIndex'])
 
-        subprocess.call([self.command, "-i", self.ipaddress, "-p", self.port,
-                         "-m", self.mask(self.chip_range),
-                         "--depth=" + self.settings['bitdepth'],
-                         "--gainmode=" + self.gain_code[self.settings['gain']],
-                         "--acquire",
-                         "--frames=" + str(self.settings['frames']),
-                         "--acqtime=" + str(self.settings['acqtime']),
-                         "--path=" + self.settings['imagepath'],
-                         "--hdffile=" + self.settings['fullFilename']])
+        self.app.acquire(self.chip_range,
+                         str(self.settings['frames']),
+                         str(acquire_time),
+                         hdffile=self.settings['fullFilename'])
 
         print(self.settings['filename'])
 
@@ -1639,25 +1557,19 @@ class ExcaliburRX(object):
         """
 
         self.settings['acqtime'] = acquire_time
-        self.update_filename_index()
         self.settings['frames'] = frames
         self.settings['readmode'] = '1'
+
+        self.update_filename_index()
         self.settings['fullFilename'] = '{name}_{index}.hdf5'.format(
             name=self.settings['filename'],
             index=self.settings['filenameIndex'])
 
-        subprocess.call([self.command, "-i", self.ipaddress, "-p", self.port,
-                         "-m", self.mask(self.chip_range),
-                         "--depth=" + self.settings['bitdepth'],
-                         "--gainmode=" + self.gain_code[self.settings['gain']],
-                         "--acquire",
-                         "--readmode=" + str(self.settings['readmode']),
-                         "--counter=" + str(self.settings['counter']),
-                         "--frames=" + str(self.settings['frames']),
-                         "--acqtime=" + str(self.settings['acqtime']),
-                         "--trigmode=" + self.settings['trigmode'],
-                         "--path=" + self.settings['imagepath'],
-                         "--hdffile=" + self.settings['fullFilename']])
+        self.app.acquire(self.chip_range,
+                         str(frames),
+                         str(acquire_time),
+                         readmode='1',
+                         hdffile=self.settings['fullFilename'])
 
         print(self.settings['filename'])
 
@@ -1682,8 +1594,7 @@ class ExcaliburRX(object):
         acqtime the acquisition time in ms
         """
 
-        # TODO: Exactly the same as burst + setting of defaults from class
-        # TODO: attributes. Remove?
+        # TODO: Readmode used but not changed to 1 before?
         
         self.settings['acqtime'] = acquire_time
         self.update_filename_index()
@@ -1692,18 +1603,12 @@ class ExcaliburRX(object):
             name=self.settings['filename'],
             index=self.settings['filenameIndex'])
 
-        subprocess.call([self.command, "-i", self.ipaddress, "-p", self.port,
-                         "-m", self.mask(self.chip_range),
-                         "--depth=" + self.settings['bitdepth'],
-                         "--gainmode=" + self.gain_code[self.settings['gain']],
-                         "--burst",
-                         "--readmode=" + str(self.settings['readmode']),
-                         "--counter=" + str(self.settings['counter']),
-                         "--frames=" + str(self.settings['frames']),
-                         "--acqtime=" + str(self.settings['acqtime']),
-                         "--trigmode=" + self.settings['trigmode'],
-                         "--path=" + self.settings['imagepath'],
-                         "--hdffile=" + self.settings['fullFilename']])
+        self.app.acquire(self.chip_range,
+                         frames,
+                         acquire_time,
+                         burst=True,
+                         readmode='1',
+                         hdffile=self.settings['fullFilename'])
     
     def apply_ff_correction(self, ni, ff_coeff):
         """
@@ -1764,42 +1669,33 @@ class ExcaliburRX(object):
             discLbits_file = template_path.format(disc='discLbits', chip=chip)
             pixel_mask_file = template_path.format(disc='pixelmask', chip=chip)
 
-            command = [self.command, "-i", self.ipaddress, "-p", self.port,
-                       "-m", self.mask([chip]),
-                       "--dacs", posixpath.join(
-                                 self.calib_settings['calibDir'],
-                                 self.calib_settings['dacfilename']),
-                       "--config",
-                       "--tpmask=" + test_bits_file]
+            dac_file = posixpath.join(self.calib_settings['calibDir'],
+                                      self.calib_settings['dacfilename'])
 
             if os.path.isfile(discLbits_file) \
                 and os.path.isfile(discHbits_file)  \
                     and os.path.isfile(pixel_mask_file):
-                command[-1:-1] = ["--discl=" + discLbits_file,
-                                  "--disch=" + discHbits_file,
-                                  "--pixelmask=" + pixel_mask_file]
-                # TODO: Check if order matters; just extend if not
+                disc_files = dict(discl=discLbits_file,
+                                  disch=discHbits_file,
+                                  pixelmask=pixel_mask_file)
 
-            subprocess.call(command)
+                self.app.configure_test_pulse_with_disc([chip], dac_file,
+                                                        test_bits_file,
+                                                        disc_files)
+            else:
+                self.app.configure_test_pulse([chip], dac_file, test_bits_file)
+
+        time.sleep(0.2)
 
         self.settings['fullFilename'] = "{name}_{index}.hdf5".format(
                                         name=self.settings['filename'],
                                         index=self.settings['filenameIndex'])
 
-        time.sleep(0.2)
-
-        subprocess.call([self.command, "-i", self.ipaddress,
-                         "-p", self.port,
-                         "-m", self.mask(chips),
-                         "--depth=" + self.settings['bitdepth'],
-                         "--acquire",
-                         "--readmode=" + str(self.settings['readmode']),
-                         "--frames=" + str(self.settings['frames']),
-                         "--acqtime=" + str(self.settings['acqtime']),
-                         "--counter=0",
-                         "--path=" + self.settings['imagepath'],
-                         "--hdffile=" + self.settings['fullFilename'],
-                         "--tpcount=" + str(100)])
+        self.app.acquire(chips,
+                         str(self.settings['frames']),
+                         str(self.settings['acqtime']),
+                         tpcount='100',
+                         hdffile=self.settings['fullFilename'])
 
         dh = dnp.io.load(posixpath.join(self.settings['imagepath'],
                                         self.settings['fullFilename']))
@@ -1827,27 +1723,16 @@ class ExcaliburRX(object):
                                         index=self.settings['filenameIndex'])
 
         for chip in chips:
-            subprocess.call([self.command, "-i", self.ipaddress,
-                             "-p", self.port,
-                             "-m", self.mask([chip]),
-                             "--dacs", posixpath.join(
-                                       self.calib_settings['calibDir'],
-                                       self.calib_settings['dacfilename']),
-                             "--config",
-                             "--tpmask=" + test_bits_file])
+            dac_file = posixpath.join(self.calib_settings['calibDir'],
+                                      self.calib_settings['dacfilename'])
 
-        subprocess.call([self.command, "-i", self.ipaddress,
-                         "-p", self.port,
-                         "-m", self.mask(chips),
-                         "--depth=" + self.settings['bitdepth'],
-                         "--acquire",
-                         "--readmode=" + str(self.settings['readmode']),
-                         "--frames=" + str(self.settings['frames']),
-                         "--acqtime=" + str(self.settings['acqtime']),
-                         "--counter=0",
-                         "--path=" + self.settings['imagepath'],
-                         "--hdffile=" + self.settings['fullFilename'],
-                         "--tpcount=" + str(pulses)])
+            self.app.configure_test_pulse([chip], dac_file, test_bits_file)
+
+        self.app.acquire(chips,
+                         str(self.settings['frames']),
+                         str(self.settings['acqtime']),
+                         tpcount=str(pulses),
+                         hdffile=self.settings['fullFilename'])
 
         print(self.settings['fullFilename'])
 
@@ -1903,12 +1788,8 @@ class ExcaliburRX(object):
 
         np.savetxt(pixel_mask_file, bad_pixels[0:256, chip*256:(chip + 1)*256],
                    fmt='%.18g', delimiter=' ')
-        subprocess.call([self.command, "-i", self.ipaddress, "-p", self.port,
-                         "-m", self.mask(range(chip, chip + 1)),
-                         "--config",
-                         "--pixelmask=" + pixel_mask_file,
-                         "--config",
-                         "--discl=" + discLbits_file])
+        self.app.load_config([chip], discLbits_file, pixelmask=pixel_mask_file)
+
         dnp.plot.image(bad_pixels)
 
     def mask_col(self, chip, col):
@@ -1936,12 +1817,7 @@ class ExcaliburRX(object):
         np.savetxt(pixel_mask_file, bad_pixels[0:256, chip*256:chip*256 + 256],
                    fmt='%.18g', delimiter=' ')
 
-        subprocess.call([self.command, "-i", self.ipaddress, "-p", self.port,
-                         "-m", self.mask(range(chip, chip + 1)),
-                         "--config",
-                         "--pixelmask=" + pixel_mask_file,
-                         "--config",
-                         "--discl=" + discLbits_file])
+        self.app.load_config([chip], discLbits_file, pixelmask=pixel_mask_file)
 
         dnp.plot.image(bad_pixels, name='Bad pixels')
         
@@ -1976,13 +1852,8 @@ class ExcaliburRX(object):
             np.savetxt(pixel_mask_file,
                        bad_pixels[0:256, chip_idx*256:chip_idx*256 + 256],
                        fmt='%.18g', delimiter=' ')
-            subprocess.call([self.command, "-i", self.ipaddress,
-                             "-p", self.port,
-                             "-m", self.mask(range(chip_idx, chip_idx + 1)),
-                             "--config",
-                             "--pixelmask=" + pixel_mask_file,
-                             "--config",  # TODO: Does 2nd have any effect?
-                             "--discl=" + discLbits_file])
+            self.app.load_config([chip_idx], discLbits_file,
+                                 pixelmask=pixel_mask_file)
 
         print('####### ' + str(bad_pix_tot.sum()) +
               ' noisy pixels in half module ' +
@@ -2064,13 +1935,8 @@ class ExcaliburRX(object):
             np.savetxt(pixel_mask_file,
                        bad_pixels[0:256, chip_idx*256:chip_idx*256 + 256],
                        fmt='%.18g', delimiter=' ')
-            subprocess.call([self.command, "-i", self.ipaddress,
-                             "-p", self.port,
-                             "-m", self.mask([chip_idx]),
-                             "--config",
-                             "--pixelmask=" + pixel_mask_file,
-                             "--config",
-                             "--discl=" + discLbits_file])
+            self.app.load_config([chip_idx], discLbits_file,
+                                 pixelmask=pixel_mask_file)
 
     def unequalize_all_pixels(self, chips):
         """
@@ -2098,13 +1964,8 @@ class ExcaliburRX(object):
             np.savetxt(discLbits_file,
                        discL_bits[0:256, chip_idx*256:(chip_idx + 1)*256],
                        fmt='%.18g', delimiter=' ')
-            subprocess.call([self.command, "-i", self.ipaddress,
-                             "-p", self.port,
-                             "-m", self.mask(range(chip_idx, chip_idx + 1)),
-                             "--config",
-                             "--pixelmask=" + pixel_mask_file,
-                             "--config",
-                             "--discl=" + discLbits_file])
+            self.app.load_config([chip_idx], discLbits_file,
+                                 pixelmask=pixel_mask_file)
 
     def check_calib_dir(self):
         """

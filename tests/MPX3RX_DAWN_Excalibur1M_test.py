@@ -5,6 +5,8 @@ require("mock")
 from mock import patch, MagicMock, ANY
 
 from scripts.MPX3RX_DAWN_Excalibur1M import *
+ERX_patch_path = "scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX"
+ETAI_patch_path = "scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburTestAppInterface"
 
 
 class FunctionsTest(unittest.TestCase):
@@ -469,132 +471,60 @@ class SetDacsTest(unittest.TestCase):
             self.assertEqual((chips,) + expected_calls[index], call_args[0])
 
 
-class MaskTest(unittest.TestCase):
-
-    def test_return_values(self):
-        e = ExcaliburRX(0)
-
-        value = e.mask([0])
-        self.assertEqual('0x80', value)
-
-        value = e.mask([0, 4])
-        self.assertEqual('0x88', value)
-
-        value = e.mask([0, 1, 4, 5, 7])
-        self.assertEqual('0xcd', value)
-
-        value = e.mask([0, 1, 2, 3, 4, 5, 6, 7])
-        self.assertEqual('0xff', value)
-
-    def test_given_invalid_value_then_error(self):
-        e = ExcaliburRX(0)
-
-        with self.assertRaises(ValueError):
-            e.mask([8])
-
-    def test_given_duplicate_value_then_error(self):
-        e = ExcaliburRX(0)
-
-        with self.assertRaises(ValueError):
-            e.mask([1, 1])
-
-
-@patch('subprocess.call')
-class SubprocessCallsTest(unittest.TestCase):
+class SubprocessCallsTest(unittest.TestCase):  # TODO: Rename
 
     file_mock = MagicMock()
 
     def setUp(self):
         self.e = ExcaliburRX(0)
+        self.etai_mock = MagicMock()
+        self.e.app = self.etai_mock
 
-    def test_read_chip_id(self, subp_mock):
-        expected_call = ['/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
-                         '-i', '192.168.0.106',
-                         '-p', '6969',
-                         '-m', '0xff',
-                         '-r', '-e']
+    def test_read_chip_id(self):
 
-        self.e.read_chip_id()
+        self.e.read_chip_ids()
 
-        subp_mock.assert_called_once_with(expected_call)
+        self.etai_mock.read_chip_ids.assert_called_once_with()
 
     @patch('__builtin__.open', return_value=file_mock)
-    def test_log_chip_id(self, _, subp_mock):
-        expected_call = ['/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
-                         '-i', '192.168.0.106',
-                         '-p', '6969',
-                         '-m', '0xff',
-                         '-r', '-e']
+    def test_log_chip_id(self, _):
         expected_kwargs = dict(stdout=self.file_mock.__enter__.return_value)
 
         self.e.log_chip_id()
 
-        call_args = subp_mock.call_args
-        self.assertEqual(expected_call, call_args[0][0])
-        self.assertEqual(expected_kwargs, call_args[1])
+        self.assertEqual((), self.etai_mock.read_chip_ids.call_args[0])
+        self.assertEqual(expected_kwargs, self.etai_mock.read_chip_ids.call_args[1])
 
-    def test_monitor(self, subp_mock):
-        expected_call = ['/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
-                         '-i', '192.168.0.106',
-                         '-p', '6969',
-                         '-m', '0xff',
-                         '--slow']
+    def test_monitor(self):
 
         self.e.monitor()
 
-        subp_mock.assert_called_once_with(expected_call)
+        self.etai_mock.read_slow_control_parameters.assert_called_once_with()
 
     @patch('time.sleep')
     @patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.update_filename_index')
-    def test_burst(self, update_idx_mock, sleep_mock, subp_mock):
-        expected_call = ['/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
-                         '-i', '192.168.0.106',
-                         '-p', '6969',
-                         '-m', '0xff',
-                         '--depth=12',
-                         '--csmspm=0',
-                         '--disccsmspm=0',
-                         '--equalization=0',
-                         '--gainmode=0',
-                         '--burst',
-                         '--frames=10',
-                         '--acqtime=0.1',
-                         '--trigmode=0',
-                         '--path=/tmp/',
-                         '--hdffile=image_.hdf5']
+    def test_burst(self, update_idx_mock, sleep_mock):
+        expected_file = 'image_.hdf5'
+        chips = range(8)
 
         self.e.burst(10, 0.1)
 
-        subp_mock.assert_called_once_with(expected_call)
         update_idx_mock.assert_called_once_with()
+        self.etai_mock.acquire.assert_called_once_with(chips, 10, 0.1, burst=True, hdffile=expected_file)
         sleep_mock.assert_called_once_with(0.5)
 
     @patch('scisoftpy.io.load')
     @patch('scisoftpy.plot')
     @patch('time.sleep')
     @patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.update_filename_index')
-    def test_expose(self, update_idx_mock, sleep_mock, plot_mock, load_mock,
-                    subp_mock):
-        expected_call = ['/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
-                         '-i', '192.168.0.106',
-                         '-p', '6969',
-                         '-m', '0xff',
-                         '--depth=12',
-                         '--csmspm=0',
-                         '--disccsmspm=0',
-                         '--equalization=0',
-                         '--gainmode=0',
-                         '--acquire',
-                         '--frames=1',
-                         '--acqtime=100',
-                         '--trigmode=0',
-                         '--path=/tmp/',
-                         '--hdffile=image_.hdf5']
+    def test_expose(self, update_idx_mock, sleep_mock, plot_mock, load_mock):
+        expected_file = 'image_.hdf5'
+        chips = range(8)
 
         self.e.expose()
 
-        subp_mock.assert_called_once_with(expected_call)
         update_idx_mock.assert_called_once_with()
+        self.etai_mock.acquire.assert_called_once_with(chips, '1', '100', hdffile=expected_file)
         sleep_mock.assert_called_once_with(0.5)
         load_mock.assert_called_once_with('/tmp/image_.hdf5')
         plot_mock.clear.assert_called_once_with()
@@ -605,24 +535,14 @@ class SubprocessCallsTest(unittest.TestCase):
     @patch('scisoftpy.plot')
     @patch('time.sleep')
     @patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.update_filename_index')
-    def test_shoot(self, update_idx_mock, sleep_mock, plot_mock, load_mock,
-                   subp_mock):
-        expected_call = ['/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
-                         '-i', '192.168.0.106',
-                         '-p', '6969',
-                         '-m', '0xff',
-                         '--depth=12',
-                         '--gainmode=0',
-                         '--acquire',
-                         '--frames=1',
-                         '--acqtime=10',
-                         '--path=/tmp/',
-                         '--hdffile=image_.hdf5']
+    def test_shoot(self, update_idx_mock, sleep_mock, plot_mock, load_mock):
+        expected_file = 'image_.hdf5'
+        chips = range(8)
 
         self.e.shoot(10)
 
-        subp_mock.assert_called_once_with(expected_call)
         update_idx_mock.assert_called_once_with()
+        self.etai_mock.acquire.assert_called_once_with(chips, '1', '10', hdffile=expected_file)
         sleep_mock.assert_called_once_with(0.2)
         load_mock.assert_called_once_with('/tmp/image_.hdf5')
         plot_mock.clear.assert_called_once_with()
@@ -633,27 +553,14 @@ class SubprocessCallsTest(unittest.TestCase):
     @patch('scisoftpy.plot')
     @patch('time.sleep')
     @patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.update_filename_index')
-    def test_cont(self, update_idx_mock, sleep_mock, plot_mock, load_mock,
-                  subp_mock):
-        expected_call = ['/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
-                         '-i', '192.168.0.106',
-                         '-p', '6969',
-                         '-m', '0xff',
-                         '--depth=12',
-                         '--gainmode=0',
-                         '--acquire',
-                         '--readmode=1',
-                         '--counter=0',
-                         '--frames=100',
-                         '--acqtime=10',
-                         '--trigmode=0',
-                         '--path=/tmp/',
-                         '--hdffile=image_.hdf5']
+    def test_cont(self, update_idx_mock, sleep_mock, plot_mock, load_mock):
+        expected_file = 'image_.hdf5'
+        chips = range(8)
 
         self.e.cont(100, 10)
 
-        subp_mock.assert_called_once_with(expected_call)
         update_idx_mock.assert_called_once_with()
+        self.etai_mock.acquire.assert_called_once_with(chips, '100', '10', readmode='1', hdffile=expected_file)
         sleep_mock.assert_called_once_with(0.2)
         load_mock.assert_called_once_with('/tmp/image_.hdf5')
         plot_mock.clear.assert_called_once_with()
@@ -662,35 +569,18 @@ class SubprocessCallsTest(unittest.TestCase):
         self.assertEqual(5, plot_mock.image.call_count)
 
     @patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.update_filename_index')
-    def test_cont_burst(self, update_idx_mock, subp_mock):
-        expected_call = ['/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
-                         '-i', '192.168.0.106',
-                         '-p', '6969',
-                         '-m', '0xff',
-                         '--depth=12',
-                         '--gainmode=0',
-                         '--burst',
-                         '--readmode=0',
-                         '--counter=0',
-                         '--frames=100',
-                         '--acqtime=10',
-                         '--trigmode=0',
-                         '--path=/tmp/',
-                         '--hdffile=image_.hdf5']
+    def test_cont_burst(self, update_idx_mock):
+        expected_file = 'image_.hdf5'
+        chips = range(8)
 
         self.e.cont_burst(100, 10)
 
-        subp_mock.assert_called_once_with(expected_call)
         update_idx_mock.assert_called_once_with()
+        self.etai_mock.acquire.assert_called_once_with(chips, 100, 10, burst=True, readmode='1', hdffile=expected_file)
 
     @patch('__builtin__.open', return_value=file_mock)
-    def test_set_dac(self, open_mock, subp_mock):
+    def test_set_dac(self, open_mock):
         dac_file = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/dacs'
-        expected_call = ['/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
-                         '-i', '192.168.0.106',
-                         '-p', '6969',
-                         '-m', '0x80',
-                         '--dacs=' + dac_file]
         expected_lines = ['Heading', 'Threshold0 = 40\r\n', 'Line2']
         readlines_mock = ['Heading', 'Line1', 'Line2']
         self.file_mock.readlines.return_value = readlines_mock
@@ -698,53 +588,27 @@ class SubprocessCallsTest(unittest.TestCase):
 
         self.e.set_dac(chips)
 
-        # Check subprocess calls
-        call_args = subp_mock.call_args
-        self.assertEqual(expected_call, call_args[0][0])
-        self.assertEqual({}, call_args[1])
+        self.etai_mock.load_dacs.assert_called_once_with(chips, dac_file)
         # Check file writing calls
         open_mock.assert_called_with(dac_file, 'r+b')
         self.assertEqual(len(chips), open_mock.call_count)
         self.file_mock.writelines.assert_called_once_with(expected_lines)
 
-    @patch('time.sleep')
-    def test_read_dac(self, sleep_mock, subp_mock):
-        expected_call_1 = ['/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
-                           '-i', '192.168.0.106',
-                           '-p', '6969',
-                           '-m', '0x80',
-                           '--sensedac=1',
-                           '--dacs=/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/dacs']
-        expected_call_2 = ['/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
-                           '-i', '192.168.0.106',
-                           '-p', '6969',
-                           '-m', '0xff',
-                           '--sensedac=1', '--slow']
+    def test_read_dac(self):
+        expected_file = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/dacs'
         chips = [0]
 
         self.e.read_dac(chips, 'Threshold0')
 
-        # Check first subprocess call
-        call_args = subp_mock.call_args_list[0]
-        self.assertEqual(expected_call_1, call_args[0][0])
-        # Check time.sleep call
-        sleep_mock.assert_called_once_with(1)
-        # Check second subprocess call
-        call_args = subp_mock.call_args_list[1]
-        self.assertEqual(expected_call_2, call_args[0][0])
+        self.etai_mock.sense.assert_called_once_with(chips, '1', expected_file)
 
     @patch('numpy.savetxt')
-    def test_load_config_bits(self, save_mock, subp_mock):
+    def test_load_config_bits(self, save_mock):
         filepath = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/'
         expected_kwargs = dict(fmt='%.18g', delimiter=' ')
-        expected_call = ['/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
-                         '-i', '192.168.0.106',
-                         '-p', '6969',
-                         '-m', '0x80',
-                         '--config',
-                         '--discl=/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/discLbits.tmp',
-                         '--disch=/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/discHbits.tmp',
-                         '--pixelmask=/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/maskbits.tmp']
+        expected_file_1 = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/discLbits.tmp'
+        expected_file_2 = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/discHbits.tmp'
+        expected_file_3 = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/maskbits.tmp'
         chips = [0]
         discLbits = MagicMock()
         discHbits = MagicMock()
@@ -764,12 +628,11 @@ class SubprocessCallsTest(unittest.TestCase):
         call_args = save_mock.call_args_list[2]
         self.assertEqual((filepath + 'maskbits.tmp', maskbits), call_args[0])
         self.assertEqual(expected_kwargs, call_args[1])
-        # Check subprocess call
-        call_args = subp_mock.call_args_list[0]
-        self.assertEqual(expected_call, call_args[0][0])
+
+        self.etai_mock.load_config.assert_called_once_with([0], expected_file_1, expected_file_2, expected_file_3)
 
 
-@patch('subprocess.call')
+@patch(ETAI_patch_path + '.load_config')
 @patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.set_dac')
 @patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.expose')
 class LoadConfigTest(unittest.TestCase):
@@ -778,16 +641,10 @@ class LoadConfigTest(unittest.TestCase):
         self.e = ExcaliburRX(0)
         self.chips = [0]
 
-    @patch('os.path.isfile', return_value=True)
-    def test_load_config_all_exist(self, _, expose_mock, set_mock, subp_mock):
-        expected_call = ['/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
-                         '-i', '192.168.0.106',
-                         '-p', '6969',
-                         '-m', '0x80',
-                         '--config',
-                         '--discl=/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/discLbits.chip0',
-                         '--disch=/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/discHbits.chip0',
-                         '--pixelmask=/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/pixelmask.chip0']
+    def test_correct_calls_made(self, expose_mock, set_mock, load_mock):
+        expected_file_1 = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/discLbits.chip0'
+        expected_file_2 = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/discHbits.chip0'
+        expected_file_3 = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/pixelmask.chip0'
 
         self.e.load_config(self.chips)
 
@@ -798,87 +655,7 @@ class LoadConfigTest(unittest.TestCase):
         call_args = set_mock.call_args_list[1]
         self.assertEqual((range(8), "Threshold0", 40), call_args[0])
 
-        subp_mock.assert_called_once_with(expected_call)
-        expose_mock.assert_called_once_with()
-
-    @patch('os.path.isfile', side_effect=[True, True, False])
-    def test_load_config_L_and_H(self, _, expose_mock, set_mock, subp_mock):
-        expected_call = ['/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
-                         '-i', '192.168.0.106',
-                         '-p', '6969',
-                         '-m', '0x80',
-                         '--config',
-                         '--discl=/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/discLbits.chip0',
-                         '--disch=/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/discHbits.chip0']
-
-        self.e.load_config(self.chips)
-
-        # Check first set_dac call
-        call_args = set_mock.call_args_list[0]
-        self.assertEqual((range(8), "Threshold1", 100), call_args[0])
-        # Check second set_dac call
-        call_args = set_mock.call_args_list[1]
-        self.assertEqual((range(8), "Threshold0", 40), call_args[0])
-
-        subp_mock.assert_called_once_with(expected_call)
-        expose_mock.assert_called_once_with()
-
-    @patch('os.path.isfile', side_effect=[True, False, True])
-    def test_load_config_L_and_pixel(self, _, expose_mock, set_mock, subp_mock):
-        expected_call = ['/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
-                         '-i', '192.168.0.106',
-                         '-p', '6969',
-                         '-m', '0x80',
-                         '--config',
-                         '--discl=/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/discLbits.chip0',
-                         '--pixelmask=/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/pixelmask.chip0']
-
-        self.e.load_config(self.chips)
-
-        # Check first set_dac call
-        call_args = set_mock.call_args_list[0]
-        self.assertEqual((range(8), "Threshold1", 100), call_args[0])
-        # Check second set_dac call
-        call_args = set_mock.call_args_list[1]
-        self.assertEqual((range(8), "Threshold0", 40), call_args[0])
-
-        subp_mock.assert_called_once_with(expected_call)
-        expose_mock.assert_called_once_with()
-
-    @patch('os.path.isfile', side_effect=[True, False, False])
-    def test_load_config_L(self, _, expose_mock, set_mock, subp_mock):
-        expected_call = ['/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
-                         '-i', '192.168.0.106',
-                         '-p', '6969',
-                         '-m', '0x80',
-                         '--config',
-                         '--discl=/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/discLbits.chip0']
-
-        self.e.load_config(self.chips)
-
-        # Check first set_dac call
-        call_args = set_mock.call_args_list[0]
-        self.assertEqual((range(8), "Threshold1", 100), call_args[0])
-        # Check second set_dac call
-        call_args = set_mock.call_args_list[1]
-        self.assertEqual((range(8), "Threshold0", 40), call_args[0])
-
-        subp_mock.assert_called_once_with(expected_call)
-        expose_mock.assert_called_once_with()
-
-    @patch('os.path.isfile', return_value=False)
-    def test_load_config_none_exist(self, _, expose_mock, set_mock, subp_mock):
-
-        self.e.load_config(self.chips)
-
-        # Check first set_dac call
-        call_args = set_mock.call_args_list[0]
-        self.assertEqual((range(8), "Threshold1", 100), call_args[0])
-        # Check second set_dac call
-        call_args = set_mock.call_args_list[1]
-        self.assertEqual((range(8), "Threshold0", 40), call_args[0])
-
-        self.assertFalse(subp_mock.call_count)
+        load_mock.assert_called_once_with(self.chips, expected_file_1, expected_file_2, expected_file_3)
         expose_mock.assert_called_once_with()
 
 
@@ -936,16 +713,19 @@ class PlotDacScanTest(unittest.TestCase):
 @patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.update_filename_index')
 @patch('scisoftpy.plot')
 @patch('scisoftpy.io')
-@patch('subprocess.call')
+@patch(ETAI_patch_path + '.perform_dac_scan')
 class ScanDacTest(unittest.TestCase):
 
-    def test_given_start_lower_than_stop(self, subp_mock, plot_mock, io_mock,
+    def test_given_start_lower_than_stop(self, scan_mock, plot_mock, io_mock,
                                          update_mock):
+        expected_file = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem/spm/shgm/dacs'
         e = ExcaliburRX(0)
         chips = [0]
         dac_range = [1, 10, 1]
 
         e.scan_dac(chips, 'Threshold0', dac_range)
+
+        scan_mock.assert_called_once_with(chips, '1', Range(1, 10, 1), expected_file)
 
         # TODO: Combine with duplicated plotdacscan before writing tests
 
@@ -1055,7 +835,6 @@ class ApplyFFCorrectionTest(unittest.TestCase):
 @patch('scisoftpy.plot')
 @patch('scisoftpy.io')
 @patch('numpy.savetxt')
-@patch('subprocess.call')
 @patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.set_dac')
 @patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.shoot')
 class LogoTestTest(unittest.TestCase):
@@ -1065,6 +844,8 @@ class LogoTestTest(unittest.TestCase):
 
     def setUp(self):
         self.e = ExcaliburRX(0)
+        self.etai_mock = MagicMock()
+        self.e.app = self.etai_mock
         self.e.num_chips = 1  # Make test easier - only run for one chip
         self.expected_call_2 = ['/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
                                 '-i', '192.168.0.106',
@@ -1088,29 +869,24 @@ class LogoTestTest(unittest.TestCase):
     @patch('numpy.loadtxt', return_value=mock_array)
     @patch('os.path.isfile', return_value=True)
     def test_logo_test_files_exist(self, _, load_mock, shoot_mock, set_mock,
-                                   subp_mock, save_mock, io_mock, plot_mock):
-        expected_call_1 = ['/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
-                           '-i', '192.168.0.106',
-                           '-p', '6969',
-                           '-m', '0x1',
-                           '--dacs', '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/dacs',
-                           '--config',
-                           '--discl=/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/discLbits.chip0',
-                           '--disch=/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/discHbits.chip0',
-                           '--pixelmask=/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/pixelmask.chip0',
-                           '--tpmask=/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/Logo_chip0_mask']
+                                   save_mock, io_mock, plot_mock):
+        expected_dac_file = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/dacs'
+        mask_file = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/Logo_chip0_mask'
+        disc_files = dict(disch='/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/discHbits.chip0',
+                          pixelmask='/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/pixelmask.chip0',
+                          discl='/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/discLbits.chip0')
+        chips = [0]
 
         self.e.logo_test()
 
         self.maxDiff = None
 
-        set_mock.assert_called_once_with([0], "Threshold0", 40)
+        set_mock.assert_called_once_with(chips, "Threshold0", 40)
         shoot_mock.assert_called_once_with(10)
         load_mock.assert_called_once_with('/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/config/logo.txt')
-        # Check first subprocess call
-        self.assertEqual(expected_call_1, subp_mock.call_args_list[0][0][0])
-        # Check second subprocess call
-        self.assertEqual(self.expected_call_2, subp_mock.call_args_list[1][0][0])
+
+        self.etai_mock.configure_test_pulse_with_disc.assert_called_once_with(chips, expected_dac_file, mask_file, disc_files)
+        self.etai_mock.acquire.assert_called_once_with(chips, '1', '100', tpcount='100', hdffile='image_.hdf5')
 
         self.assertEqual(save_mock.call_args[0][0], '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/Logo_chip0_mask')
         self.assertTrue((save_mock.call_args[0][1] == self.logo_tp[0:256, 0:256]).all())
@@ -1122,16 +898,14 @@ class LogoTestTest(unittest.TestCase):
     @patch('numpy.loadtxt', return_value=mock_array)
     @patch('os.path.isfile', return_value=False)
     def test_logo_test_files_dont_exist(self, _, load_mock, shoot_mock,
-                                        set_mock, subp_mock, save_mock,
-                                        io_mock, plot_mock):
-        expected_call_1 = ['/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
-                           '-i', '192.168.0.106',
-                           '-p', '6969',
-                           '-m', '0x1',
-                           '--dacs',
-                           '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/dacs',
-                           '--config',
-                           '--tpmask=/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/Logo_chip0_mask']
+                                        set_mock, save_mock, io_mock,
+                                        plot_mock):
+        expected_dac_file = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/dacs'
+        mask_file = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/Logo_chip0_mask'
+        disc_files = dict(disch='/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/discHbits.chip0',
+                          pixelmask='/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/pixelmask.chip0',
+                          discl='/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/discLbits.chip0')
+        chips = [0]
 
         self.e.logo_test()
 
@@ -1141,10 +915,9 @@ class LogoTestTest(unittest.TestCase):
         set_mock.assert_called_once_with([0], "Threshold0", 40)
         shoot_mock.assert_called_once_with(10)
         load_mock.assert_called_once_with('/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/config/logo.txt')
-        # Check first subprocess call
-        self.assertEqual(expected_call_1, subp_mock.call_args_list[0][0][0])
-        # Check second subprocess call
-        self.assertEqual(self.expected_call_2, subp_mock.call_args_list[1][0][0])
+
+        self.etai_mock.configure_test_pulse.assert_called_once_with(chips, expected_dac_file, mask_file)
+        self.etai_mock.acquire.assert_called_once_with(chips, '1', '100', tpcount='100', hdffile='image_.hdf5')
 
         load_mock.assert_called_once_with('/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/config/logo.txt')
         plot_mock.image.assert_called_once_with(io_mock.load.return_value.image.__getitem__().astype().squeeze(),
@@ -1155,41 +928,23 @@ class TestPulseTest(unittest.TestCase):
 
     # TODO: Test other if branch?
 
+    def setUp(self):
+        self.e = ExcaliburRX(0)
+        self.etai_mock = MagicMock()
+        self.e.app = self.etai_mock
+
     @patch('scisoftpy.plot')
     @patch('scisoftpy.io')
     @patch('numpy.savetxt')
-    @patch('subprocess.call')
-    def test_test_pulse(self, subp_mock, save_mock, io_mock, plot_mock):
-        expected_call_1 = ['/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
-                           '-i', '192.168.0.106',
-                           '-p', '6969',
-                           '-m', '0x80',
-                           '--dacs',
-                           '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/dacs',
-                           '--config',
-                           '--tpmask=excaliburRx/config/triangle.mask']
-        expected_call_2 = ['/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
-                           '-i', '192.168.0.106',
-                           '-p', '6969',
-                           '-m', '0x80',
-                           '--depth=12',
-                           '--acquire',
-                           '--readmode=0',
-                           '--frames=1',
-                           '--acqtime=100',
-                           '--counter=0',
-                           '--path=/tmp/',
-                           '--hdffile=image_.hdf5',
-                           '--tpcount=1000']
+    def test_test_pulse(self, save_mock, io_mock, plot_mock):
+        expected_dac_file = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/dacs'
+        mask_file = 'excaliburRx/config/triangle.mask'
+        chips = [0]
 
-        e = ExcaliburRX(0)
+        self.e.test_pulse(chips, mask_file, 1000)
 
-        e.test_pulse([0], 'excaliburRx/config/triangle.mask', 1000)
-
-        # Check first subprocess call
-        self.assertEqual(expected_call_1, subp_mock.call_args_list[0][0][0])
-        # Check second subprocess call
-        self.assertEqual(expected_call_2, subp_mock.call_args_list[1][0][0])
+        self.etai_mock.configure_test_pulse.assert_called_once_with(chips, expected_dac_file, mask_file)
+        self.etai_mock.acquire.assert_called_once_with(chips, '1', '100', tpcount='1000', hdffile='image_.hdf5')
 
         plot_mock.image.assert_called_once_with(io_mock.load.return_value.image.__getitem__().astype().squeeze(),
                                                 name='Image data')
@@ -1215,21 +970,15 @@ class SaveDiscbitsTest(unittest.TestCase):
 
 @patch('scisoftpy.plot')
 @patch('numpy.savetxt')
-@patch('subprocess.call')
+@patch(ETAI_patch_path + '.load_config')
 class MaskUnmaskTest(unittest.TestCase):
 
     def setUp(self):
         self.e = ExcaliburRX(0)
 
-    def test_mask_col(self, subp_mock, save_mock, plot_mock):
-        expected_call = ['/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
-                         '-i', '192.168.0.106',
-                         '-p', '6969',
-                         '-m', '0x80',
-                         '--config',
-                         '--pixelmask=/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/pixelmask.chip0',
-                         '--config',
-                         '--discl=/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/discLbits.chip0']
+    def test_mask_col(self, load_mock, save_mock, plot_mock):
+        expected_file_1 = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/discLbits.chip0'
+        expected_file_2 = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/pixelmask.chip0'
         expected_mask = np.zeros([256, 8*256])
         expected_mask[:, 1] = 1
         expected_submask = expected_mask[0:256, 0:256]
@@ -1243,22 +992,16 @@ class MaskUnmaskTest(unittest.TestCase):
         self.assertTrue((expected_submask == call_args[1]).all())
         self.assertEqual(dict(fmt='%.18g', delimiter=' '), call_kwargs)
 
-        subp_mock.assert_called_once_with(expected_call)
+        load_mock.assert_called_once_with([0], expected_file_1, pixelmask=expected_file_2)
 
         call_args = plot_mock.image.call_args[0]
         call_kwargs = plot_mock.image.call_args[1]
         self.assertTrue((expected_mask == call_args[0]).all())
         self.assertEqual(dict(name='Bad pixels'), call_kwargs)
 
-    def test_mask_sup_col(self, subp_mock, save_mock, plot_mock):
-        expected_call = ['/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
-                         '-i', '192.168.0.106',
-                         '-p', '6969',
-                         '-m', '0x80',
-                         '--config',
-                         '--pixelmask=/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/pixelmask.chip0',
-                         '--config',
-                         '--discl=/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/discLbits.chip0']
+    def test_mask_sup_col(self, load_mock, save_mock, plot_mock):
+        expected_file_1 = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/discLbits.chip0'
+        expected_file_2 = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/pixelmask.chip0'
         expected_mask = np.zeros([256, 8*256])
         expected_mask[:, 32:32 + 64] = 1
         expected_submask = expected_mask[0:256, 0:256]
@@ -1272,20 +1015,14 @@ class MaskUnmaskTest(unittest.TestCase):
         self.assertTrue((expected_submask == call_args[1]).all())
         self.assertEqual(dict(fmt='%.18g', delimiter=' '), call_kwargs)
 
-        subp_mock.assert_called_once_with(expected_call)
+        load_mock.assert_called_once_with([0], expected_file_1, pixelmask=expected_file_2)
 
         call_args = plot_mock.image.call_args[0]
         self.assertTrue((expected_mask == call_args[0]).all())
 
-    def test_mask_pixels(self, subp_mock, save_mock, plot_mock):
-        expected_call = ['/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
-                         '-i', '192.168.0.106',
-                         '-p', '6969',
-                         '-m', '0x80',
-                         '--config',
-                         '--pixelmask=/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/pixelmask.chip0',
-                         '--config',
-                         '--discl=/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/discLbits.chip0']
+    def test_mask_pixels(self, load_mock, save_mock, plot_mock):
+        expected_file_1 = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/discLbits.chip0'
+        expected_file_2 = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/pixelmask.chip0'
         image_data = np.random.randint(10, size=(256, 8*256))
         expected_mask = image_data > 7
 
@@ -1301,13 +1038,13 @@ class MaskUnmaskTest(unittest.TestCase):
         self.assertTrue((expected_mask[0:256, 0:256] == call_args[1]).all())
         self.assertEqual(dict(fmt='%.18g', delimiter=' '), call_kwargs)
 
-        subp_mock.assert_called_once_with(expected_call)
+        load_mock.assert_called_once_with([0], expected_file_1, pixelmask=expected_file_2)
 
     mock_scan_data = np.random.randint(3, size=(3, 256, 8*256))
 
     @patch('scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX.scan_dac',
            return_value=[mock_scan_data, None])
-    def test_mask_pixels_using_dac_scan(self, scan_mock, subp_mock, save_mock,
+    def test_mask_pixels_using_dac_scan(self, scan_mock, load_mock, save_mock,
                                         plot_mock):
         mask = self.mock_scan_data.sum(0) > 1
 
@@ -1323,15 +1060,9 @@ class MaskUnmaskTest(unittest.TestCase):
         self.assertTrue((mask[0:256, 0:256] == call_args[1]).all())
         self.assertEqual(dict(fmt='%.18g', delimiter=' '), call_kwargs)
 
-    def test_unmask_all_pixels(self, subp_mock, save_mock, _):
-        expected_call = ['/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
-                         '-i', '192.168.0.106',
-                         '-p', '6969',
-                         '-m', '0x80',
-                         '--config',
-                         '--pixelmask=/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/pixelmask.chip0',
-                         '--config',
-                         '--discl=/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/discLbits.chip0']
+    def test_unmask_all_pixels(self, load_mock, save_mock, _):
+        expected_file_1 = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/discLbits.chip0'
+        expected_file_2 = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/pixelmask.chip0'
         expected_mask = np.zeros([256, 256])
 
         self.e.unmask_all_pixels([0])
@@ -1343,17 +1074,11 @@ class MaskUnmaskTest(unittest.TestCase):
         self.assertTrue((expected_mask == call_args[1]).all())
         self.assertEqual(dict(fmt='%.18g', delimiter=' '), call_kwargs)
 
-        subp_mock.assert_called_once_with(expected_call)
+        load_mock.assert_called_once_with([0], expected_file_1, pixelmask=expected_file_2)
 
-    def test_unequalize_pixels(self, subp_mock, save_mock, _):
-        expected_call = ['/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
-                         '-i', '192.168.0.106',
-                         '-p', '6969',
-                         '-m', '0x80',
-                         '--config',
-                         '--pixelmask=/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/pixelmask.chip0',
-                         '--config',
-                         '--discl=/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/discL_bits.chip0']
+    def test_unequalize_pixels(self, load_mock, save_mock, _):
+        expected_file_1 = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/discL_bits.chip0'
+        expected_file_2 = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/pixelmask.chip0'
         expected_mask = np.zeros([256, 256])
 
         self.e.unequalize_all_pixels([0])
@@ -1365,7 +1090,7 @@ class MaskUnmaskTest(unittest.TestCase):
         self.assertTrue((expected_mask == call_args[1]).all())
         self.assertEqual(dict(fmt='%.18g', delimiter=' '), call_kwargs)
 
-        subp_mock.assert_called_once_with(expected_call)
+        load_mock.assert_called_once_with([0], expected_file_1, pixelmask=expected_file_2)
 
 
 @patch('shutil.copytree')
