@@ -98,7 +98,8 @@ class TestAPICalls(unittest.TestCase):
         construct_mock.assert_called_once_with(self.chips, *expected_params)
         send_mock.assert_called_once_with(construct_mock.return_value)
 
-    def test_sense(self, send_mock, construct_mock):
+    @patch('time.sleep')
+    def test_sense(self, sleep_mock, send_mock, construct_mock):
         expected_params_1 = ['--sensedac', '1', '--dacs', 'test_file']
         expected_params_2 = ['--sensedac', '1', '-s']
 
@@ -106,17 +107,18 @@ class TestAPICalls(unittest.TestCase):
 
         self.assertEqual((self.chips, ) + tuple(expected_params_1), construct_mock.call_args_list[0][0])
         self.assertEqual(construct_mock.return_value, send_mock.call_args_list[0][0][0])
+        sleep_mock.assert_called_once_with(1)
         self.assertEqual((self.chips, ) + tuple(expected_params_2), construct_mock.call_args_list[1][0])
         self.assertEqual(construct_mock.return_value, send_mock.call_args_list[1][0][0])
 
     def test_perform_dac_scan(self, send_mock, construct_mock):
-        expected_params = ['--dacs', 'test_file', '--dacscan', '4,0,10,1']
+        expected_params = ['--dacs', 'dac_file', '--dacscan', '4,0,10,1', '--hdffile', 'hdf_file']
         scan_range = MagicMock()
         scan_range.start = 0
         scan_range.stop = 10
         scan_range.step = 1
 
-        self.e.perform_dac_scan(self.chips, 4, scan_range, "test_file")
+        self.e.perform_dac_scan(self.chips, 4, scan_range, "dac_file", "hdf_file")
 
         construct_mock.assert_called_once_with(self.chips, *expected_params)
         send_mock.assert_called_once_with(construct_mock.return_value)

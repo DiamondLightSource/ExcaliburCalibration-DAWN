@@ -16,47 +16,13 @@ import os
 import posixpath
 import shutil
 import time
-import math
 
 from collections import namedtuple
 
 import numpy as np
-from scipy.optimize import curve_fit
-import scisoftpy as dnp
 
 from scripts.ExcaliburTestAppInterface import ExcaliburTestAppInterface
-
-
-def myerf(x, a, mu, sigma):
-    """
-    Function required to express S-curve.
-    """
-
-    return a/2. * (1 + math.erf((x - mu) / (math.sqrt(2) * sigma)))
-
-
-def lin_function(x, offset, gain):
-    """
-    Function definition for linear fits.
-    """
-
-    return offset + gain * x
-
-
-def gauss_function(x, a, x0, sigma):
-    """
-    Function definition for Gaussian fits.
-    """
-
-    return a * np.exp(-(x - x0)**2 / (2 * sigma**2))
-
-
-def s_curve_function(x, k, delta, e, sigma):
-    """
-    Function required to fit integral spectra during threshold calibration.
-    """
-
-    return k * ((1 - 2*delta*(x/e - 0.5)) ** 2) * (1 - myerf(x, k, e, sigma))
+from scripts.ExcaliburDAWN import ExcaliburDAWN
 
 
 Settings = namedtuple("Settings", "mode gain bitdepth readmode counter "
@@ -499,6 +465,7 @@ class ExcaliburRX(object):
             self.ipaddress = "192.168.0.106"
 
         self.app = ExcaliburTestAppInterface(self.ipaddress, self.port)
+        self.dawn = ExcaliburDAWN()
 
         # self.read_chip_ids()
 
@@ -671,32 +638,16 @@ class ExcaliburRX(object):
         [dac_scan_data, scan_range] = self.scan_dac(chips, "Threshold" +
                                                     str(threshold), dac_range)
         dac_scan_data[dac_scan_data > 200] = 0  # Set elements > 200 to 0
-        [chip_dac_scan, dac_axis] = self.plot_dac_scan(chips, dac_scan_data,
-                                                       scan_range)
-        self.fit_dac_scan(chips, chip_dac_scan, dac_axis)
+        [chip_dac_scan, dac_axis] = self.dawn.plot_dac_scan(chips,
+                                                            dac_scan_data,
+                                                            scan_range)
+        self.dawn.fit_dac_scan(chips, chip_dac_scan, dac_axis)
         
         # edge_dacs = self.find_edge(chips, dac_scan_data, dac_range, 2)
         # chip_edge_dacs = np.zeros(range(8))
         # for chip in chips:
         #     chip_edge_dacs[chip] = edge_dacs[0:256,
         #                            chip*256:chip*256 + 256].mean()
-
-        return chip_dac_scan, dac_axis
-
-    @staticmethod
-    def fit_dac_scan(chips, chip_dac_scan, dac_axis):
-        """
-        ############## NOT TESTED
-        """
-
-        p0 = [100, 0.8, 3]
-        for chip in chips:
-            # dnp.plot.addline(dacAxis,chipDacScan[chip,:])
-            popt, _ = curve_fit(myerf, dac_axis, chip_dac_scan[chip, :], p0)
-            # popt, pcov = curve_fit(s_curve_function, dacAxis,
-            #                        chipDacScan[chip, :], p0)
-            dnp.plot.addline(dac_axis, myerf(dac_axis,
-                                             popt[0], popt[1], popt[2]))
 
         return chip_dac_scan, dac_axis
 
@@ -736,7 +687,7 @@ class ExcaliburRX(object):
                                   chip_idx*chip_size:(chip_idx + 1)*chip_size],
                        fmt='%.18g', delimiter=' ')
 
-        dnp.plot.image(bad_pixels)
+        self.dawn.plot_image(bad_pixels, "Mask")
         self.load_config(chips)
 
         return bad_pixels
@@ -949,20 +900,21 @@ class ExcaliburRX(object):
         
         offset = np.zeros(8)
         gain = np.zeros(8)
-        dnp.plot.clear('DAC vs energy')
-        dnp.plot.clear('DAC vs energy fits')
+        clear = True
+
         for chip in chips:
             x = np.array([E1_E, E2_E, E3_E])
             y = np.array([E1_Dac[self.fem - 1, chip],
                           E2_Dac[self.fem - 1, chip],
                           E3_Dac[self.fem - 1, chip]])
-            dnp.plot.addline(x, y, name='DAC vs energy')
 
-            popt, _ = curve_fit(lin_function, x, y, [0, 1])
-            offset[chip] = popt[0]
-            gain[chip] = popt[1]
-            dnp.plot.addline(x, lin_function(x, offset[chip], gain[chip]),
-                             name='DAC vs energy fits')
+            p1, p2 = self.dawn.plot_linear_fit(x, y, [0, 1],
+                                               name='DAC vs Energy',
+                                               clear=clear)
+            offset[chip] = p1
+            gain[chip] = p2
+
+            clear = False  # Only clear plot the first time
 
         self.save_kev2dac_calib(threshold, gain, offset)
         
@@ -1157,75 +1109,6 @@ class ExcaliburRX(object):
 
         self.app.sense(chips, self.dac_code[dac_name], dac_file)
 
-    @staticmethod
-    def plot_dac_scan(chips, dac_scan_data, dac_range):
-        """
-        Plots the results of threshold dac scan in an integrated spectrum plot
-        window (dacscan) and a differential spectrum (spectrum)
-        """
-
-        dnp.plot.clear("dacScan")
-        dnp.plot.clear("Spectrum")
-        chip_dac_scan = np.zeros([8])
-
-        print(str())
-
-        if dac_range[0] > dac_range[1]:
-            for chip in chips:
-                dac_axis = (np.array(range(dac_range[0],
-                                           dac_range[1] - dac_range[2],
-                                           -dac_range[2])))
-                chip_dac_scan = np.zeros([8, dac_axis.size])
-
-                chip_dac_scan[chip, :] = \
-                    (dac_scan_data[:, 0:256,
-                                   chip*256:chip*256 + 256].mean(2).mean(1))
-
-                dnp.plot.addline(
-                    np.array(range(dac_range[0],
-                                   dac_range[1] - dac_range[2],
-                                   -dac_range[2])),
-                    np.squeeze(dac_scan_data[:, 0:256,
-                               chip*256:chip*256 + 256].mean(2).mean(1)),
-                    name="dacScan")
-
-                spectrum = np.diff(np.squeeze(
-                    dac_scan_data[:, 0:256,
-                                  chip*256:chip*256 + 256].mean(2).mean(1)))
-
-                dnp.plot.addline(
-                    np.array(
-                        range(dac_range[0], dac_range[1], -dac_range[2]))[1:],
-                    spectrum[1:], name="Spectrum")
-        else:
-            for chip in chips:
-                dac_axis = (np.array(range(dac_range[0],
-                                           dac_range[1] + dac_range[2],
-                                           dac_range[2])))
-                chip_dac_scan = np.zeros([8, dac_axis.size])
-
-                chip_dac_scan[chip, :] = \
-                    (dac_scan_data[:, 0:256,
-                     chip*256:chip*256 + 256].mean(2).mean(1))
-
-                dnp.plot.addline(
-                    np.array(range(dac_range[0],
-                                   dac_range[1] + dac_range[2], dac_range[2])),
-                    np.squeeze(dac_scan_data[:, 0:256,
-                               chip*256:chip*256 + 256].mean(2).mean(1)),
-                    name="dacScan")
-
-                spectrum = -np.diff(
-                    np.squeeze(dac_scan_data[:, 0:256,
-                               chip*256:chip*256 + 256].mean(2).mean(1)))
-
-                dnp.plot.addline(
-                    np.array(
-                        range(dac_range[0], dac_range[1], dac_range[2]))[1:],
-                    spectrum[1:], name="Spectrum")
-
-        return chip_dac_scan, dac_axis
-
     def scan_dac(self, chips, dac_name, dac_range):  # ONLY FOR THRESHOLD DACS
         """
         Performs a dac scan and plot the result (mean counts as a function of
@@ -1277,74 +1160,14 @@ class ExcaliburRX(object):
         scan_range = Range(dac_range[0], dac_range[1], dac_range[2])
 
         self.app.perform_dac_scan(chips, self.dac_code[dac_name], scan_range,
-                                  dac_file)
+                                  dac_file, dac_scan_file)
 
         time.sleep(1)
 
-        dh = dnp.io.load(self.settings['imagepath'] + dac_scan_file)
-        dac_scan_data = dh.image[...]
-        dnp.plot.clear("dacScan")
-        dnp.plot.clear("Spectrum")
-        if dac_range[0] > dac_range[1]:
-            for chip in chips:
-                dnp.plot.addline(
-                    np.array(
-                        range(dac_range[0],
-                              dac_range[1] - dac_range[2], -dac_range[2])),
-                    np.squeeze(dac_scan_data[:, 0:256,
-                               chip*256:chip*256 + 256].mean(2).mean(1)),
-                    name="dacScan")
+        save_file = self.settings['imagepath'] + dac_scan_file
+        dac_scan_data = self.dawn.load_image_data(save_file)
 
-                spectrum = np.diff(
-                    np.squeeze(dac_scan_data[:, 0:256,
-                               chip*256:chip*256 + 256].mean(2).mean(1)))
-
-                dnp.plot.addline(
-                    np.array(
-                        range(dac_range[0], dac_range[1], -dac_range[2]))[1:],
-                    spectrum[1:], name="Spectrum")
-        else:
-            for chip in chips:
-                dnp.plot.addline(
-                    np.array(
-                        range(dac_range[0],
-                              dac_range[1] + dac_range[2], dac_range[2])),
-                    np.squeeze(dac_scan_data[:, 0:256,
-                               chip*256:chip*256 + 256].mean(2).mean(1)),
-                    name="dacScan")
-
-                spectrum = -np.diff(
-                    np.squeeze(dac_scan_data[:, 0:256,
-                               chip*256:chip*256 + 256].mean(2).mean(1)))
-
-                dnp.plot.addline(
-                    np.array(
-                        range(dac_range[0], dac_range[1], dac_range[2]))[1:],
-                    spectrum[1:], name="Spectrum")
-
-        return [dac_scan_data, dac_range]
-
-    @staticmethod
-    def show_pixel(dac_scan_data, dac_range, pixel):
-        """
-        Plots individual pixel dac scan
-        Example: x.show_pixel(dac_scan_data, [0, 30, 1], [20, 20])
-        """
-
-        dnp.plot.addline(
-            np.array(
-                range(dac_range[0], dac_range[1] + dac_range[2],
-                      dac_range[2])),
-            (dac_scan_data[:, pixel[0], pixel[1]]),
-            name='Pixel S curve')
-
-        # Squeeze - Remove scalar dimensions: [[1], [2], [3]] -> [1, 2, 3]
-        # Diff - Take difference of each pair along axis: [1, 5, 3] -> [4, -2]
-        spectrum = -np.diff(np.squeeze(dac_scan_data[:, pixel[0], pixel[1]]))
-
-        dnp.plot.addline(
-            np.array(range(dac_range[0], dac_range[1], dac_range[2])),
-            spectrum, name="Pixel Spectrum")
+        return dac_scan_data
 
     def load_config_bits(self, chips, discLbits, discHbits, mask_bits):
         """
@@ -1455,8 +1278,8 @@ class ExcaliburRX(object):
                      chip*chip_size:(chip + 1) * chip_size].mean()
         ff_coeff = ff_coeff/ff_image
 
-        dnp.plot.image(ff_coeff[0:256, chip*256:(chip + 1)*256],
-                       name='Flat Field coefficients')
+        self.dawn.plot_image(ff_coeff[0:256, chip*256:(chip + 1)*256],
+                             name='Flat Field coefficients')
 
         # Set any elements outside range 0-2 to 1 TODO: Why?
         ff_coeff[ff_coeff > 2] = 1
@@ -1510,12 +1333,10 @@ class ExcaliburRX(object):
         print(self.settings['filename'])
 
         time.sleep(0.5)
-        dh = dnp.io.load(self.settings['imagepath'] +
-                         self.settings['fullFilename'])
-        image_raw = dh.image[...]
-        image = dnp.squeeze(image_raw.astype(np.int))
-        dnp.plot.clear()
-        dnp.plot.image(image, name='Image data')
+
+        image = self.dawn.load_image_data(self.settings['imagepath'] +
+                                          self.settings['fullFilename'])
+        self.dawn.plot_image(image, name="Image_{}".format(time.asctime()))
 
         return image
 
@@ -1540,12 +1361,10 @@ class ExcaliburRX(object):
         print(self.settings['filename'])
 
         time.sleep(0.2)
-        dh = dnp.io.load(self.settings['imagepath'] +
-                         self.settings['fullFilename'])
-        image_raw = dh.image[...]
-        image = dnp.squeeze(image_raw.astype(np.int))
-        dnp.plot.clear()
-        dnp.plot.image(image, name='Image data')
+
+        image = self.dawn.load_image_data(self.settings['imagepath'] +
+                                          self.settings['fullFilename'])
+        self.dawn.plot_image(image, name="Image_{}".format(time.asctime()))
 
         return self.settings['fullFilename']
     
@@ -1574,18 +1393,16 @@ class ExcaliburRX(object):
         print(self.settings['filename'])
 
         time.sleep(0.2)
-        dh = dnp.io.load(self.settings['imagepath'] +
-                         self.settings['fullFilename'])
-        image_raw = dh.image[...]
-        image = dnp.squeeze(image_raw.astype(np.int))
 
-        plots = 5
-        if frames < 5:
-            plots = frames
+        image = self.dawn.load_image_data(self.settings['imagepath'] +
+                                          self.settings['fullFilename'])
 
-        dnp.plot.clear()
-        for p in range(plots):
-            dnp.plot.image(image[p, :, :], name='Image data ' + str(p))
+        plots = min(frames, 5)  # Limit to 5 frames
+        plot_tag = time.asctime()
+        for plot in range(plots):
+            self.dawn.plot_image(image[plot, :, :],
+                                 name="Image_{tag}_{plot}".format(
+                                 tag=plot_tag, plot=plot))
     
     def cont_burst(self, frames, acquire_time):
         """
@@ -1610,7 +1427,7 @@ class ExcaliburRX(object):
                          readmode='1',
                          hdffile=self.settings['fullFilename'])
     
-    def apply_ff_correction(self, ni, ff_coeff):
+    def apply_ff_correction(self, num_images, ff_coeff):
         """
         NOT TESTED
         Applies flat-field correction
@@ -1621,18 +1438,17 @@ class ExcaliburRX(object):
         self.settings['fullFilename'] = '{name}_{index}.hdf5'.format(
             name=self.settings['filename'],
             index=self.settings['filenameIndex'])
-        dh = dnp.io.load(self.settings['imagepath'] +
-                         self.settings['fullFilename'])
-        image_raw = dh.image[...]
-        image = dnp.squeeze(image_raw.astype(np.int))
 
-        for p in range(ni):
-            dnp.plot.clear()
-            ff = image[p, :, :] * ff_coeff
+        images = self.dawn.load_image_data(self.settings['imagepath'] +
+                                           self.settings['fullFilename'])
+
+        for image_idx in range(num_images):
+            # TODO: Find better name than ff
+            ff = images[image_idx, :, :] * ff_coeff
             ff[ff > 3000] = 0
             chip = 3
-            dnp.plot.image(ff[0:256, chip*256:(chip + 1)*256],
-                           name='Image data Cor')  # TODO: 'Cor'?
+            self.dawn.plot_image(ff[0:256, chip*256:(chip + 1)*256],
+                                 name='Image data Cor')  # TODO: 'Cor'?
             time.sleep(1)
 
     def logo_test(self):
@@ -1655,7 +1471,7 @@ class ExcaliburRX(object):
         for chip in chips:
             test_bits_file = posixpath.join(self.calib_settings['calibDir'],
                                             'Logo_chip{chip}_mask').format(
-                chip=chip)
+                                            chip=chip)
             np.savetxt(test_bits_file, logo_tp[0:256, chip*256:(chip + 1)*256],
                        fmt='%.18g', delimiter=' ')
 
@@ -1697,11 +1513,9 @@ class ExcaliburRX(object):
                          tpcount='100',
                          hdffile=self.settings['fullFilename'])
 
-        dh = dnp.io.load(posixpath.join(self.settings['imagepath'],
-                                        self.settings['fullFilename']))
-        image_raw = dh.image[...]
-        image = dnp.squeeze(image_raw.astype(np.int))
-        dnp.plot.image(image, name='Image data')
+        image = self.dawn.load_image_data(self.settings['imagepath'] +
+                                          self.settings['fullFilename'])
+        self.dawn.plot_image(image, name="Image_{}".format(time.asctime()))
 
     def test_pulse(self, chips, test_bits, pulses):
         """
@@ -1716,7 +1530,6 @@ class ExcaliburRX(object):
                 '/' + self.settings['gain'] + '/' + 'testbits.tmp'
             np.savetxt(test_bits_file, test_bits, fmt='%.18g', delimiter=' ')
 
-        dnp.plot.clear()
         # self.update_filename_index()
         self.settings['fullFilename'] = "{name}_{index}.hdf5".format(
                                         name=self.settings['filename'],
@@ -1736,11 +1549,9 @@ class ExcaliburRX(object):
 
         print(self.settings['fullFilename'])
 
-        dh = dnp.io.load(posixpath.join(self.settings['imagepath'],
-                                        self.settings['fullFilename']))
-        image_raw = dh.image[...]
-        image = dnp.squeeze(image_raw.astype(np.int))
-        dnp.plot.image(image, name='Image data')
+        image = self.dawn.load_image_data(self.settings['imagepath'] +
+                                          self.settings['fullFilename'])
+        self.dawn.plot_image(image, name="Image_{}".format(time.asctime()))
 
         return image
 
@@ -1760,7 +1571,8 @@ class ExcaliburRX(object):
                                                     disc=discbitsFilename,
                                                     chip=chip_idx)
 
-            np.savetxt(discbits_file, discbits[0:256, chip_idx*256:chip_idx*256 + 256],
+            np.savetxt(discbits_file,
+                       discbits[0:256, chip_idx*256:chip_idx*256 + 256],
                        fmt='%.18g', delimiter=' ')
 
     def mask_sup_col(self, chip, super_column):
@@ -1790,14 +1602,14 @@ class ExcaliburRX(object):
                    fmt='%.18g', delimiter=' ')
         self.app.load_config([chip], discLbits_file, pixelmask=pixel_mask_file)
 
-        dnp.plot.image(bad_pixels)
+        self.dawn.plot_image(bad_pixels, name='Bad Pixels')
 
     def mask_col(self, chip, col):
         """
         masks a noisy column in a chip (bit=1 to mask a pixel) and updates the
         corresponding  maskfile
-        Usage: x.mask_col(chips,Col) where
-        chips is a list of chips ([0,1,2,3])
+        Usage: x.mask_col(chips, Col) where
+        chips is a list of chips ([0, 1, 2, 3])
         supCol in an integer between 0 and 255
         """
 
@@ -1819,7 +1631,7 @@ class ExcaliburRX(object):
 
         self.app.load_config([chip], discLbits_file, pixelmask=pixel_mask_file)
 
-        dnp.plot.image(bad_pixels, name='Bad pixels')
+        self.dawn.plot_image(bad_pixels, name='Bad pixels')
         
     def mask_pixels(self, chips, image_data, max_counts):
         """
@@ -1829,7 +1641,7 @@ class ExcaliburRX(object):
 
         bad_pix_tot = np.zeros(8)
         bad_pixels = image_data > max_counts
-        dnp.plot.image(bad_pixels, name='Bad pixels')
+        self.dawn.plot_image(bad_pixels, name='Bad pixels')
         for chip_idx in chips:
             template_path = posixpath.join(self.calib_settings['calibDir'],
                                            'fem{fem}'.format(fem=self.fem),
@@ -1879,7 +1691,7 @@ class ExcaliburRX(object):
         self.settings['acqtime'] = 100
         [dac_scan_data, _] = self.scan_dac(chips, threshold, dac_range)
         bad_pixels = dac_scan_data.sum(0) > max_counts
-        dnp.plot.image(bad_pixels, name='Bad pixels')
+        self.dawn.plot_image(bad_pixels, name='Bad Pixels')
     
         for chip_idx in chips:
             bad_pix_tot[chip_idx] = \
@@ -2070,21 +1882,18 @@ class ExcaliburRX(object):
             discbits[roi_full_mask.astype(bool)] = \
                 discbits_roi[roi_full_mask.astype(bool)]
             # TODO: Should this be +=? Currently just uses final ROI
-            dnp.plot.image(discbits_roi, name='discbits')
+            self.dawn.plot_image(discbits_roi, name='Disc bits')
 
         self.save_discbits(chips, discbits, disc_name + 'bits')
-        dnp.plot.image(discbits, name='discbits')
+        self.dawn.plot_image(discbits, name='Disc bits total')
 
         return discbits
 
-    @staticmethod
-    def find_edge(chips, dac_scan_data, dac_range, edge_val):
+    def find_edge(self, chips, dac_scan_data, dac_range, edge_val):
         """
         Find noise or X-ray edge in threshold DAC scan
         """
 
-        dnp.plot.clear("noise edges histogram")
-        dnp.plot.clear("noise edges")
         if dac_range[1] > dac_range[0]:
             edge_dacs = dac_range[1] - dac_range[2] * np.argmax(
                 (dac_scan_data[::-1, :, :] > edge_val), 0)
@@ -2092,34 +1901,22 @@ class ExcaliburRX(object):
             edge_dacs = dac_range[0] - dac_range[2] * np.argmax(
                 (dac_scan_data[:, :, :] > edge_val), 0)
 
-        dnp.plot.image(edge_dacs, name="noise edges")
+        self.dawn.plot_image(edge_dacs, name="noise edges")
+        self.dawn.plot_histogram(chips, edge_dacs)
 
-        for chip_idx in chips:
-            histogram = np.histogram(
-                edge_dacs[0:256, chip_idx*256:(chip_idx + 1)*256])
-            dnp.plot.addline(histogram[1][0:-1],  histogram[0],
-                             name="noise edges histogram")
         return edge_dacs
 
-    @staticmethod
-    def find_max(chips, dac_scan_data, dac_range):
+    def find_max(self, chips, dac_scan_data, dac_range):
         """
         Find noise max in threshold dac scan
         """
 
-        dnp.plot.clear("noise edges histogram")
-        dnp.plot.clear("noise edges")
         edge_dacs = dac_range[1] - dac_range[2] * np.argmax(
             (dac_scan_data[::-1, :, :]), 0)
         # TODO: Assumes high to low scan? Does it matter?
 
-        dnp.plot.image(edge_dacs, name="noise edges")
-
-        for chip_idx in chips:
-            histogram = np.histogram(
-                edge_dacs[0:256, chip_idx*256:(chip_idx + 1)*256])
-            dnp.plot.addline(histogram[1][0:-1],  histogram[0],
-                             name="noise edges histogram")
+        self.dawn.plot_image(edge_dacs, name="noise edges")
+        self.dawn.plot_histogram(chips, edge_dacs)
 
         return edge_dacs
 
@@ -2181,8 +1978,8 @@ class ExcaliburRX(object):
         fit_plot_name = plot_name + " (fitted)"
         calib_plot_name = "Mean edge shift in Threshold DACs as a function" \
                           "of DAC_disc for discbit =" + str(discbit)
-        dnp.plot.clear(plot_name)
-        dnp.plot.clear(fit_plot_name)
+        self.dawn.clear_plot(plot_name)
+        self.dawn.clear_plot(fit_plot_name)
         # dnp.plot.clear(calib_plot_name)
 
         # Set discbits at 0
@@ -2233,7 +2030,7 @@ class ExcaliburRX(object):
                                                    sigma[chip, idx]),
                                  name=fit_plot_name)
             idx += 1
-            dnp.plot.clear(calib_plot_name)
+            self.dawn.clear_plot(calib_plot_name)
             for chip in chips:
                 dnp.plot.addline(np.asarray(dac_disc_range[0:idx]),
                                  x0[chip, 0:idx],
@@ -2279,8 +2076,8 @@ class ExcaliburRX(object):
         p0 = [5000, 0, 30]
         plot_name = name + " for discbit =" + str(discbit)
         fit_plot_name = plot_name + " (fitted)"
-        dnp.plot.clear(plot_name)
-        dnp.plot.clear(fit_plot_name)
+        self.dawn.clear_plot(plot_name)
+        self.dawn.clear_plot(fit_plot_name)
         # dnp.plot.clear(calib_plot_name)
 
         # Set discbits at 15
@@ -2572,7 +2369,7 @@ class ExcaliburRX(object):
                                   256 - int(bin_repr[1]):spacing] \
                     = 1
 
-        dnp.plot.image(roi_full_mask)
+        self.dawn.plot_image(roi_full_mask, name="Roi Mask")
 
         return roi_full_mask
 
@@ -2611,7 +2408,7 @@ class ExcaliburRX(object):
         tmp = 0
         for i in range(ni):
             tmp = self.expose() + tmp
-            dnp.plot.image(tmp, name='sum')
+            self.dawn.plot_image(tmp, name='Sum')
 
             return  # TODO: This will always stop after first loop
         
