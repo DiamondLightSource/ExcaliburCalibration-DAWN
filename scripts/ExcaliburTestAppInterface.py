@@ -11,7 +11,7 @@ class ExcaliburTestAppInterface(object):
     A class to make subprocess calls to the excaliburTestApp command line tool
     """
 
-    # ExcaliburTestApp tool arguments
+    # ExcaliburTestApp arguments
     IP = "-i"  # Set ip address of FEM - ... -i "192.168.0.10" ...
     PORT = "-p"  # Set port of FEM - ... -p "6969" ...
     MASK = "-m"  # Set mask of chips to be included in cmd - ... -m "0xff" ...
@@ -216,7 +216,8 @@ class ExcaliburTestAppInterface(object):
                                             self.READ_SLOW_PARAMS)
         self._send_command(command_2)
 
-    def perform_dac_scan(self, chips, dac_code, scan_range, dac_file):
+    def perform_dac_scan(self, chips, dac_code, scan_range, dac_file,
+                         hdf_file):
         """
         Execute a DAC scan and save the results to the given file
 
@@ -224,7 +225,8 @@ class ExcaliburTestAppInterface(object):
             chips: Chips to scan
             dac_code: Code of DAC to scan
             scan_range(Range): Start, stop and step of scan
-            dac_file: File to save to
+            dac_file: File to load config from
+            hdf_file: File to save to
         """
 
         scan_command = "{name},{start},{stop},{step}".format(
@@ -233,7 +235,8 @@ class ExcaliburTestAppInterface(object):
 
         command = self._construct_command(chips,
                                           self.DAC_FILE, dac_file,
-                                          self.SCAN, scan_command)
+                                          self.SCAN, scan_command,
+                                          self.HDF_FILE, hdf_file)
         self._send_command(command)
 
     def read_chip_ids(self, chips=range(8), **cmd_kwargs):
@@ -272,7 +275,6 @@ class ExcaliburTestAppInterface(object):
 
         command = self._construct_command(chips,
                                           self.DAC_FILE, dac_file)
-
         self._send_command(command)
 
     def configure_test_pulse(self, chips, dac_file, tp_mask):
@@ -290,7 +292,6 @@ class ExcaliburTestAppInterface(object):
         command = self._construct_command(chips,
                                           self.DAC_FILE, dac_file,
                                           self.TP_MASK, tp_mask)
-
         self._send_command(command)
 
     def configure_test_pulse_with_disc(self, chips, dac_file, tp_mask,
@@ -314,7 +315,6 @@ class ExcaliburTestAppInterface(object):
                                           self.DISC_L, d['discl'],
                                           self.DISC_H, d['disch'],
                                           self.PIXEL_MASK, d['pixelmask'])
-
         self._send_command(command)
 
     def load_config(self, chips, discl, disch=None, pixelmask=None):
