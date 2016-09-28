@@ -19,6 +19,10 @@ class TestInit(unittest.TestCase):
         self.assertEqual("test_ip", e.ip_address)
         self.assertEqual("test_port", e.port)
         self.assertEqual(['/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp', '-i', 'test_ip', '-p', 'test_port'], e.base_cmd)
+        self.assertEqual(e.dac_code, {'Threshold0': '1', 'Threshold1': '2', 'Threshold2': '3', 'Threshold3': '4', 'Threshold4': '5', 'Threshold5': '6', 'Threshold6': '7',
+                                      'Threshold7': '8', 'Preamp': '9', 'Ikrum': '10', 'Shaper': '11', 'Disc': '12', 'DiscLS': '13', 'ShaperTest': '14', 'DACDiscL': '15',
+                                      'DACTest': '30', 'DACDiscH': '31', 'Delay': '16', 'TPBuffIn': '17', 'TPBuffOut': '18', 'RPZ': '19', 'GND': '20', 'TPREF': '21',
+                                      'FBK': '22', 'Cas': '23', 'TPREFA': '24', 'TPREFB': '25'})
 
 
 @patch(ETAI_patch_path + '._mask')
@@ -103,7 +107,7 @@ class TestAPICalls(unittest.TestCase):
         expected_params_1 = ['--sensedac', '1', '--dacs', 'test_file']
         expected_params_2 = ['--sensedac', '1', '-s']
 
-        self.e.sense(self.chips, 1, "test_file")
+        self.e.sense(self.chips, "Threshold0", "test_file")
 
         self.assertEqual((self.chips, ) + tuple(expected_params_1), construct_mock.call_args_list[0][0])
         self.assertEqual(construct_mock.return_value, send_mock.call_args_list[0][0][0])
@@ -112,13 +116,13 @@ class TestAPICalls(unittest.TestCase):
         self.assertEqual(construct_mock.return_value, send_mock.call_args_list[1][0][0])
 
     def test_perform_dac_scan(self, send_mock, construct_mock):
-        expected_params = ['--dacs', 'dac_file', '--dacscan', '4,0,10,1', '--hdffile', 'hdf_file']
+        expected_params = ['--dacs', 'dac_file', '--dacscan', '2,0,10,1', '--hdffile', 'hdf_file']
         scan_range = MagicMock()
         scan_range.start = 0
         scan_range.stop = 10
         scan_range.step = 1
 
-        self.e.perform_dac_scan(self.chips, 4, scan_range, "dac_file", "hdf_file")
+        self.e.perform_dac_scan(self.chips, "Threshold1", scan_range, "dac_file", "hdf_file")
 
         construct_mock.assert_called_once_with(self.chips, *expected_params)
         send_mock.assert_called_once_with(construct_mock.return_value)

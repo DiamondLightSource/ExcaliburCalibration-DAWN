@@ -17,19 +17,11 @@ class InitTest(unittest.TestCase):
         self.e = ExcaliburRX(self.node)
 
     def test_class_attributes_set(self):
-        self.assertEqual(self.e.command,
-                         "/dls/detectors/support/silicon_pixels/excaliburRX/"
-                         "TestApplication_15012015/excaliburTestApp")
-        self.assertEqual(self.e.port, "6969")
         self.assertEqual(self.e.dac_target, 10)
         self.assertEqual(self.e.nb_of_sigma, 3.2)
-        self.assertEqual(self.e.edge_val, 10)
-        self.assertEqual(self.e.acc_dist, 4)
-        self.assertEqual(self.e.calib_settings, {'calibDir': "/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib",
-                                                 'configDir': "/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/config",
-                                                 'dacfilename': "dacs",
-                                                 'dacfile': "",
-                                                 'noiseEdge': "10"})
+        self.assertEqual(self.e.allowed_delta, 4)
+        self.assertEqual(self.e.calib_dir, "/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib")
+        self.assertEqual(self.e.config_dir, "/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/config")
         self.assertEqual(self.e.settings, {'mode': 'spm',
                                            'gain': 'shgm',
                                            'bitdepth': '12',
@@ -42,46 +34,16 @@ class InitTest(unittest.TestCase):
                                            'frames': '1',
                                            'imagepath': '/tmp/',
                                            'filename': 'image',
-                                           'Threshold': 'Not set',
+                                           'threshold': 'Not set',
                                            'filenameIndex': ''})
-        self.assertEqual(self.e.mode_code, {'spm': '0', 'csm': '1'})
-        self.assertEqual(self.e.gain_code, {'shgm': '0', 'hgm': '1', 'lgm': '2',
-                                           'slgm': '3'})
-        self.assertEqual(self.e.dac_code, {'Threshold0': '1',
-                                          'Threshold1': '2',
-                                          'Threshold2': '3',
-                                          'Threshold3': '4',
-                                          'Threshold4': '5',
-                                          'Threshold5': '6',
-                                          'Threshold6': '7',
-                                          'Threshold7': '8',
-                                          'Preamp': '9',
-                                           'Ikrum': '10',
-                                           'Shaper': '11',
-                                           'Disc': '12',
-                                           'DiscLS': '13',
-                                           'ShaperTest': '14',
-                                           'DACDiscL': '15',
-                                           'DACTest': '30',
-                                           'DACDiscH': '31',
-                                           'Delay': '16',
-                                           'TPBuffIn': '17',
-                                           'TPBuffOut': '18',
-                                           'RPZ': '19',
-                                           'GND': '20',
-                                           'TPREF': '21',
-                                           'FBK': '22',
-                                           'Cas': '23',
-                                           'TPREFA': '24',
-                                           'TPREFB': '25'})
         self.assertEqual(self.e.dac_number, {'Threshold0': '1',
-                                            'Threshold1': '2',
-                                            'Threshold2': '3',
-                                            'Threshold3': '4',
-                                            'Threshold4': '5',
-                                            'Threshold5': '6',
-                                            'Threshold6': '7',
-                                            'Threshold7': '8',
+                                             'Threshold1': '2',
+                                             'Threshold2': '3',
+                                             'Threshold3': '4',
+                                             'Threshold4': '5',
+                                             'Threshold5': '6',
+                                             'Threshold6': '7',
+                                             'Threshold7': '8',
                                              'Preamp': '9',
                                              'Ikrum': '10',
                                              'Shaper': '11',
@@ -569,7 +531,7 @@ class SubprocessCallsTest(unittest.TestCase):  # TODO: Rename
 
         self.e.read_dac(chips, 'Threshold0')
 
-        sense_mock.assert_called_once_with(chips, '1', expected_file)
+        sense_mock.assert_called_once_with(chips, 'Threshold0', expected_file)
 
     @patch(ETAI_patch_path + '.load_config')
     @patch('numpy.savetxt')
@@ -686,7 +648,7 @@ class ScanDacTest(unittest.TestCase):
         e.scan_dac(chips, 'Threshold0', dac_range)
 
         update_mock.assert_called_once_with()
-        scan_mock.assert_called_once_with(chips, '1', Range(1, 10, 1), dac_file, save_file)
+        scan_mock.assert_called_once_with(chips, 'Threshold0', Range(1, 10, 1), dac_file, save_file)
         sleep_mock.assert_called_once_with(1)
         load_mock.assert_called_once_with('/tmp/' + save_file)
 

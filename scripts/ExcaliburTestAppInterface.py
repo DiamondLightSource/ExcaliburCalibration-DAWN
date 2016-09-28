@@ -1,3 +1,61 @@
+"""A Python interface to the ExcaliburTestApplication command line tool
+
+Command Line Options:
+
+  -h --help                   Display this usage information.
+  -i --ipaddress              IP address of FEM to connect to.
+  -p --port                   Port of FEM to connect to.
+  -m --mask                   Select MPX3 enable mask.
+  -r --reset                  Issue front-end reset/init.
+     --lvenable <mode>        Set power card LV enable: 0=off (default), 1=on.
+     --hvenable <mode>        Set power card HV enable: 0=off (default), 1=on.
+     --hvbias <volts>         Set power card HV bias in volts.
+  -e --efuse                  Read and display MPX3 eFuse IDs.
+  -d --dacs <filename>        Load MPX3 DAC values from filename if given,
+                              otherwise use default values
+  -c --config                 Load MPX3 pixel configuration.
+  -s --slow                   Display front-end slow control parameters.
+  -a --acquire                Execute image acquisition loop.
+     --burst                  Select burst mode for image acquisition.
+     --matrixread             During acquisition, perform matrix read only i.e.
+                              no shutter for config read or digital test.
+  -n --frames <frames>        Number of frames to acquire.
+  -t --acqtime <time>         Acquisition time (shutter duration) in
+                              milliseconds.
+     --dacscan <params>       Execute DAC scan, params format must be comma
+                              separated dac,start,stop,step.
+     --readmode <mode>        Readout mode: 0=sequential (default),
+                              1=continuous.
+     --trigmode <mode>        Trigger mode: 0=internal (default),
+                              1=external shutter, 2=external sync.
+     --colourmode <mode>      Select MPX3 colour mode: 0=fine pitch mode
+                              (default), 1=spectroscopic mode.
+     --csmspm <mode>          Select MPX3 pixel mode: 0=single pixel mode
+                              (default), 1=charge summing mode.
+     --disccsmspm <mode>      Select MPX3 discriminator output mode: 0=DiscL
+                              (default), 1=DiscH.
+     --equalization <mode>    Select MPX3 equalization mode: 0=off (default),
+                              1=on.
+     --gainmode <mode>        Select MPX3 gain mode: 0=SHGM, 1=HGM, 2=LGM,
+                              3=SLGM (default).
+     --counter <counter>      Select MPX3 counter to read: 0 (default) or 1.
+     --depth <depth>          Select MPX3 counter depth: 1, 6, 12 (default)
+                              or 24.
+     --sensedac <id>          Set MPX3 sense DAC field to <id>. NB Requires
+                              DAC load to take effect
+     --tpmask <filename>      Specify test pulse mask filename to load.
+     --tpcount <count>        Set test pulse count to <count>, default is 0.
+     --pixelmask <filename>   Specify pixel enable mask filename to load.
+     --discl <filename>       Specify pixel DiscL configuration filename to
+                              load.
+     --disch <filename>       Specify pixel DiscH configuration filename to
+                              load.
+     --path <path>            Specify path to write data files to, default is
+                              /tmp.
+     --hdffile <filename>     Write HDF file with optional filename, default is
+                               <path>/excalibur-YYMMDD-HHMMSS.hdf5import os
+
+"""
 import os
 import time
 import subprocess
@@ -10,7 +68,7 @@ class ExcaliburTestAppInterface(object):
 
     """A class to make subprocess calls to the excaliburTestApp tool."""
 
-    # ExcaliburTestApp arguments
+    # ExcaliburTestApp flags
     IP_ADDRESS = "-i"  # Set ip address of FEM - ... -i "192.168.0.10" ...
     PORT = "-p"  # Set port of FEM - ... -p "6969" ...
     MASK = "-m"  # Set mask of chips to be included in cmd - ... -m "0xff" ...
@@ -50,11 +108,20 @@ class ExcaliburTestAppInterface(object):
     num_chips = 8
     chip_range = range(num_chips)
 
+    dac_code = dict(Threshold0='1', Threshold1='2', Threshold2='3',
+                    Threshold3='4', Threshold4='5', Threshold5='6',
+                    Threshold6='7', Threshold7='8',
+                    Preamp='9', Ikrum='10', Shaper='11', Disc='12',
+                    DiscLS='13', ShaperTest='14', DACDiscL='15', DACTest='30',
+                    DACDiscH='31', Delay='16', TPBuffIn='17', TPBuffOut='18',
+                    RPZ='19', GND='20', TPREF='21', FBK='22', Cas='23',
+                    TPREFA='24', TPREFB='25')
+
     def __init__(self, ip_address, port):
         self.path = "/dls/detectors/support/silicon_pixels/excaliburRX/" \
                     "TestApplication_15012015/excaliburTestApp"
         self.ip_address = ip_address
-        self.port = port
+        self.port = str(port)
 
         self.base_cmd = [self.path,
                          self.IP_ADDRESS, self.ip_address,
@@ -146,7 +213,7 @@ class ExcaliburTestAppInterface(object):
             trigmode: Trigger mode
                 (internal*, external shutter, external sync = 0*, 1, 2)
             path: Path to image folder ('/tmp'*)
-            hdffile(int): Name of file to save (excalibur-YYMMDD-HHMMSS.hdf5*)
+            hdffile: Name of file to save (excalibur-YYMMDD-HHMMSS.hdf5*)
 
         Returns:
             list(str)): Full acquire command to send to subprocess call
@@ -185,19 +252,19 @@ class ExcaliburTestAppInterface(object):
         command = self._construct_command(chips, *extra_params)
         self._send_command(command)
 
-    def sense(self, chips, dac_code, dac_file):
+    def sense(self, chips, dac, dac_file):
         """Read the given DAC analogue voltage.
 
         Args:
             chips: Chips to read for
-            dac_code: DAC to read
+            dac: Name of DAC to read
             dac_file: File to load DAC values from
 
         """
         # TODO: Check is command_2 'Requires DAC LOAD to take effect'?
         # Set up DAC for sensing
         command_1 = self._construct_command(chips,
-                                            self.SENSE, str(dac_code),
+                                            self.SENSE, self.dac_code[dac],
                                             self.DAC_FILE, dac_file)
         self._send_command(command_1)
 
@@ -205,24 +272,24 @@ class ExcaliburTestAppInterface(object):
 
         # Read back params
         command_2 = self._construct_command(chips,
-                                            self.SENSE, str(dac_code),
+                                            self.SENSE, self.dac_code[dac],
                                             self.READ_SLOW_PARAMS)
         self._send_command(command_2)
 
-    def perform_dac_scan(self, chips, dac_code, scan_range, dac_file,
+    def perform_dac_scan(self, chips, dac, scan_range, dac_file,
                          hdf_file):
         """Execute a DAC scan and save the results to the given file.
 
         Args:
             chips: Chips to scan
-            dac_code: Code of DAC to scan
+            dac: Name of DAC to scan
             scan_range(Range): Start, stop and step of scan
             dac_file: File to load config from
             hdf_file: File to save to
 
         """
         scan_command = "{name},{start},{stop},{step}".format(
-            name=dac_code,
+            name=self.dac_code[dac],
             start=scan_range.start, stop=scan_range.stop, step=scan_range.step)
 
         command = self._construct_command(chips,

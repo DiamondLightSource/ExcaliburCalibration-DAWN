@@ -1,3 +1,5 @@
+"""Python class to provide DAWN plotting, io and analysis to ExcaliburRX"""
+
 import math as m
 
 import numpy as np
