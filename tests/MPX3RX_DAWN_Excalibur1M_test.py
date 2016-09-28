@@ -925,7 +925,7 @@ class MaskUnmaskTest(unittest.TestCase):
         expected_mask[:, 32:32 + 64] = 1
         expected_submask = expected_mask[0:256, 0:256]
 
-        self.e.mask_sup_col(0, 1)
+        self.e.mask_super_column(0, 1)
 
         self.assertEqual('/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/pixelmask.chip0', save_mock.call_args[0][0])
         np.testing.assert_array_equal(expected_submask, save_mock.call_args[0][1])

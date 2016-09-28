@@ -7,12 +7,11 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 class ExcaliburTestAppInterface(object):
-    """
-    A class to make subprocess calls to the excaliburTestApp command line tool
-    """
+
+    """A class to make subprocess calls to the excaliburTestApp tool."""
 
     # ExcaliburTestApp arguments
-    IP = "-i"  # Set ip address of FEM - ... -i "192.168.0.10" ...
+    IP_ADDRESS = "-i"  # Set ip address of FEM - ... -i "192.168.0.10" ...
     PORT = "-p"  # Set port of FEM - ... -p "6969" ...
     MASK = "-m"  # Set mask of chips to be included in cmd - ... -m "0xff" ...
 
@@ -54,14 +53,15 @@ class ExcaliburTestAppInterface(object):
     def __init__(self, ip_address, port):
         self.path = "/dls/detectors/support/silicon_pixels/excaliburRX/" \
                     "TestApplication_15012015/excaliburTestApp"
-        self.ip = ip_address
+        self.ip_address = ip_address
         self.port = port
 
-        self.base_cmd = [self.path, self.IP, self.ip, self.PORT, self.port]
+        self.base_cmd = [self.path,
+                         self.IP_ADDRESS, self.ip_address,
+                         self.PORT, self.port]
 
     def _construct_command(self, chips, *cmd_args):
-        """
-        Construct a command from the base_cmd, given mask and any cmd_args.
+        """Construct a command from the base_cmd, given mask and any cmd_args.
 
         Args:
             chips(list(int): Chips to enable for command process
@@ -69,23 +69,23 @@ class ExcaliburTestAppInterface(object):
 
         Returns:
             list(str)): Full command to send to subprocess call
-        """
 
+        """
         chip_mask = self._mask(chips)
+
         return self.base_cmd + [self.MASK, chip_mask] + list(cmd_args)
         # TODO: Add base_cmd on in _send_command?
 
     def _mask(self, chips):
-        """
-        Creates hexadecimal mask corresponding to activation of given chips.
+        """Create a hexadecimal mask to activate the given chips.
 
         Args:
             chips(list(int)): List of chips to be enabled
 
         Returns:
             str: Hexadecimal mask representing list of chips
-        """
 
+        """
         if len(chips) != len(set(chips)):
             raise ValueError("Given list must not contain duplicate values")
 
@@ -104,33 +104,30 @@ class ExcaliburTestAppInterface(object):
 
     @staticmethod
     def _send_command(command, **cmd_kwargs):
-        """
-        Send a command line call and handle any subprocess.CallProcessError.
+        """Send a command line call and handle any subprocess.CallProcessError.
 
         Will catch any exception and log the error message. If successful, just
         returns.
 
         Args:
             command(list(str)): List of arguments to send to command line call
-        """
 
+        """
         logging.debug("Sending command: " + "'{}'".format(" ".join(command)) +
                       " with kwargs " + str(cmd_kwargs))
 
         try:
             output = subprocess.check_output(command, **cmd_kwargs)
-        except subprocess.CalledProcessError as e:
-            logging.debug(e.output)
+        except subprocess.CalledProcessError as error:
+            logging.debug(error.output)
         else:
             logging.debug(output)
 
-    def acquire(self, chips, frames, acqtime, burst=None , pixel_mode=None,
+    def acquire(self, chips, frames, acqtime, burst=None, pixel_mode=None,
                 disc_mode=None, depth=None, counter=None, equalization=None,
                 gainmode=None, readmode=None, trigmode=None, path=None,
                 tpcount=None, hdffile=None):
-        """
-        Construct and send an acquire command from the standard command plus
-        extra parameters.
+        """Construct and send an acquire command.
 
         excaliburTestApp default values are marked with *
 
@@ -153,10 +150,8 @@ class ExcaliburTestAppInterface(object):
 
         Returns:
             list(str)): Full acquire command to send to subprocess call
+
         """
-
-        # TODO: Allow integers for args, cast to str
-
         extra_params = [self.NUM_FRAMES, str(frames),
                         self.ACQ_TIME, str(acqtime)]
 
@@ -191,17 +186,15 @@ class ExcaliburTestAppInterface(object):
         self._send_command(command)
 
     def sense(self, chips, dac_code, dac_file):
-        """
-        Read the given DAC analogue voltage
+        """Read the given DAC analogue voltage.
 
         Args:
             chips: Chips to read for
             dac_code: DAC to read
             dac_file: File to load DAC values from
+
         """
-
         # TODO: Check is command_2 'Requires DAC LOAD to take effect'?
-
         # Set up DAC for sensing
         command_1 = self._construct_command(chips,
                                             self.SENSE, str(dac_code),
@@ -218,8 +211,7 @@ class ExcaliburTestAppInterface(object):
 
     def perform_dac_scan(self, chips, dac_code, scan_range, dac_file,
                          hdf_file):
-        """
-        Execute a DAC scan and save the results to the given file
+        """Execute a DAC scan and save the results to the given file.
 
         Args:
             chips: Chips to scan
@@ -227,8 +219,8 @@ class ExcaliburTestAppInterface(object):
             scan_range(Range): Start, stop and step of scan
             dac_file: File to load config from
             hdf_file: File to save to
-        """
 
+        """
         scan_command = "{name},{start},{stop},{step}".format(
             name=dac_code,
             start=scan_range.start, stop=scan_range.stop, step=scan_range.step)
@@ -240,55 +232,50 @@ class ExcaliburTestAppInterface(object):
         self._send_command(command)
 
     def read_chip_ids(self, chips=range(8), **cmd_kwargs):
-        """
-        Reads and displays MPX3 eFuse IDs for the given chips.
+        """Read and display MPX3 eFuse IDs for the given chips.
 
         Args:
             chips(list(int): Chips to read
-        """
 
+        """
         command = self._construct_command(chips,
                                           self.RESET,
                                           self.READ_EFUSE)
         self._send_command(command, **cmd_kwargs)
 
     def read_slow_control_parameters(self, **cmd_kwargs):
-        """
-        Reads and displays slow control parameters for the given chips.
+        """Read and display slow control parameters for the given chips.
 
         These are Temperature, Humidity, FEM Voltage Regulator Status
         and DAC Out
-        """
 
+        """
         command = self._construct_command(self.chip_range,
                                           self.READ_SLOW_PARAMS)
         self._send_command(command, **cmd_kwargs)
 
     def load_dacs(self, chips, dac_file):
-        """
-        Read DAC values from the given file and set them on the given chips.
+        """Read DAC values from the given file and set them on the given chips.
 
         Args:
             chips(list(int): List of chips to assign DAC for
             dac_file(str): Path to file containing DAC values
-        """
 
+        """
         command = self._construct_command(chips,
                                           self.DAC_FILE, dac_file)
         self._send_command(command)
 
     def configure_test_pulse(self, chips, dac_file, tp_mask):
-        """
-        Load DAC file and test mask ready acquire test
+        """Load DAC file and test mask ready acquire test.
 
         Args:
             chips: List of chips to configure
             dac_file: Path to file containing DAC values
             tp_mask: Test pulse mask to load for test pulses
+
         """
-
-        # TODO: Check if this needs to be coupled to loading DACs
-
+        # TODO: Check if this really needs to be coupled to loading DACs
         command = self._construct_command(chips,
                                           self.DAC_FILE, dac_file,
                                           self.TP_MASK, tp_mask)
@@ -296,18 +283,16 @@ class ExcaliburTestAppInterface(object):
 
     def configure_test_pulse_with_disc(self, chips, dac_file, tp_mask,
                                        disc_files):
-        """
-        Load DAC file and test mask ready acquire test
+        """Load DAC file and test mask for acquire test.
 
         Args:
             chips: List of chips to configure
             dac_file: Path to file containing DAC values
             tp_mask: Test pulse mask to load for test pulses
             disc_files(dict): Config files for discL, discH and pixel mask
+
         """
-
         # TODO: Check if this needs to be coupled to loading DACs
-
         d = disc_files
         command = self._construct_command(chips,
                                           self.DAC_FILE, dac_file,
@@ -318,16 +303,15 @@ class ExcaliburTestAppInterface(object):
         self._send_command(command)
 
     def load_config(self, chips, discl, disch=None, pixelmask=None):
-        """
-        Read the given config files and load them onto the given chips.
+        """Read the given config files and load them onto the given chips.
 
         Args:
             chips(list(int)): Chips to load config for
             discl(str): File path for discl config
             disch(str): File path for disch config
             pixelmask(str): File path for pixelmask config
-        """
 
+        """
         extra_parameters = [self.CONFIG]
 
         # TODO: Move this logic back to main script?
