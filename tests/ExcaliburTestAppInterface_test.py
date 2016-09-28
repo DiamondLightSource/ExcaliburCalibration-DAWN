@@ -16,7 +16,7 @@ class TestInit(unittest.TestCase):
         expected_path = "/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp"
 
         self.assertEqual(expected_path, e.path)
-        self.assertEqual("test_ip", e.ip)
+        self.assertEqual("test_ip", e.ip_address)
         self.assertEqual("test_port", e.port)
         self.assertEqual(['/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp', '-i', 'test_ip', '-p', 'test_port'], e.base_cmd)
 
