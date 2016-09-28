@@ -1,5 +1,4 @@
-"""
-Python library for MPX3RX-based detectors calibration and testing.
+"""Python library for MPX3RX-based detectors calibration and testing.
 
 /dls/detectors/support/silicon_pixels/excaliburRX/PyScripts/MPX3RX-DAWN.py
 DIAMOND LIGHT SOURCE 30-07-2015
@@ -11,8 +10,250 @@ system provided that a library of control functions is available for each
 type of detector:
 # EXCALIBUR
 # LANCELOT/MERLIN
-"""
 
+===================== EXCALIBUR Test-Application =========================
+
+NOTE: excaliburRX detector class communicates with FEMs via the
+ExcaliburTestApplicationInterface Python class
+
+NOTE: ExcaliburRX detector class requires configuration files copied in:
+/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/
+config/
+
+========= To install libraries required by EXCALIBUR Test-Application
+
+excalibur Test-Application requires libboost and libhdf5 libraries to be
+installed locally. Use the following instructions to install the libraries:
+
+cd /dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/
+excaliburRxlib
+mkdir /home/fedID/lib/
+cp lib* /home/fedID/lib/
+This will copy the required libraries:
+[ktf91651@pc0066 /]$ ll /home/ktf91651/lib
+total 17880
+-rwxr-xr-x. 1 ktf91651 ktf91651   17974 Mar  7  2014 libboost_system.so
+-rwxr-xr-x. 1 ktf91651 ktf91651   17974 Mar  7  2014 libboost_system.so.1.47.0
+-rwxr-xr-x. 1 ktf91651 ktf91651  138719 Mar  7  2014 libboost_thread.so
+-rwxr-xr-x. 1 ktf91651 ktf91651  138719 Mar  7  2014 libboost_thread.so.1.47.0
+-rwxr-xr-x. 1 ktf91651 ktf91651 8946608 Mar  7  2014 libhdf5.so
+-rwxr-xr-x. 1 ktf91651 ktf91651 8946608 Mar  7  2014 libhdf5.so.7
+
+edit
+/home/fedID/.bashrc_local
+to add path to excalibur libraries
+
+[ktf91651@p99-excalibur01 ~]$ more .bashrc_local
+LIBDIR=$HOME/lib
+if [ -d $LIBDIR ]; then
+    export LD_LIBRARY_PATH=${LIBDIR}:${LD_LIBRARY_PATH}
+fi
+
+check path using
+[ktf91651@p99-excalibur01 ~]$ echo $LD_LIBRARY_PATH
+/home/ktf91651/lib:
+
+======================== MODULE CALIBRATION USING PYTHON SCRIPTS
+
+================= FRONT-END POWER-ON
+
+To calibrate a 1/2 Module
+
+ssh to the PC server node(standard DLS machine) connected to the MASTER FEM
+card (the one interfaced with the I2C bus of the Power card)
+On I13 EXCALIBUR-3M-RX001, this is the top FEM (192.168.0.106) connected to
+node 1
+###########################
+> ssh i13-1-excalibur01
+###########################
+Enable LV and make sure that HV is set to 120V during calibration:
+##########################################################################
+> /dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/
+excaliburTestApp -i 192.168.0.106 -p 6969 -m 0xff --lvenable 1
+> /dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/
+excaliburTestApp -i 192.168.0.106 -p 6969 -m 0xff --lvenable 0
+> /dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/
+excaliburTestApp -i 192.168.0.106 -p 6969 -m 0xff --lvenable 1
+> /dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/
+excaliburTestApp -i 192.168.0.106 -p 6969 -m 0xff --hvbias 120
+> /dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/
+excaliburTestApp -i 192.168.0.106 -p 6969 -m 0xff --hvenable 1
+###########################################################################
+
+ssh to the PC server node (standard DLS machine) connected to the FEM card
+controlling the 1/2 module which you want to calibrate.
+########################
+> ssh i13-1-excalibur0x with x in [1-6] and x=1 corresponds to the top FEM
+(Master FEM IP:192.168.0.106) connected to PC server node 1
+########################
+
+===================  DAWN START-UP
+
+On the PC server node, start DAWN by typing in a shell:
+######################
+> module load dawn
+> dawn &
+#######################
+
+================== PYTHON SCRIPT
+
+Select the DExplore perspective
+Open the file /dls/detectors/support/silicon_pixels/excaliburRX/PyScripts/
+MPX3RX-DAWN.py
+Run excaliburDAWN.py in the interactive console by clicking on the python
+icon "activates the interactive console" (CTL Alt ENTER)
+Select "Python Console" when the interactive interpreter console opens
+(You might have to run the script twice)
+
+Scripts were tested with /dls_sw/apps/python/anaconda/1.7.0/64/bin/python/
+Python 2.7.10 |Anaconda 1.7.0 (64-bit)
+
+Install Python interpreter using
+    Window - Preferences - PyDev - Interpreters menus
+
+In the Interactive console you need to create an excaliburRx object:
+########################
+> x = excaliburRX(node)
+########################
+were node is the EXCALIBUR PC node number (between 1 and 6 for
+EXCALIBUR-3M) of the 1/2 module under test
+For example: on I13 the top FEM of EXCALIBUR-3M-RX001 is connected to
+node 1 (i13-1-excalibur01) and the bottom fem to node (i13-1-excalibur06).
+When running Python calibration scripts on node i13-1-excalibur0X (with X
+in [1:6]), you should use: x=excaliburRX(X)
+
+For example when running the Python calibration scripts on node
+i13-1-excalibur0X (with X in [1:6]), you should use: x=excaliburRX(X)
+For I13 installation top FEM is connected to node 1 and bottom fem to
+node 6
+
+================ FBK GND and CAS DACs adjustment
+
+The very first time you calibrate a module, you need to manually adjust
+3 DACs: FBK, CAS and GND
+The procedure is described in set_gnd_fbk_cas_excalibur_rx001
+If you swap modules you also need to edit set_gnd_fbk_cas_excalibur_rx001
+accordingly since set_gnd_fbk_cas_excalibur_rx001 contains DAC parameters
+specific each 3 modules based on the position of the module
+
+================= THRESHOLD EQUALIZATION
+
+To run threshold_equalization scripts, just type in the interactive Python
+console:
+########################
+> x.threshold_equalization()
+########################
+By default, threshold_equalization files will be created locally in a
+temporary folder : /tmp/femX of the PC server node X.
+You should copy the folder /femX in the path were EPICS expects
+threshold_equalization files for all the fems/nodes
+
+At the end of the threshold_equalization you should get the following
+message in the interactive console:
+Pixel threshold equalization complete
+
+================= THRESHOLD CALIBRATION
+
+To calibrate thresholds using default keV to DAC mapping
+#####################################
+> x.threshold_calibration_all_gains()
+#####################################
+
+To calibrate thresholds using X-rays:
+
+Method 1: Brute-force:
+
+Produce monochromatic X-rays or use Fe55
+Perform a DAC scan using :
+##################################
+[dacscanData, scanRange] = self.scan_dac([0], "Threshold0", (80, 20, 1))
+###################################
+This will produce 2 plots:
+dacscan with intergal spectrum
+spectrum with differential spectrum
+
+Inspect the spectrum and evaluate the position of the energy peak in DAC
+units.
+Example:
+E = 6keV for energy peak DAC = 60
+Since calibration is performed on noise peak, 0keV correspond to the
+selected DACtarget (10 by default)
+E = 0keV for DAC = 10
+Perform a linear fit of the DAC (in DAC units) as a function of energy
+(keV) and  edit threshold0 file in the calibration directory accordingly:
+
+Each Threshold calibration file consists of 2 rows of 8 floating point
+numbers:
+# g0     g1   g2   g3   g4   g5   g6   g7
+# Off0 Off1 Off2 Off3 Off4 Off5 Off6 Off7
+# and the DAC value to apply to chip x for a requested threshold energy
+value E in keV is given by:
+# DACx= gx * E + Offx
+
+Method 2: Using 1 energy and the noise peak dac
+
+Method 3: Using several energies. Script not written yet.
+
+
+============== ACQUIRE X_RAY TEST IMAGE WITH FE55
+
+threshold_equalization data is then automatically loaded. And you can
+acquire a 60s image from Fe55 X-rays using the following command:
+####################
+> x.fe55_image_rx001()
+####################
+
+To change the exposure time used during image acquisition:
+##########################################
+> x.fe55_image_rx001(range(8), exp_time_in_ms)
+##########################################
+
+============== ACQUIRE IMAGES
+
+##########
+> x.expose()
+##########
+
+To change acquisition time before exposure:
+#############################################
+> x.settings['acqtime']=1000 (for 1s exposure)
+> x.expose()
+#############################################
+where acqtime is in ms
+
+The image will be automatically saved in
+    /dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/Fe55_images
+The image is displayed in Image Data plot window which is opened by
+selected Show Plot View in the Window tab
+
+=====================PIXEL MASKING========================================
+
+===================== SET THRESHOLD DAC
+To change threshold:
+######################################################################
+> x.set_dac(range(8), "Threshold0", 40)
+######################################################################
+This will allow you to put your threshold just above the noise to check the
+response of the 1/2 module to X-rays
+
+================== LOAD DETECTOR CONFIGURATION
+To load discbits, maskbits and default thresholds from current calibration
+directory
+###############
+> x.load_config()
+###############
+
+================= TEST DETECTOR USING EXCALIBUR TEST PULSE LOGO
+############
+> x.testLogo()
+############
+
+==========================================================================
+NOTE: chip 0 in this program correspond to the left chip of the bottom
+half of a module or to the right chip of the top half of the module when
+facing the front-surface of sensor
+
+"""
 import os
 import posixpath
 import shutil
@@ -26,11 +267,6 @@ from scripts.ExcaliburTestAppInterface import ExcaliburTestAppInterface
 from scripts.ExcaliburDAWN import ExcaliburDAWN
 
 
-Settings = namedtuple("Settings", "mode gain bitdepth readmode counter "
-                                  "disccsmspm equalization trigmode acqtime "
-                                  "frames imagepath filename threshold "
-                                  "filename_index")
-
 Range = namedtuple("Range", "start stop step")
 
 
@@ -43,388 +279,39 @@ class ExcaliburRX(object):
     DAWN software running on the PC sever node connected to the FEM controlling
     the half-module which you wish to calibrate
 
-    ===================== EXCALIBUR Test-Application =========================
-
-    NOTE: excaliburRX detector class communicates with FEMs via excalibur
-    Test-Application which is an executable file saved in:
-    /dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp
-
-    NOTE: excaliburRX detector class requires configuration files copied in:
-    /dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/config/
-
-    ========= To install libraries required by EXCALIBUR Test-Application
-
-    excalibur Test-Application requires libboost and libhdf5 libraries to be
-    installed locally. Use the following instructions to install the libraries:
-
-    cd /dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburRxlib
-    mkdir /home/fedID/lib/
-    cp lib* /home/fedID/lib/
-    This will copy the required libraries:
-    [ktf91651@pc0066 /]$ ll /home/ktf91651/lib
-    total 17880
-    -rwxr-xr-x. 1 ktf91651 ktf91651   17974 Mar  7  2014 libboost_system.so
-    -rwxr-xr-x. 1 ktf91651 ktf91651   17974 Mar  7  2014 libboost_system.so.1.47.0
-    -rwxr-xr-x. 1 ktf91651 ktf91651  138719 Mar  7  2014 libboost_thread.so
-    -rwxr-xr-x. 1 ktf91651 ktf91651  138719 Mar  7  2014 libboost_thread.so.1.47.0
-    -rwxr-xr-x. 1 ktf91651 ktf91651 8946608 Mar  7  2014 libhdf5.so
-    -rwxr-xr-x. 1 ktf91651 ktf91651 8946608 Mar  7  2014 libhdf5.so.7
-
-    edit
-    /home/fedID/.bashrc_local
-    to add path to excalibur libraries
-
-    [ktf91651@p99-excalibur01 ~]$ more .bashrc_local
-    LIBDIR=$HOME/lib
-    if [ -d $LIBDIR ]; then
-        export LD_LIBRARY_PATH=${LIBDIR}:${LD_LIBRARY_PATH}
-    fi
-
-    check path using
-    [ktf91651@p99-excalibur01 ~]$ echo $LD_LIBRARY_PATH
-    /home/ktf91651/lib:
-
-    ================= EXCALIBUR Test-Application commands
-
-    [ktf91651@p99-excalibur01 ~]$ /dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp -i 192.168.0.106 -p 6969 -m 0xff --help
-
-    Usage: /dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp options
-
-      -h --help                   Display this usage information.
-      -i --ipaddress              IP address of FEM to connect to.
-      -p --port                   Port of FEM to connect to.
-      -m --mask                   Select MPX3 enable mask.
-      -r --reset                  Issue front-end reset/init.
-         --lvenable <mode>        Set power card LV enable: 0=off (default), 1=on.
-         --hvenable <mode>        Set power card HV enable: 0=off (default), 1=on.
-         --hvbias <volts>         Set power card HV bias in volts.
-      -e --efuse                  Read and display MPX3 eFuse IDs.
-      -d --dacs <filename>        Load MPX3 DAC values from filename if given, otherwise use default values
-      -c --config                 Load MPX3 pixel configuration.
-      -s --slow                   Display front-end slow control parameters.
-      -a --acquire                Execute image acquisition loop.
-         --burst                  Select burst mode for image acquisition.
-         --matrixread             During acquisition, perform matrix read only (i.e. no shutter for config read or digital test).
-      -n --frames <frames>        Number of frames to acquire.
-      -t --acqtime <time>         Acquisition time (shutter duration) in milliseconds.
-         --dacscan <params>       Execute DAC scan, params format must be comma separated dac,start,stop,step.
-         --readmode <mode>        Readout mode: 0=sequential (default), 1=continuous.
-         --trigmode <mode>        Trigger mode: 0=internal (default), 1=external shutter, 2=external sync.
-         --colourmode <mode>      Select MPX3 colour mode: 0=fine pitch mode (default), 1=spectroscopic mode.
-         --csmspm <mode>          Select MPX3 pixel mode: 0=single pixel mode (default), 1=charge summing mode.
-         --disccsmspm <mode>      Select MPX3 discriminator output mode: 0=DiscL (default), 1=DiscH.
-         --equalization <mode>    Select MPX3 equalization mode: 0=off (default), 1=on.
-         --gainmode <mode>        Select MPX3 gain mode: 0=SHGM, 1=HGM, 2=LGM, 3=SLGM (default).
-         --counter <counter>      Select MPX3 counter to read: 0 (default) or 1.
-         --depth <depth>          Select MPX3 counter depth: 1, 6, 12 (default) or 24.
-         --sensedac <id>          Set MPX3 sense DAC field to <id>. NB Requires DAC load to take effect
-         --tpmask <filename>      Specify test pulse mask filename to load.
-         --tpcount <count>        Set test pulse count to <count>, default is 0.
-         --pixelmask <filename>   Specify pixel enable mask filename to load.
-         --discl <filename>       Specify pixel DiscL configuration filename to load.
-         --disch <filename>       Specify pixel DiscH configuration filename to load.
-         --path <path>            Specify path to write data files to, default is /tmp.
-         --hdffile <filename>     Write HDF file with optional filename, default is <path>/excalibur-YYMMDD-HHMMSS.hdf5
-
-
-    ======================== MODULE CALIBRATION USING PYTHON SCRIPTS
-
-    ================= FRONT-END POWER-ON
-
-    To calibrate a 1/2 Module
-
-    ssh to the PC server node(standard DLS machine) connected to the MASTER FEM
-    card (the one interfaced with the I2C bus of the Power card)
-    On I13 EXCALIBUR-3M-RX001, this is the top FEM (192.168.0.106) connected to
-    node 1
-    ###########################
-    >ssh i13-1-excalibur01
-    ###########################
-    Enable LV and make sure that HV is set to 120V during calibration:
-    ##########################################################################
-    >/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp -i 192.168.0.106 -p 6969 -m 0xff --lvenable 1
-    >/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp -i 192.168.0.106 -p 6969 -m 0xff --lvenable 0
-    >/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp -i 192.168.0.106 -p 6969 -m 0xff --lvenable 1
-    >/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp -i 192.168.0.106 -p 6969 -m 0xff --hvbias 120
-    >/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp -i 192.168.0.106 -p 6969 -m 0xff --hvenable 1
-    ###########################################################################
-
-    ssh to the PC server node (standard DLS machine) connected to the FEM card
-    controlling the 1/2 module which you want to calibrate.
-    ########################
-    >ssh i13-1-excalibur0x with x in [1-6] and x=1 corresponds to the top FEM (Master FEM IP:192.168.0.106) connected to PC server node 1
-    ########################
-
-    ===================  DAWN START-UP
-
-    On the PC server node, start DAWN by typing in a shell:
-    ######################
-    > module load dawn
-    > dawn &
-    #######################
-
-    ================== PYTHON SCRIPT
-
-    Select the DExplore perspective
-    Open the file /dls/detectors/support/silicon_pixels/excaliburRX/PyScripts/MPX3RX-DAWN.py
-    Run excaliburDAWN.py in the interactive console by clicking on the python
-    icon "activates the interactive console" (CTL Alt ENTER)
-    Select "Python Console" when the interactive interpreter console opens
-    (You might have to run the script twice)
-
-    Scripts were tested with /dls_sw/apps/python/anaconda/1.7.0/64/bin/python/
-    Python 2.7.10 |Anaconda 1.7.0 (64-bit)
-
-    Install Python interpreter using
-        Window - Preferences - PyDev - Interpreters menus
-
-    In the Interactive console you need to create an excaliburRx object:
-    ########################
-    > x = excaliburRX(node)
-    ########################
-    were node is the EXCALIBUR PC node number (between 1 and 6 for
-    EXCALIBUR-3M) of the 1/2 module under test
-    For example: on I13 the top FEM of EXCALIBUR-3M-RX001 is connected to
-    node 1 (i13-1-excalibur01) and the bottom fem to node (i13-1-excalibur06).
-    When running Python calibration scripts on node i13-1-excalibur0X (with X
-    in [1:6]), you should use: x=excaliburRX(X)
-
-    For example when running the Python calibration scripts on node
-    i13-1-excalibur0X (with X in [1:6]), you should use: x=excaliburRX(X)
-    For I13 installation top FEM is connected to node 1 and bottom fem to
-    node 6
-
-    ================ FBK GND and CAS DACs adjustment
-
-    The very first time you calibrate a module, you need to manually adjust
-    3 DACs: FBK, CAS and GND
-    The procedure is described in set_gnd_fbk_cas_excalibur_rx001
-    If you swap modules you also need to edit set_gnd_fbk_cas_excalibur_rx001
-    accordingly since set_gnd_fbk_cas_excalibur_rx001 contains DAC parameters
-    specific each 3 modules based on the position of the module
-
-    ================= THRESHOLD EQUALIZATION
-
-    To run threshold_equalization scripts, just type in the interactive Python
-    console:
-    ########################
-    > x.threshold_equalization()
-    ########################
-    By default, threshold_equalization files will be created locally in a
-    temporary folder : /tmp/femX of the PC server node X.
-    You should copy the folder /femX in the path were EPICS expects
-    threshold_equalization files for all the fems/nodes
-
-    At the end of the threshold_equalization you should get the following
-    message in the interactive console:
-    Pixel threshold equalization complete
-
-    ================= THRESHOLD CALIBRATION
-
-    To calibrate thresholds using default keV to DAC mapping
-    #####################################
-    > x.threshold_calibration_all_gains()
-    #####################################
-
-    To calibrate thresholds using X-rays:
-
-    Method 1: Brute-force:
-
-    Produce monochromatic X-rays or use Fe55
-    Perform a DAC scan using :
-    ##################################
-    [dacscanData,scanRange]=self.scan_dac([0],"Threshold0",(80,20,1))
-    ###################################
-    This will produce 2 plots:
-    dacscan with intergal spectrum
-    spectrum with differential spectrum
-
-    Inspect the spectrum and evaluate the position of the energy peak in DAC
-    units.
-    Example:
-    E=6keV for energy peak DAC=60
-    Since calibration is performed on noise peak, 0keV correspond to the
-    selected DACtarget (10 by default)
-    E=0keV for DAC=10
-    Perform a linear fit of the DAC (in DAC units) as a function of energy
-    (keV) and  edit threshold0 file in the calibration directory accordingly:
-
-        Each Threshold calibration file consists of 2 rows of 8 floating point
-        numbers:
-        # g0     g1   g2   g3   g4   g5   g6   g7
-        # Off0 Off1 Off2 Off3 Off4 Off5 Off6 Off7
-        # and the DAC value to apply to chip x for a requested threshold energy
-        value E in keV is given by:
-        # DACx= gx * E + Offx
-
-    Method 2: Using 1 energy and the noise peak dac
-
-    Method 3: Using several energies. Script not written yet.
-
-
-    ============== ACQUIRE X_RAY TEST IMAGE WITH FE55
-
-    threshold_equalization data is then automatically loaded. And you can
-    acquire a 60s image from Fe55 X-rays using the following command:
-    ####################
-    >x.fe55_image_rx001()
-    ####################
-
-    To change the exposure time used during image acquisition:
-    ##########################################
-    x.fe55_image_rx001(range(8),exp_time_in_ms)
-    ##########################################
-
-    ============== ACQUIRE IMAGES
-
-    ##########
-    x.expose()
-    ##########
-
-    To change acquisition time before exposure:
-    #############################################
-    x.settings['acqtime']=1000 (for 1s exposure)
-    x.expose()
-    #############################################
-    where acqtime is in ms
-
-    The image will be automatically saved in
-        /dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/Fe55_images
-    The image is displayed in Image Data plot window which is opened by
-    selected Show Plot View in the Window tab
-
-    =====================PIXEL MASKING========================================
-
-    ===================== SET THRESHOLD DAC
-    To change threshold:
-    ######################################################################
-    x.set_dac(range(8),"Threshold0",40) to set threshold 0 at 40 DAC units
-    ######################################################################
-    This will allow you to put your threshold just above the noise to check the
-    response of the 1/2 module to X-rays
-
-    ================== LOAD DETECTOR CONFIGURATION
-    To load discbits, maskbits and default thresholds from current calibration
-    directory
-    ###############
-     x.load_config()
-    ###############
-
-    ================= TEST DETECTOR USING EXCALIBUR TEST PULSE LOGO
-    ############
-    x.testLogo()
-    ############
-
-
-
-    ==========================================================================
-    NOTE: chip 0 in this program correspond to the left chip of the bottom
-    half of a module or to the right chip of the top half of the module when
-    facing the front-surface of sensor
-
     """
-    root_path = '/dls/detectors/support/silicon_pixels/excaliburRX/'
-
-    # Test-application executable file path
-    command = posixpath.join(root_path,
-                             'TestApplication_15012015', 'excaliburTestApp')
-    # Port of FEM to connect to
-    port = '6969'
-
     # Threshold equalization will align pixel noise peaks at this DAC value
     dac_target = 10
+    # Acceptable difference compared to dac_target
+    allowed_delta = 4
+
     # Sigma value based on experimental data
     nb_of_sigma = 3.2
-
-    # Count value used in function find_edge() searching for signal or noise
-    # edges in dac scans
-    edge_val = 10
-    # Arbitrary value in DAC units used to check if the distance between the
-    # optimum equalization target and the default equalization target
-    # (dacTarget) is acceptable
-    acc_dist = 4
 
     # Number of pixels per chip along each axis
     chip_size = 256
     # Number of chips in 1/2 module
     num_chips = 8
 
-    # Settings used during threshold equalization and calibration
-    calib_settings = {'calibDir': posixpath.join(root_path,
-                                                 '3M-RX001', 'calib'),
-                      'configDir': posixpath.join(root_path,
-                                                  'TestApplication_15012015',
-                                                  'config'),
-                      'dacfilename': 'dacs',
-                      'dacfile': '',
-                      'noiseEdge': '10'}
-
-    # Conversion of human-readable settings into parameter to be passed to the
-    # Test Application
-    mode_code = {'spm': '0', 'csm': '1'}
-    gain_code = {'shgm': '0', 'hgm': '1', 'lgm': '2', 'slgm': '3'}
-    dac_code = {'Threshold0': '1',
-                'Threshold1': '2',
-                'Threshold2': '3',
-                'Threshold3': '4',
-                'Threshold4': '5',
-                'Threshold5': '6',
-                'Threshold6': '7',
-                'Threshold7': '8',
-                'Preamp': '9',  # To check
-                'Ikrum': '10',
-                'Shaper': '11',
-                'Disc': '12',
-                'DiscLS': '13',
-                'ShaperTest': '14',
-                'DACDiscL': '15',
-                'DACTest': '30',
-                'DACDiscH': '31',
-                'Delay': '16',
-                'TPBuffIn': '17',
-                'TPBuffOut': '18',
-                'RPZ': '19',
-                'GND': '20',
-                'TPREF': '21',
-                'FBK': '22',
-                'Cas': '23',
-                'TPREFA': '24',
-                'TPREFB': '25'}
+    root_path = '/dls/detectors/support/silicon_pixels/excaliburRX/'
+    calib_dir = posixpath.join(root_path, '3M-RX001/calib')
+    config_dir = posixpath.join(root_path, 'TestApplication_15012015/config')
 
     # Line number used when editing dac file with new dac values
-    dac_number = {'Threshold0': '1',
-                  'Threshold1': '2',
-                  'Threshold2': '3',
-                  'Threshold3': '4',
-                  'Threshold4': '5',
-                  'Threshold5': '6',
-                  'Threshold6': '7',
-                  'Threshold7': '8',
-                  'Preamp': '9',
-                  'Ikrum': '10',
-                  'Shaper': '11',
-                  'Disc': '12',
-                  'DiscLS': '13',
-                  'ShaperTest': '14',
-                  'DACDiscL': '15',
-                  'DACTest': '16',
-                  'DACDiscH': '17',
-                  'Delay': '18',
-                  'TPBuffIn': '19',
-                  'TPBuffOut': '20',
-                  'RPZ': '21',
-                  'GND': '22',
-                  'TPREF': '23',
-                  'FBK': '24',
-                  'Cas': '25',
-                  'TPREFA': '26',
-                  'TPREFB': '27'}
+    dac_number = dict(Threshold0='1', Threshold1='2', Threshold2='3',
+                      Threshold3='4', Threshold4='5', Threshold5='6',
+                      Threshold6='7', Threshold7='8',
+                      Preamp='9', Ikrum='10', Shaper='11', Disc='12',
+                      DiscLS='13', ShaperTest='14', DACDiscL='15',
+                      DACTest='16', DACDiscH='17', Delay='18', TPBuffIn='19',
+                      TPBuffOut='20', RPZ='21', GND='22', TPREF='23', FBK='24',
+                      Cas='25', TPREFA='26', TPREFB='27')
 
-    chip_range = range(0, num_chips)
+    chip_range = range(num_chips)
     plot_name = ''
 
     def __init__(self, node=0):
-        """Initialises EXCALIBUR detector object.
+        """Initialize EXCALIBUR detector object.
 
         For example: On I13 the top FEM of EXCALIBUR-3M-RX001 is connected to
         node 1 (i13-1-excalibur01) and the bottom fem to node 6(?)
@@ -435,12 +322,6 @@ class ExcaliburRX(object):
 
         """
         # Detector default Settings
-        self.settings = Settings(mode='spm', gain='shgm', bitdepth='12',
-                                 readmode='0', counter='0', disccsmspm='0',
-                                 equalization='0', trigmode='0', acqtime='100',
-                                 frames='1', imagepath='/tmp',
-                                 filename='image', threshold='Not set',
-                                 filename_index='')
         self.settings = {'mode': 'spm',  # 'spm' or 'csm'
                          'gain': 'shgm',  # 'slgm', 'lgm', 'hgm' or 'shgm'
                          'bitdepth': '12',  # '1', '8', '12' or '24'; 24 bits
@@ -463,7 +344,7 @@ class ExcaliburRX(object):
         if self.fem == 0:
             self.ipaddress = "192.168.0.106"
 
-        self.app = ExcaliburTestAppInterface(self.ipaddress, self.port)
+        self.app = ExcaliburTestAppInterface(self.ipaddress, port='6969')
         self.dawn = ExcaliburDAWN()
 
         # self.read_chip_ids()
@@ -492,7 +373,7 @@ class ExcaliburRX(object):
         # back the recommended analogue value
 
         # IMPORTANT NOTE: These values of GND, FBK and CAS Dacs were adjusted
-        # for the modules present in RX001 on 20 june 2015. If modules are
+        # for the modules present in RX001 on 20 June 2015. If modules are
         # replaced, these DACs need to be re-adjusted and the FBK_DAC, GND_DAC
         # and Cas_DAC arrays in GND_FBK_CAS_ExcaliburRX001 have to be edited
 
@@ -503,11 +384,11 @@ class ExcaliburRX(object):
         # when equalizing DiscL. So if DiscH was equalized first, this would
         # induce noisy counts interfering with DiscL equalization
 
-        # self.calibrate_disc(chips,'discH',1,'rect')
-        # self.settings['mode']='csm'
-        # self.settings['gain']='slgm'
-        # self.calibrate_disc(chips,'discL',1,'rect')
-        # self.calibrate_disc(chips,'discH',1,'rect')
+        # self.calibrate_disc(chips, 'discH', 1, 'rect')
+        # self.settings['mode'] = 'csm'
+        # self.settings['gain'] = 'slgm'
+        # self.calibrate_disc(chips, 'discL', 1, 'rect')
+        # self.calibrate_disc(chips, 'discH', 1, 'rect')
 
         # EG (13/06/2016) creates mask for horizontal noise
         # badPixels = self.mask_row_block(range(4), 256-20, 256)
@@ -547,7 +428,7 @@ class ExcaliburRX(object):
         energy corresponds to dac code = 62 in SHGM. Dac scans showed that this
         was true +/- 2 DAC units in 98% of the chips tested when using
         threshold equalization function with default parameters
-        (dacTarget=10 and nbOfSigma=3.2).
+        (dacTarget = 10 and nbOfSigma = 3.2).
 
         Args:
             threshold: Threshold to calibrate (0 or 1)
@@ -592,7 +473,7 @@ class ExcaliburRX(object):
         # Off0 Off1 Off2 Off3 Off4 Off5 Off6 Off7
         # and the DAC value to apply to chip x for a requested threshold energy
         # value E in keV is given by:
-        # DACx= gx * E + Offx
+        # DACx = gx * E + Offx
 
         Args:
             threshold: Threshold calibration to save (0 or 1)
@@ -604,7 +485,7 @@ class ExcaliburRX(object):
         thresh_coeff[0, :] = gain
         thresh_coeff[1, :] = offset
 
-        thresh_filename = posixpath.join(self.calib_settings['calibDir'],
+        thresh_filename = posixpath.join(self.calib_dir,
                                          'fem{fem}',
                                          self.settings['mode'],
                                          self.settings['gain'],
@@ -687,7 +568,7 @@ class ExcaliburRX(object):
                        chip_idx*chip_size:(chip_idx + 1)*chip_size] = 1
 
         for chip_idx in chips:
-            pixel_mask_file = posixpath.join(self.calib_settings['calibDir'],
+            pixel_mask_file = posixpath.join(self.calib_dir,
                                              'fem{fem}',
                                              self.settings['mode'],
                                              self.settings['gain'],
@@ -968,7 +849,7 @@ class ExcaliburRX(object):
             thresh_energy: Energy to set
 
         """
-        fname = posixpath.join(self.calib_settings['calibDir'],
+        fname = posixpath.join(self.calib_dir,
                                'fem{fem}',
                                self.settings['mode'],
                                self.settings['gain'],
@@ -1034,7 +915,7 @@ class ExcaliburRX(object):
 
     def log_chip_id(self):
         """Reads chip IDs and logs chipIDs in calibration directory."""
-        log_filename = posixpath.join(self.calib_settings['calibDir'],
+        log_filename = posixpath.join(self.calib_dir,
                                       'fem{fem}',
                                       '/efuseIDs'
                                       ).format(fem=self.fem)
@@ -1099,11 +980,11 @@ class ExcaliburRX(object):
 
         """
         for chip in chips:
-            dac_file = posixpath.join(self.calib_settings['calibDir'],
+            dac_file = posixpath.join(self.calib_dir,
                                       'fem{fem}',
                                       self.settings['mode'],
                                       self.settings['gain'],
-                                      self.calib_settings['dacfilename']
+                                      'dacs'
                                       ).format(fem=self.fem)
 
             f = open(dac_file, 'r+b')
@@ -1125,14 +1006,14 @@ class ExcaliburRX(object):
             dac_name: DAC value to read
 
         """
-        dac_file = posixpath.join(self.calib_settings['calibDir'],
+        dac_file = posixpath.join(self.calib_dir,
                                   'fem{fem}',
                                   self.settings['mode'],
                                   self.settings['gain'],
-                                  self.calib_settings['dacfilename']
+                                  'dacs'
                                   ).format(fem=self.fem)
 
-        self.app.sense(chips, self.dac_code[dac_name], dac_file)
+        self.app.sense(chips, dac_name, dac_file)
 
     def scan_dac(self, chips, dac_name, dac_range):  # ONLY FOR THRESHOLD DACS
         """Perform a dac scan and plot the result (mean counts vs DAC values).
@@ -1151,15 +1032,15 @@ class ExcaliburRX(object):
         dac_scan_file = '{name}_dacscan{index}.hdf5'.format(
             name=self.settings['filename'],
             index=self.settings['filenameIndex'])
-        dac_file = posixpath.join(self.calib_settings['calibDir'],
+        dac_file = posixpath.join(self.calib_dir,
                                   'fem'.format(fem=self.fem),
                                   self.settings['mode'],
                                   self.settings['gain'],
-                                  self.calib_settings['dacfilename'])
+                                  'dacs')
         scan_range = Range(dac_range[0], dac_range[1], dac_range[2])
 
-        self.app.perform_dac_scan(chips, self.dac_code[dac_name], scan_range,
-                                  dac_file, dac_scan_file)
+        self.app.perform_dac_scan(chips, dac_name, scan_range, dac_file,
+                                  dac_scan_file)
 
         time.sleep(1)
 
@@ -1179,7 +1060,7 @@ class ExcaliburRX(object):
 
         """
         # TODO: Refactor to load one file at a time?
-        template_path = posixpath.join(self.calib_settings['calibDir'],
+        template_path = posixpath.join(self.calib_dir,
                                        'fem{fem}'.format(fem=self.fem),
                                        self.settings['mode'],
                                        self.settings['gain'],
@@ -1206,7 +1087,7 @@ class ExcaliburRX(object):
             chips: Chips to load config for
 
         """
-        template_path = posixpath.join(self.calib_settings['calibDir'],
+        template_path = posixpath.join(self.calib_dir,
                                        'fem{fem}'.format(fem=self.fem),
                                        self.settings['mode'],
                                        self.settings['gain'],
@@ -1473,7 +1354,7 @@ class ExcaliburRX(object):
         self.set_dac(chips, "Threshold0", 40)
         self.shoot(10)
         logo_tp = np.ones([256, 8*256])
-        logo_file = posixpath.join(self.calib_settings['configDir'],
+        logo_file = posixpath.join(self.config_dir,
                                    'logo.txt')
         logo_small = np.loadtxt(logo_file)
         logo_tp[7:250, 225:1823] = logo_small
@@ -1481,13 +1362,13 @@ class ExcaliburRX(object):
         logo_tp = 1 - logo_tp
 
         for chip in chips:
-            test_bits_file = posixpath.join(self.calib_settings['calibDir'],
+            test_bits_file = posixpath.join(self.calib_dir,
                                             'Logo_chip{chip}_mask').format(
                                             chip=chip)
             np.savetxt(test_bits_file, logo_tp[0:256, chip*256:(chip + 1)*256],
                        fmt='%.18g', delimiter=' ')
 
-            template_path = posixpath.join(self.calib_settings['calibDir'],
+            template_path = posixpath.join(self.calib_dir,
                                            'fem{fem}'.format(fem=self.fem),
                                            self.settings['mode'],
                                            self.settings['gain'],
@@ -1497,8 +1378,7 @@ class ExcaliburRX(object):
             discLbits_file = template_path.format(disc='discLbits', chip=chip)
             pixel_mask_file = template_path.format(disc='pixelmask', chip=chip)
 
-            dac_file = posixpath.join(self.calib_settings['calibDir'],
-                                      self.calib_settings['dacfilename'])
+            dac_file = posixpath.join(self.calib_dir, 'dacs')
 
             if os.path.isfile(discLbits_file) \
                 and os.path.isfile(discHbits_file)  \
@@ -1534,7 +1414,7 @@ class ExcaliburRX(object):
         if type(test_bits) == str:
             test_bits_file = test_bits
         else:
-            discLbits_file = self.calib_settings['calibDir'] + 'fem' + \
+            discLbits_file = self.calib_dir + 'fem' + \
                 str(self.fem) + '/' + self.settings['mode'] + \
                 '/' + self.settings['gain'] + '/' + 'testbits.tmp'
             np.savetxt(test_bits_file, test_bits, fmt='%.18g', delimiter=' ')
@@ -1545,9 +1425,7 @@ class ExcaliburRX(object):
                                         index=self.settings['filenameIndex'])
 
         for chip in chips:
-            dac_file = posixpath.join(self.calib_settings['calibDir'],
-                                      self.calib_settings['dacfilename'])
-
+            dac_file = posixpath.join(self.calib_dir, 'dacs')
             self.app.configure_test_pulse([chip], dac_file, test_bits_file)
 
         self.app.acquire(chips,
@@ -1573,7 +1451,7 @@ class ExcaliburRX(object):
         """
         for chip_idx in chips:
 
-            discbits_file = posixpath.join(self.calib_settings['calibDir'],
+            discbits_file = posixpath.join(self.calib_dir,
                                            'fem{fem}',
                                            self.settings['mode'],
                                            self.settings['gain'],
@@ -1599,7 +1477,7 @@ class ExcaliburRX(object):
         bad_pixels[:, chip*256 + super_column * 32:chip * 256 +
                    super_column * 32 + 64] = 1  # TODO: Should it be 64 wide?
 
-        template_path = posixpath.join(self.calib_settings['calibDir'],
+        template_path = posixpath.join(self.calib_dir,
                                        'fem{fem}'.format(fem=self.fem),
                                        self.settings['mode'],
                                        self.settings['gain'],
@@ -1626,7 +1504,7 @@ class ExcaliburRX(object):
                                self.chip_size * self.num_chips])
         bad_pixels[:, column] = 1
 
-        template_path = posixpath.join(self.calib_settings['calibDir'],
+        template_path = posixpath.join(self.calib_dir,
                                        'fem{fem}'.format(fem=self.fem),
                                        self.settings['mode'],
                                        self.settings['gain'],
@@ -1657,7 +1535,7 @@ class ExcaliburRX(object):
         bad_pixels = image_data > max_counts
         self.dawn.plot_image(bad_pixels, name='Bad pixels')
         for chip_idx in chips:
-            template_path = posixpath.join(self.calib_settings['calibDir'],
+            template_path = posixpath.join(self.calib_dir,
                                            'fem{fem}'.format(fem=self.fem),
                                            self.settings['mode'],
                                            self.settings['gain'],
@@ -1713,7 +1591,7 @@ class ExcaliburRX(object):
                   ' noisy pixels in chip_idx ' + str(chip_idx) +
                   ' (' + str(100 * bad_pix_tot[chip_idx]/(256**2)) + '%)')
 
-            pixel_mask_file = posixpath.join(self.calib_settings['calibDir'],
+            pixel_mask_file = posixpath.join(self.calib_dir,
                                              'fem{fem}'.format(fem=self.fem),
                                              self.settings['mode'],
                                              self.settings['gain'],
@@ -1748,7 +1626,7 @@ class ExcaliburRX(object):
                                self.chip_size * self.num_chips])
 
         for chip_idx in chips:
-            template_path = posixpath.join(self.calib_settings['calibDir'],
+            template_path = posixpath.join(self.calib_dir,
                                            'fem{fem}'.format(fem=self.fem),
                                            self.settings['mode'],
                                            self.settings['gain'],
@@ -1779,7 +1657,7 @@ class ExcaliburRX(object):
         discL_bits = 31*np.zeros([self.chip_size,
                                   self.chip_size * self.num_chips])
         for chip_idx in chips:
-            template_path = posixpath.join(self.calib_settings['calibDir'],
+            template_path = posixpath.join(self.calib_dir,
                                            'fem{fem}'.format(fem=self.fem),
                                            self.settings['mode'],
                                            self.settings['gain'],
@@ -1798,7 +1676,7 @@ class ExcaliburRX(object):
 
     def check_calib_dir(self):
         """Checks if calibration directory exists and backs it up."""
-        calib_dir = posixpath.join(self.calib_settings['calibDir'],
+        calib_dir = posixpath.join(self.calib_dir,
                                    'fem{fem}',
                                    self.settings['mode'],
                                    self.settings['gain']).format(
@@ -1807,21 +1685,18 @@ class ExcaliburRX(object):
         if (os.path.isdir(calib_dir)) == 0:
             os.makedirs(calib_dir)
         else:
-            backup_dir = self.calib_settings['calibDir'] + '_backup_' + \
+            backup_dir = self.calib_dir + '_backup_' + \
                          time.asctime()
-            shutil.copytree(self.calib_settings['calibDir'], backup_dir)
+            shutil.copytree(self.calib_dir, backup_dir)
 
             print(backup_dir)
 
-        dac_file = posixpath.join(
-            calib_dir, self.calib_settings['dacfilename'])
+        dac_file = posixpath.join(calib_dir, 'dacs')
         if os.path.isfile(dac_file) == 0:
-            shutil.copy(posixpath.join(self.calib_settings['configDir'],
-                                       self.calib_settings['dacfilename']),
-                        calib_dir)
+            shutil.copy(posixpath.join(self.config_dir, 'dacs'), calib_dir)
 
         # if os.path.isfile(dac_file) == 0:
-        #     shutil.copy(self.calibSettings['configDir'] + 'zeros.mask',
+        #     shutil.copy(self.config_dir + 'zeros.mask',
         #                 calib_dir)
 
     def copy_slgm_into_other_gain_modes(self):
@@ -1832,7 +1707,7 @@ class ExcaliburRX(object):
         slgm and threshold equalization data is independent of the gain mode.
 
         """
-        template_path = posixpath.join(self.calib_settings['calibDir'],
+        template_path = posixpath.join(self.calib_dir,
                                        'fem{fem}'.format(fem=self.fem),
                                        self.settings['mode'],
                                        '{gain_mode}')
@@ -1866,7 +1741,7 @@ class ExcaliburRX(object):
         """
         discbits = np.zeros([self.chip_size, self.chip_size * self.num_chips])
         for chip_idx in chips:
-            discbits_file = posixpath.join(self.calib_settings['calibDir'],
+            discbits_file = posixpath.join(self.calib_dir,
                                            'fem{fem}',
                                            self.settings['mode'],
                                            self.settings['gain'],
@@ -2173,7 +2048,7 @@ class ExcaliburRX(object):
             print("Chip" + str(chip) + ' : ' + str(round(x0[chip])) +
                   ' DAC units')
 
-        if abs(x0-self.dac_target).any() > self.acc_dist:  # To be checked
+        if abs(x0 - self.dac_target).any() > self.allowed_delta:  # To be checked
             print("########################### ONE OR MORE CHIPS NEED A"
                   "DIFFERENT EQUALIZATION TARGET")
         else:
@@ -2356,9 +2231,9 @@ class ExcaliburRX(object):
         # chip
         for chip in chips:
             equ_pix_tot[chip] = ((edge_dacs[roi, chip*256:chip*256 + 256] >
-                                  self.dac_target - self.acc_dist) &
+                                  self.dac_target - self.allowed_delta) &
                                  (edge_dacs[roi, chip*256:chip*256 + 256] <
-                                  self.dac_target + self.acc_dist)).sum()
+                                  self.dac_target + self.allowed_delta)).sum()
             print('####### ' + str(round(equ_pix_tot[chip], 0)) +
                   ' equalized pixels in chip ' + str(chip) +
                   ' (' + str(round(100*equ_pix_tot[chip]/(256**2), 4)) + '%)')
@@ -2460,7 +2335,7 @@ class ExcaliburRX(object):
             gain: Gain mode to set ('slgm', 'lgm', 'hgm', 'shgm')
 
         """
-        # TODO: WHy does it have to call expose to set these??
+        # TODO: Why does it have to call expose to set these??
         self.settings['mode'] = 'csm'
         self.settings['gain'] = gain
         self.settings['counter'] = '1'  # '1'
@@ -2641,8 +2516,8 @@ class ExcaliburRX(object):
 
         """
         chips = range(self.num_chips)
-        EPICS_calib_path = self.calib_settings['calibDir'] + '_epics'
-        shutil.copytree(self.calib_settings['calibDir'], EPICS_calib_path)
+        EPICS_calib_path = self.calib_dir + '_epics'
+        shutil.copytree(self.calib_dir, EPICS_calib_path)
 
         print(EPICS_calib_path)
 
