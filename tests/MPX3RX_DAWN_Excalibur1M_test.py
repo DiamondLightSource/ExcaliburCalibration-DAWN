@@ -34,7 +34,7 @@ class InitTest(unittest.TestCase):
                                            'frames': '1',
                                            'imagepath': '/tmp/',
                                            'filename': 'image',
-                                           'threshold': 'Not set',
+                                           'Threshold': 'Not set',
                                            'filenameIndex': ''})
         self.assertEqual(self.e.dac_number, {'Threshold0': '1',
                                              'Threshold1': '2',
@@ -513,16 +513,16 @@ class SubprocessCallsTest(unittest.TestCase):  # TODO: Rename
         dac_file = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/dacs'
         expected_lines = ['Heading', 'Threshold0 = 40\r\n', 'Line2']
         readlines_mock = ['Heading', 'Line1', 'Line2']
-        self.file_mock.readlines.return_value = readlines_mock
+        self.file_mock.__enter__.return_value.readlines.return_value = readlines_mock[:]  # Don't pass by reference
         chips = [0]
 
         self.e.set_dac(chips)
 
         load_mock.assert_called_once_with(chips, dac_file)
         # Check file writing calls
-        open_mock.assert_called_with(dac_file, 'r+b')
-        self.assertEqual(len(chips), open_mock.call_count)
-        self.file_mock.writelines.assert_called_once_with(expected_lines)
+        open_mock.assert_called_with(dac_file, 'w')
+        self.assertEqual(2 * len(chips), open_mock.call_count)
+        self.file_mock.__enter__.return_value.writelines.assert_called_once_with(expected_lines)
 
     @patch(ETAI_patch_path + '.sense')
     def test_read_dac(self, sense_mock):
@@ -666,24 +666,26 @@ class UpdateFilenameIndexTest(unittest.TestCase):
 
     @patch('__builtin__.open', return_value=file_mock)
     @patch('os.path.isfile', return_value=True)
-    def test_increment(self, _, _2):
+    def test_increment(self, _, open_mock):
         self.file_mock.read.return_value = 1
 
         self.e.update_filename_index()
 
-        self.file_mock.read.assert_called_once_with()
-        self.file_mock.write.assert_called_once_with('2')
+        open_mock.assert_called_with('/tmp/image.idx', 'w')
+        self.file_mock.__enter__.return_value.read.assert_called_once_with()
+        self.file_mock.__enter__.return_value.write.assert_called_once_with('2')
 
     @patch('os.chmod', return_value=file_mock)
     @patch('__builtin__.open', return_value=file_mock)
     @patch('os.path.isfile', return_value=False)
-    def test_create(self, _, _2, chmod_mock):
+    def test_create(self, _, open_mock, chmod_mock):
         self.file_mock.read.return_value = 1
 
         self.e.update_filename_index()
 
+        open_mock.assert_called_with('/tmp/image.idx', 'w')
         self.assertFalse(self.file_mock.read.call_count)
-        self.file_mock.write.assert_called_once_with('0')
+        self.file_mock.__enter__.return_value.write.assert_called_once_with('0')
         self.assertEqual('0', self.e.settings['filenameIndex'])
         chmod_mock.assert_called_once_with('/tmp/image.idx', 0777)
 

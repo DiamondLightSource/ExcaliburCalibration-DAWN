@@ -979,24 +979,24 @@ class ExcaliburRX(object):
             dac_value: Value to set DAC to
 
         """
+        new_line = dac_name + " = " + str(dac_value) + "\r\n"
+        dac_file_path = posixpath.join(self.calib_dir,
+                                       'fem{fem}',
+                                       self.settings['mode'],
+                                       self.settings['gain'],
+                                       'dacs'
+                                       ).format(fem=self.fem)
+
         for chip in chips:
-            dac_file = posixpath.join(self.calib_dir,
-                                      'fem{fem}',
-                                      self.settings['mode'],
-                                      self.settings['gain'],
-                                      'dacs'
-                                      ).format(fem=self.fem)
+            with open(dac_file_path, 'r') as dac_file:
+                f_content = dac_file.readlines()
 
-            f = open(dac_file, 'r+b')
-            f_content = f.readlines()
             line_nb = chip*29 + np.int(self.dac_number[dac_name])
-            new_line = dac_name + " = " + str(dac_value) + "\r\n"
             f_content[line_nb] = new_line
-            f.seek(0)
-            f.writelines(f_content)
-            f.close()
+            with open(dac_file_path, 'w') as dac_file:
+                dac_file.writelines(f_content)
 
-            self.app.load_dacs([chip], dac_file)
+            self.app.load_dacs([chip], dac_file_path)  # TODO: Do this once?
 
     def read_dac(self, chips, dac_name):
         """Read back DAC analogue voltage using chip sense DAC (DAC out).
@@ -1114,24 +1114,21 @@ class ExcaliburRX(object):
         idx_filename = self.settings['imagepath'] + \
             self.settings['filename'] + '.idx'
 
+        new_file = False
         if os.path.isfile(idx_filename):
-            print(os.path.isfile(idx_filename))
-            idx_file = open(idx_filename, 'r')
-            new_idx = int(idx_file.read()) + 1
-            idx_file.close()
-            idx_file = open(idx_filename, 'w')
-            idx_file.write(str(new_idx))
-            idx_file.close()
-            self.settings['filenameIndex'] = str(new_idx)
+            with open(idx_filename, 'r') as idx_file:
+                new_idx = int(idx_file.read()) + 1
         else:
-            idx_file = open(idx_filename, 'a')
             new_idx = 0
-            idx_file.write(str(new_idx))
-            idx_file.close()
-            self.settings['filenameIndex'] = str(new_idx)
-            os.chmod(idx_filename, 0777)
+            new_file = True
 
-        print(idx_filename)
+        with open(idx_filename, 'w') as idx_file:
+            idx_file.write(str(new_idx))
+
+        self.settings['filenameIndex'] = str(new_idx)
+
+        if new_file:
+            os.chmod(idx_filename, 0777)
 
     def burst(self, frames, acquire_time):
         """Acquire images in burst mode.
