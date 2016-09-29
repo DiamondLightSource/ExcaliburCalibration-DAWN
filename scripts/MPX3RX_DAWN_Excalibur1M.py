@@ -321,6 +321,11 @@ class ExcaliburRX(object):
             node: PC node number of 1/2 module (Between 1 and 6 for 3M)
 
         """
+        self.fem = node
+        self.ipaddress = "192.168.0.10" + str(7 - self.fem)
+        if self.fem == 0:
+            self.ipaddress = "192.168.0.106"
+
         # Detector default Settings
         self.settings = {'mode': 'spm',  # 'spm' or 'csm'
                          'gain': 'shgm',  # 'slgm', 'lgm', 'hgm' or 'shgm'
@@ -339,10 +344,11 @@ class ExcaliburRX(object):
                          'filenameIndex': ''}  # Image file index (used to
         # avoid overwriting files)
 
-        self.fem = node
-        self.ipaddress = "192.168.0.10" + str(7 - self.fem)
-        if self.fem == 0:
-            self.ipaddress = "192.168.0.106"
+        # Commonly used file paths
+        self.template_path = posixpath.join(self.calib_dir,
+                                            'fem{fem}'.format(fem=self.fem),
+                                            self.settings['mode'],
+                                            self.settings['gain'])
 
         self.app = ExcaliburTestAppInterface(self.ipaddress, port='6969')
         self.dawn = ExcaliburDAWN()
@@ -1060,12 +1066,8 @@ class ExcaliburRX(object):
 
         """
         # TODO: Refactor to load one file at a time?
-        template_path = posixpath.join(self.calib_dir,
-                                       'fem{fem}'.format(fem=self.fem),
-                                       self.settings['mode'],
-                                       self.settings['gain'],
+        template_path = posixpath.join(self.template_path,
                                        '{disc}.tmp')
-
         discH_bits_file = template_path.format(disc='discHbits')
         discL_bits_file = template_path.format(disc='discLbits')
         mask_bits_file = template_path.format(disc='maskbits')
@@ -1087,11 +1089,7 @@ class ExcaliburRX(object):
             chips: Chips to load config for
 
         """
-        template_path = posixpath.join(self.calib_dir,
-                                       'fem{fem}'.format(fem=self.fem),
-                                       self.settings['mode'],
-                                       self.settings['gain'],
-                                       '{disc}.chip{chip}')
+        template_path = posixpath.join(self.template_path, '{disc}.chip{chip}')
 
         for chip in chips:
             discHbits_file = template_path.format(disc='discHbits', chip=chip)
@@ -1365,10 +1363,7 @@ class ExcaliburRX(object):
             np.savetxt(test_bits_file, logo_tp[0:256, chip*256:(chip + 1)*256],
                        fmt='%.18g', delimiter=' ')
 
-            template_path = posixpath.join(self.calib_dir,
-                                           'fem{fem}'.format(fem=self.fem),
-                                           self.settings['mode'],
-                                           self.settings['gain'],
+            template_path = posixpath.join(self.template_path,
                                            '{disc}.chip{chip}')
 
             discHbits_file = template_path.format(disc='discHbits', chip=chip)
@@ -1474,11 +1469,7 @@ class ExcaliburRX(object):
         bad_pixels[:, chip*256 + super_column * 32:chip * 256 +
                    super_column * 32 + 64] = 1  # TODO: Should it be 64 wide?
 
-        template_path = posixpath.join(self.calib_dir,
-                                       'fem{fem}'.format(fem=self.fem),
-                                       self.settings['mode'],
-                                       self.settings['gain'],
-                                       '{disc}.chip{chip}')
+        template_path = posixpath.join(self.template_path, '{disc}.chip{chip}')
 
         discLbits_file = template_path.format(disc='discLbits', chip=chip)
         pixel_mask_file = template_path.format(disc='pixelmask', chip=chip)
@@ -1501,11 +1492,7 @@ class ExcaliburRX(object):
                                self.chip_size * self.num_chips])
         bad_pixels[:, column] = 1
 
-        template_path = posixpath.join(self.calib_dir,
-                                       'fem{fem}'.format(fem=self.fem),
-                                       self.settings['mode'],
-                                       self.settings['gain'],
-                                       '{disc}.chip{chip}')
+        template_path = posixpath.join(self.template_path, '{disc}.chip{chip}')
 
         discLbits_file = template_path.format(disc='discLbits', chip=chip)
         pixel_mask_file = template_path.format(disc='pixelmask', chip=chip)
@@ -1532,10 +1519,7 @@ class ExcaliburRX(object):
         bad_pixels = image_data > max_counts
         self.dawn.plot_image(bad_pixels, name='Bad pixels')
         for chip_idx in chips:
-            template_path = posixpath.join(self.calib_dir,
-                                           'fem{fem}'.format(fem=self.fem),
-                                           self.settings['mode'],
-                                           self.settings['gain'],
+            template_path = posixpath.join(self.template_path,
                                            '{disc}.chip{chip}')
 
             discLbits_file = template_path.format(disc='discLbits',
@@ -1623,10 +1607,7 @@ class ExcaliburRX(object):
                                self.chip_size * self.num_chips])
 
         for chip_idx in chips:
-            template_path = posixpath.join(self.calib_dir,
-                                           'fem{fem}'.format(fem=self.fem),
-                                           self.settings['mode'],
-                                           self.settings['gain'],
+            template_path = posixpath.join(self.template_path,
                                            '{disc}.chip{chip}')
 
             discLbits_file = template_path.format(disc='discLbits',
@@ -1654,10 +1635,7 @@ class ExcaliburRX(object):
         discL_bits = 31*np.zeros([self.chip_size,
                                   self.chip_size * self.num_chips])
         for chip_idx in chips:
-            template_path = posixpath.join(self.calib_dir,
-                                           'fem{fem}'.format(fem=self.fem),
-                                           self.settings['mode'],
-                                           self.settings['gain'],
+            template_path = posixpath.join(self.template_path,
                                            '{disc}.chip{chip}')
 
             discLbits_file = template_path.format(disc='discL_bits',
@@ -2356,7 +2334,7 @@ class ExcaliburRX(object):
         GND_DAC[x,:] will contain the GND DAC value of the 8 chips connected to
         fem/node x+1 where x=0 corresponds to the top half of the top module
 
-        [NUMBERING STARTS AT 0 IN PYTHON SCRIPTS WHERAS NODES NUMBERING STARTS
+        [NUMBERING STARTS AT 0 IN PYTHON SCRIPTS WHEREAS NODES NUMBERING STARTS
         AT 1 IN EPICS]
 
         GND DAC needs to be adjusted manually to read back 0.65V
