@@ -381,8 +381,6 @@ class ExcaliburTestAppInterface(object):
         """
         extra_parameters = [self.CONFIG]
 
-        # TODO: Move this logic back to main script?
-
         if os.path.isfile(discl):
             extra_parameters.extend([self.DISC_L, discl])
 
