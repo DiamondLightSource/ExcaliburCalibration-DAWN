@@ -258,9 +258,7 @@ import os
 import posixpath
 import shutil
 import time
-
 import logging
-logging.basicConfig(level=logging.DEBUG)
 
 from collections import namedtuple
 
@@ -268,6 +266,8 @@ import numpy as np
 
 from scripts.ExcaliburTestAppInterface import ExcaliburTestAppInterface
 from scripts.ExcaliburDAWN import ExcaliburDAWN
+
+logging.basicConfig(level=logging.DEBUG)
 
 
 Range = namedtuple("Range", "start stop step")

@@ -59,8 +59,8 @@ Command Line Options:
 import os
 import time
 import subprocess
-
 import logging
+
 logging.basicConfig(level=logging.DEBUG)
 
 
@@ -128,7 +128,7 @@ class ExcaliburTestAppInterface(object):
                          self.PORT, self.port]
 
     def _construct_command(self, chips, *cmd_args):
-        """Construct a command from the base_cmd, given mask and any cmd_args.
+        """Construct a command from the base_cmd, given chips and any cmd_args.
 
         Args:
             chips(list(int): Chips to enable for command process
@@ -138,10 +138,7 @@ class ExcaliburTestAppInterface(object):
             list(str)): Full command to send to subprocess call
 
         """
-        chip_mask = self._mask(chips)
-
-        return self.base_cmd + [self.MASK, chip_mask] + list(cmd_args)
-        # TODO: Add base_cmd on in _send_command?
+        return self.base_cmd + [self.MASK, self._mask(chips)] + list(cmd_args)
 
     def _mask(self, chips):
         """Create a hexadecimal mask to activate the given chips.
@@ -288,8 +285,8 @@ class ExcaliburTestAppInterface(object):
             hdf_file: File to save to
 
         """
-        scan_command = "{name},{start},{stop},{step}".format(
-            name=self.dac_code[dac],
+        scan_command = "{dac},{start},{stop},{step}".format(
+            dac=self.dac_code[dac],
             start=scan_range.start, stop=scan_range.stop, step=scan_range.step)
 
         command = self._construct_command(chips,
