@@ -259,6 +259,9 @@ import posixpath
 import shutil
 import time
 
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
 from collections import namedtuple
 
 import numpy as np
@@ -286,7 +289,7 @@ class ExcaliburRX(object):
     allowed_delta = 4
 
     # Sigma value based on experimental data
-    nb_of_sigma = 3.2
+    num_sigma = 3.2
 
     # Number of pixels per chip along each axis
     chip_size = 256
@@ -460,15 +463,16 @@ class ExcaliburRX(object):
             Dac1 = Dac0 + 0.25*(default_6kev_dac - Dac0) * \
                           np.ones([6, 8]).astype('float')
 
-        print(str(E0))
-        print(str(Dac0))
-        print(str(E1))
-        print(str(Dac1))
+        logging.debug("E0: {E}".format(E=E0))
+        logging.debug("DAC 0 Array: {array}".format(array=Dac0))
+        logging.debug("E1: {E}".format(E=E1))
+        logging.debug("DAC 1 Array: {array}".format(array=Dac1))
 
         slope = (Dac1[self.fem - 1, :] - Dac0[self.fem - 1, :])/(E1 - E0)
         offset = Dac0[self.fem - 1, :]
         self.save_kev2dac_calib(threshold, slope, offset)
-        print(str(slope) + str(offset))
+        logging.debug("Slope: {slope}, Offset: {offset}".format(slope=slope,
+                                                                offset=offset))
 
     def save_kev2dac_calib(self, threshold, gain, offset):
         """Save KeV conversion data to file.
@@ -498,7 +502,7 @@ class ExcaliburRX(object):
                                          'threshold{threshold}'
                                          ).format(fem=self.fem,
                                                   threshold=threshold)
-        print(thresh_filename)
+        logging.debug(thresh_filename)
 
         if os.path.isfile(thresh_filename):
             np.savetxt(thresh_filename, thresh_coeff, fmt='%.2f')
@@ -665,8 +669,8 @@ class ExcaliburRX(object):
         slope = (OneE_Dac[self.fem - 1, :] - self.dac_target) / OneE_E
         offset = [self.dac_target]*8
         self.save_kev2dac_calib(threshold, slope, offset)
-
-        print(str(slope) + str(offset))
+        logging.debug("Slope: {slope}, Offset: {offset}".format(slope=slope,
+                                                                offset=offset))
 
         self.settings['filename'] = 'image'
 
@@ -826,8 +830,9 @@ class ExcaliburRX(object):
 
         self.save_kev2dac_calib(threshold, gain, offset)
 
-        print(str(gain) + str(offset))
-        print(self.settings['gain'])
+        logging.debug("Gain: {gain}, Offset: {offset}".format(gain=gain,
+                                                              offset=offset))
+        logging.debug(self.settings['gain'])
 
     def set_threshold0(self, thresh_energy='5'):
         """Set threshold0 energy in keV.
@@ -864,7 +869,7 @@ class ExcaliburRX(object):
                                         threshold=threshold)
 
         thresh_coeff = np.genfromtxt(fname)
-        print(thresh_coeff[0, :].astype(np.int))
+        logging.debug(thresh_coeff[0, :].astype(np.int))
 
         thresh_DACs = (thresh_energy * thresh_coeff[0, :] +
                        thresh_coeff[1, :]).astype(np.int)
@@ -878,9 +883,10 @@ class ExcaliburRX(object):
         time.sleep(0.2)
         self.expose()
 
-        print("A Threshold" + str(threshold) + " of " + str(thresh_energy) +
-              "keV corresponds to " + str(thresh_DACs) +
-              " DAC units for each chip")
+        print("A threshold {threshold} of {energy}keV corresponds to {DACs} "
+              "DAC units for each chip".format(threshold=threshold,
+                                               energy=thresh_energy,
+                                               DACs=thresh_DACs))
 
     def set_dacs(self, chips):
         """Set dacs to values recommended by MEDIPIX3-RX designers.
@@ -917,7 +923,6 @@ class ExcaliburRX(object):
     def read_chip_ids(self):
         """Read chip IDs."""
         self.app.read_chip_ids()
-        print(str(self.chip_range))
 
     def log_chip_id(self):
         """Reads chip IDs and logs chipIDs in calibration directory."""
@@ -928,8 +933,6 @@ class ExcaliburRX(object):
 
         with open(log_filename, "w") as outfile:
             self.app.read_chip_ids(stdout=outfile)
-
-        print(str(self.chip_range))
 
     def monitor(self):
         """Monitor temperature, humidity, FEM voltage status and DAC out."""
@@ -966,8 +969,6 @@ class ExcaliburRX(object):
             fem=self.fem, acqtime=self.settings['acqtime'])
         self.settings['imagepath'] = posixpath.join(self.root_path,
                                                     'Fe55_images')
-
-        print(self.settings['acqtime'])
 
         self.settings['acqtime'] = str(acquire_time)
         time.sleep(0.5)
@@ -1162,8 +1163,6 @@ class ExcaliburRX(object):
         # TODO: This is the same as shoot if the user doesn't edit the settings
         # TODO: manually from the console
 
-        print(self.settings)
-
         self.update_filename_index()
         self.settings['frames'] = '1'
         self.settings['fullFilename'] = '{name}_{index}.hdf5'.format(
@@ -1174,8 +1173,6 @@ class ExcaliburRX(object):
                          str(self.settings['frames']),
                          str(self.settings['acqtime']),
                          hdffile=self.settings['fullFilename'])
-
-        print(self.settings['filename'])
 
         time.sleep(0.5)
 
@@ -1203,8 +1200,6 @@ class ExcaliburRX(object):
                          str(self.settings['frames']),
                          str(acquire_time),
                          hdffile=self.settings['fullFilename'])
-
-        print(self.settings['filename'])
 
         time.sleep(0.2)
 
@@ -1234,8 +1229,6 @@ class ExcaliburRX(object):
                          str(acquire_time),
                          readmode='1',
                          hdffile=self.settings['fullFilename'])
-
-        print(self.settings['filename'])
 
         time.sleep(0.2)
 
@@ -1426,8 +1419,6 @@ class ExcaliburRX(object):
                          tpcount=str(pulses),
                          hdffile=self.settings['fullFilename'])
 
-        print(self.settings['fullFilename'])
-
         image = self.dawn.load_image_data(self.settings['imagepath'] +
                                           self.settings['fullFilename'])
         self.dawn.plot_image(image, name="Image_{}".format(time.asctime()))
@@ -1530,9 +1521,10 @@ class ExcaliburRX(object):
             bad_pix_tot[chip_idx] = \
                 bad_pixels[0:256, chip_idx*256:(chip_idx + 1)*256].sum()
 
-            print('####### ' + str(bad_pix_tot[chip_idx]) +
-                  ' noisy pixels in chip ' + str(chip_idx) +
-                  ' (' + str(100*bad_pix_tot[chip_idx]/(256**2)) + '%)')
+            print('####### {pix} noisy pixels in chip {chip} ({tot})'.format(
+                pix=str(bad_pix_tot[chip_idx]),
+                chip=str(chip_idx),
+                tot=str(100 * bad_pix_tot[chip_idx] / (256**2))))
 
             np.savetxt(pixel_mask_file,
                        bad_pixels[0:256, chip_idx*256:chip_idx*256 + 256],
@@ -1540,9 +1532,9 @@ class ExcaliburRX(object):
             self.app.load_config([chip_idx], discLbits_file,
                                  pixelmask=pixel_mask_file)
 
-        print('####### ' + str(bad_pix_tot.sum()) +
-              ' noisy pixels in half module ' +
-              ' (' + str(100 * bad_pix_tot.sum()/(8 * 256**2)) + '%)')
+        print('####### {pix} noisy pixels in half module ({tot}%)'.format(
+            pix=str(bad_pix_tot.sum()),
+            tot=str(100 * bad_pix_tot.sum() / (8 * 256**2))))
 
     def mask_pixels_using_dac_scan(self, chips=range(8),
                                    threshold="Threshold0",
@@ -1568,9 +1560,10 @@ class ExcaliburRX(object):
             bad_pix_tot[chip_idx] = \
                 bad_pixels[0:256, chip_idx*256:chip_idx*256 + 256].sum()
 
-            print('####### ' + str(bad_pix_tot[chip_idx]) +
-                  ' noisy pixels in chip_idx ' + str(chip_idx) +
-                  ' (' + str(100 * bad_pix_tot[chip_idx]/(256**2)) + '%)')
+            print('####### {pix} noisy pixels in chip {chip} ({tot})'.format(
+                pix=str(bad_pix_tot[chip_idx]),
+                chip=str(chip_idx),
+                tot=str(100 * bad_pix_tot[chip_idx] / (256**2))))
 
             pixel_mask_file = posixpath.join(self.calib_dir,
                                              'fem{fem}'.format(fem=self.fem),
@@ -1591,9 +1584,9 @@ class ExcaliburRX(object):
             #                  "--config",
             #                  "--discl=" + discLbitsFile])
 
-        print('####### ' + str(bad_pix_tot.sum()) +
-              ' noisy pixels in half module ' +
-              ' (' + str(100 * bad_pix_tot.sum() / (8 * 256**2)) + '%)')
+        print('####### {pix} noisy pixels in half module ({tot}%)'.format(
+            pix=str(bad_pix_tot.sum()),
+            tot=str(100 * bad_pix_tot.sum()/(8 * 256**2))))
 
     def unmask_all_pixels(self, chips):
         """Unmask all pixels and update maskfile in calibration directory.
@@ -1664,7 +1657,7 @@ class ExcaliburRX(object):
                          time.asctime()
             shutil.copytree(self.calib_dir, backup_dir)
 
-            print(backup_dir)
+            logging.debug(backup_dir)
 
         dac_file = posixpath.join(calib_dir, 'dacs')
         if os.path.isfile(dac_file) == 0:
@@ -1930,10 +1923,10 @@ class ExcaliburRX(object):
 
         print("Edge shift (in Threshold DAC units) produced by 1 DACdisc DAC"
               "unit for discbits=15:")
-
         for chip in chips:
-            print("Chip" + str(chip) + ' : ' + str(round(gain[chip], 2)) +
-                  ' Threshold DAC units')
+            print("Chip {chip}: {shift}".format(
+                chip=chip,
+                shift=str(round(gain[chip], 2))))
 
         # Fit range should be adjusted to remove outliers at 0 and max DAC 150
 
@@ -2001,15 +1994,16 @@ class ExcaliburRX(object):
                              gauss_function(x, a[chip], x0[chip], sigma[chip]),
                              name=fit_plot_name)
 
-        print("Mean noise edge for discbits =15 :")
+        print("Mean noise edge (DAC Units) for discbits=15:")
         for chip in chips:
-            print("Chip" + str(chip) + ' : ' + str(round(x0[chip])) +
-                  ' DAC units')
+            print("Chip {chip}: {noise}".format(
+                chip=chip, noise=round(x0[chip])))
 
-        print("sigma of Noise edge distribution for discbits =15 :")
+        print("Sigma of noise edge (DAC units rms) distribution for "
+              "discbits=15:")
         for chip in chips:
-            print("Chip" + str(chip) + ' : ' + str(round(sigma[chip])) +
-                  ' DAC units rms')
+            print("Chip {chip}: {sigma}".format(
+                chip=chip, sigma=round(sigma[chip])))
 
         ######################################################################
         # STEP 3
@@ -2018,57 +2012,54 @@ class ExcaliburRX(object):
         # X is defined by self.nbOfsigma
         ######################################################################
 
-        print("Optimum equalization target :")
+        print("Optimum equalization target (DAC units):")
         for chip in chips:
-            print("Chip" + str(chip) + ' : ' + str(round(x0[chip])) +
-                  ' DAC units')
+            print("Chip {chip}: {target}".format(
+                chip=chip, target=round(x0[chip])))
 
         if abs(x0 - self.dac_target).any() > self.allowed_delta:  # To be checked
             print("########################### ONE OR MORE CHIPS NEED A"
                   "DIFFERENT EQUALIZATION TARGET")
         else:
-            print("Default equalization target of " + str(self.dac_target) +
-                  " DAC units can be used.")
+            print("Default equalization target of {target} DAC units "
+                  "can be used.".format(target=self.dac_target))
 
-        print("DAC shift required to bring all pixels with an edge"
-              "within +/- " + "sigma of the target, at the target of " +
-              str(self.dac_target) + " DAC units : ")
+        # TODO: Should say '+/- <something> sigma' ?
+        print("DAC shift (DAC units) required to bring all pixels with an edge"
+              "within +/- sigma of the target, at the target of {target}:".format(target=self.dac_target))
         for chip in chips:
-            print("Chip" + str(chip) + ' : ' +
-                  str(int(self.nb_of_sigma * sigma[chip])) +
-                  ' Threshold DAC units')
+            print("Chip {chip}: {shift}".format(
+                chip=chip, shift=int(self.num_sigma * sigma[chip])))
 
-        print("Edge shift (in Threshold DAC units) produced by 1 DACdisc DAC"
-              "unit for discbits=0 (maximum shift) :")
+        print("Edge shift (Threshold DAC units) produced by 1 DACdisc DAC"
+              " unit for discbits=0 (maximum shift):")
         for chip in chips:
-            print("Chip" + str(chip) + ' : ' + str(round(gain[chip], 2)) +
-                  ' Threshold DAC units')
+            print("Chip {chip}: {shift}".format(
+                chip=chip, shift=round(gain[chip], 2)))
 
         for chip in chips:
-            opt_dac_disc[chip] = int(self.nb_of_sigma * sigma[chip] /
-                                     gain[chip])
+            opt_dac_disc[chip] = int(self.num_sigma * sigma[chip] / gain[chip])
 
         print("###############################################################"
               "########################")
-        print("Optimum DACdisc value required to bring all pixels with an edge"
-              "within +/- " + str(self.nb_of_sigma) + " sigma of the target, "
-              "at the target of " + str(self.dac_target) + " DAC units : ")
-
+        print("Optimum DACdisc value (DAC units) required to bring all pixels "
+              "with an edge within +/- {num_sigma} sigma of the target, at "
+              "the target of {target}".format(num_sigma=self.num_sigma,
+                                              target=self.dac_target))
         for chip in chips:
-            print("Chip" + str(chip) + ' : ' + str(opt_dac_disc[chip]) +
-                  ' Threshold DAC units')
+            print("Chip {chip}: {opt_value}".format(
+                chip=chip, opt_value=opt_dac_disc[chip]))
 
         print("###############################################################"
               "########################")
+        print("Edge shift (Threshold DAC Units) produced by 1 step of the"
+              "32 discbit correction steps:")
+        for chip in chips:
+            print("Chip {chip}: {shift}".format(
+                chip=chip, shift=opt_dac_disc[chip]/16))
 
-        print("Edge shift (in Threshold DAC Units) produced by 1 step of the"
-              "32 discbit correction steps :")
         for chip in chips:
-            print("Chip" + str(chip) + ' : ' + str(opt_dac_disc[chip]/16) +
-                  ' Threshold DAC units')
-        for chip in chips:
-            self.set_dac(range(chip, chip + 1), dac_disc_name,
-                         int(opt_dac_disc[chip]))
+            self.set_dac([chip], dac_disc_name, int(opt_dac_disc[chip]))
 
         return opt_dac_disc
 
@@ -2209,9 +2200,12 @@ class ExcaliburRX(object):
                                   self.dac_target - self.allowed_delta) &
                                  (edge_dacs[roi, chip*256:chip*256 + 256] <
                                   self.dac_target + self.allowed_delta)).sum()
-            print('####### ' + str(round(equ_pix_tot[chip], 0)) +
-                  ' equalized pixels in chip ' + str(chip) +
-                  ' (' + str(round(100*equ_pix_tot[chip]/(256**2), 4)) + '%)')
+            print('####### {pixels} equalized pixels in chip {chip} '
+                  '({percentage})'.format(
+                                   pixels=round(equ_pix_tot[chip], 0),
+                                   chip=chip,
+                                   percentage=round(100 * equ_pix_tot[chip] /
+                                                    (256**2), 4)))
 
         # pixelsInTarget = (dacTarget - 5 < edge_dacs) & \
         #                      (edge_dacs < dacTarget + 5)
@@ -2474,7 +2468,7 @@ class ExcaliburRX(object):
 
         """
 
-        print(config_file)
+        logging.debug(config_file)
 
         # shutil.copy(config_file, config_file + ".backup")
         config_bits = np.loadtxt(config_file)
@@ -2494,7 +2488,7 @@ class ExcaliburRX(object):
         EPICS_calib_path = self.calib_dir + '_epics'
         shutil.copytree(self.calib_dir, EPICS_calib_path)
 
-        print(EPICS_calib_path)
+        logging.debug(EPICS_calib_path)
 
         template_path = posixpath.join(EPICS_calib_path,
                                        'fem{fem}',
@@ -2504,11 +2498,6 @@ class ExcaliburRX(object):
                                        )
 
         for fem in [1, 3, 5]:
-
-            print("Config files of node" + str(fem) +
-                  " have to be rotated in EPICS calibration folder " +
-                  str(self.fem))
-
             for chip_idx in chips:
 
                 discLbits_file = template_path.format(fem=fem,
@@ -2522,10 +2511,10 @@ class ExcaliburRX(object):
                                                        chip=chip_idx)
                 if os.path.isfile(discLbits_file):
                     self.rotate_config(discLbits_file)
-                    print(discLbits_file + "rotated")
+                    print("{file} rotated".format(file=discLbits_file))
                 if os.path.isfile(discHbits_file):
                     self.rotate_config(discHbits_file)
-                    print(discHbits_file + "rotated")
+                    print("{file} rotated".format(file=discHbits_file))
                 if os.path.isfile(pixel_mask_file):
                     self.rotate_config(pixel_mask_file)
-                    print(pixel_mask_file + "rotated")
+                    print("{file} rotated".format(file=pixel_mask_file))

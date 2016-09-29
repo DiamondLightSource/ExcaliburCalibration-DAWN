@@ -1,6 +1,8 @@
 """Python class to provide DAWN plotting, io and analysis to ExcaliburRX"""
-
 import math as m
+
+import logging
+logging.basicConfig(level=logging.DEBUG)
 
 import numpy as np
 from scipy.optimize import curve_fit
