@@ -18,7 +18,7 @@ class InitTest(unittest.TestCase):
 
     def test_class_attributes_set(self):
         self.assertEqual(self.e.dac_target, 10)
-        self.assertEqual(self.e.nb_of_sigma, 3.2)
+        self.assertEqual(self.e.num_sigma, 3.2)
         self.assertEqual(self.e.allowed_delta, 4)
         self.assertEqual(self.e.calib_dir, "/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib")
         self.assertEqual(self.e.config_dir, "/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/config")
