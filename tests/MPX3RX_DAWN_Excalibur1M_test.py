@@ -250,6 +250,7 @@ class MaskRowBlockTest(unittest.TestCase):
     def test_correct_calls_made(self, plot_mock, save_mock, load_mock):
 
         e = ExcaliburRX(0)
+        e.full_array_shape = [4, 16]  # Make testing easier
         e.chip_size = 4  # Make testing easier
         e.num_chips = 4  # Make testing easier
         chips = [1, 2]
@@ -1117,6 +1118,7 @@ class OptimizeDacDiscTest(unittest.TestCase):
 
     rand = np.random.RandomState(1234)
 
+    @patch(ED_patch_path + '.clear_plot')
     @patch(ED_patch_path + '.plot_image')
     @patch('numpy.histogram')
     @patch('numpy.asarray')
@@ -1130,7 +1132,7 @@ class OptimizeDacDiscTest(unittest.TestCase):
     @patch(ERX_patch_path + '.load_config_bits')
     @patch(ERX_patch_path + '.find_max')
     def test_(self, find_mock, load_mock, open_mock, scan_mock, set_mock, gauss_mock,
-              fit_mock, asarray_mock, histo_mock, plot_mock):
+              fit_mock, asarray_mock, histo_mock, plot_mock, clear_mock):
         # TODO: Write proper tests once function is split up
         e = ExcaliburRX()
         chips = [0]
@@ -1144,6 +1146,7 @@ class EqualizeDiscbitsTest(unittest.TestCase):
     rand = np.random.RandomState(1234)
 
     @patch(ED_patch_path + '.plot_image')
+    @patch(ED_patch_path + '.clear_plot')
     @patch(ERX_patch_path + '.set_dac')
     @patch(ERX_patch_path + '.open_discbits_file')
     @patch(ERX_patch_path + '.load_config_bits')
@@ -1152,17 +1155,17 @@ class EqualizeDiscbitsTest(unittest.TestCase):
            return_value=rand.randint(2, size=(256, 8*256)))
     @patch(ERX_patch_path + '.scan_dac',
            return_value=[rand.randint(10, size=(3, 256, 8*256)), None])
-    @unittest.skip("Takes too long")
+    # @unittest.skip("Takes too long")
     def test_correct_calls_made(self, scan_mock, find_mock, load_mock,
                                 load_bits_mock, open_mock, set_mock,
-                                plot_mock):
+                                clear_mock, plot_mock):
         # TODO: Finish once run on real system, know what it does and
         # TODO: maybe split up / refactored.
         e = ExcaliburRX(0)
         chips = [0]
-        roi = np.ones([256, 8*256])
+        roi = np.zeros([256, 8*256])
 
-        e.equalise_discbits(chips, 'discL', roi)
+        # e.equalise_discbits(chips, 'discL', roi)
 
         # self.assertEqual(32 + 1, scan_mock.call_count)
         # find_mock.assert_called_once_with()

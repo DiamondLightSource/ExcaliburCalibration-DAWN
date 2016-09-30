@@ -102,10 +102,39 @@ class ExcaliburDAWN(object):
 
         """
         for chip_idx in chips:
-            histogram = np.histogram(
-                image_data[0:256, chip_idx*256:(chip_idx + 1)*256])
-            self.plot.addline(histogram[1][0:-1],  histogram[0],
-                              name=name)
+            chip_data = image_data[0:256, chip_idx*256:(chip_idx + 1)*256]
+            self._add_histogram(chip_data, name=name)
+
+    def plot_histogram_with_mask(self, chips, image_data, mask,
+                                 name="Histogram"):
+        """Plot a histogram for each of the given chips, after applying a mask.
+
+        Args:
+            chips: Chips to plot for
+            image_data: Data for full array
+            name: Name of plot
+
+        """
+        for chip_idx in chips:
+            chip_mask = mask[0:256, chip_idx*256:(chip_idx + 1)*256]
+            chip_data = image_data[0:256, chip_idx*256:(chip_idx + 1)*256]
+            masked_data = chip_data[chip_mask.astype(bool)]
+            self._add_histogram(masked_data, name=name)
+
+    def _add_histogram(self, data, name, bins=None):
+        """Add a histogram of data to the given plot name
+
+        Args:
+            data: Data to plot
+            name: Name of plot to add to
+            bins: Bins to plot over
+
+        """
+        if bins is not None:
+            histogram = np.histogram(data, bins=bins)
+        else:
+            histogram = np.histogram(data)
+        self.plot.addline(histogram[1][0:-1], histogram[0], name=name)
 
     def fit_dac_scan(self, chips, chip_dac_scan, dac_axis):
         """############## NOT TESTED"""
