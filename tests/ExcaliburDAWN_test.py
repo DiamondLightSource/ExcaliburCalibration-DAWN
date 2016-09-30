@@ -3,11 +3,11 @@ import unittest
 from pkg_resources import require
 require("mock")
 from mock import patch, MagicMock, ANY
-ED_patch_path = "scripts.ExcaliburDAWN.ExcaliburDAWN"
+ED_patch_path = "excaliburcalibrationdawn.excaliburdawn.ExcaliburDAWN"
 
 import numpy as np
 
-from scripts.ExcaliburDAWN import ExcaliburDAWN
+from excaliburcalibrationdawn.excaliburdawn import ExcaliburDAWN
 
 
 class FunctionsTest(unittest.TestCase):
@@ -105,7 +105,7 @@ class ShowPixelTest(unittest.TestCase):
 
 
 @patch(ED_patch_path + '.myerf')
-@patch('scripts.ExcaliburDAWN.curve_fit',
+@patch('excaliburcalibrationdawn.excaliburdawn.curve_fit',
        return_value=[[1, 2, 3], None])
 @patch('scisoftpy.plot')
 class FitDacScanTest(unittest.TestCase):
@@ -126,7 +126,7 @@ class FitDacScanTest(unittest.TestCase):
 
 
 @patch(ED_patch_path + '.lin_function')
-@patch('scripts.ExcaliburDAWN.curve_fit',
+@patch('excaliburcalibrationdawn.excaliburdawn.curve_fit',
        return_value=[[1, 2, 3], None])
 @patch('scisoftpy.plot.addline')
 @patch(ED_patch_path + '.clear_plot')

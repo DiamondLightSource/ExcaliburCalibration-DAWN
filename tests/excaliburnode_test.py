@@ -4,17 +4,17 @@ from pkg_resources import require
 require("mock")
 from mock import patch, MagicMock, ANY
 
-from scripts.MPX3RX_DAWN_Excalibur1M import ExcaliburRX, np, Range
-ERX_patch_path = "scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburRX"
-ETAI_patch_path = "scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburTestAppInterface"
-ED_patch_path = "scripts.MPX3RX_DAWN_Excalibur1M.ExcaliburDAWN"
+from excaliburcalibrationdawn.excaliburnode import ExcaliburNode, np, Range
+ERX_patch_path = "excaliburcalibrationdawn.excaliburnode.ExcaliburNode"
+ETAI_patch_path = "excaliburcalibrationdawn.excaliburnode.ExcaliburTestAppInterface"
+ED_patch_path = "excaliburcalibrationdawn.excaliburnode.ExcaliburDAWN"
 
 
 class InitTest(unittest.TestCase):
 
     def setUp(self):
         self.node = 2
-        self.e = ExcaliburRX(self.node)
+        self.e = ExcaliburNode(self.node)
 
     def test_class_attributes_set(self):
         self.assertEqual(self.e.dac_target, 10)
@@ -71,11 +71,11 @@ class InitTest(unittest.TestCase):
         self.assertEqual(self.e.ipaddress, "192.168.0.105")
 
     def test_given_node_0_then_ip_overidden(self):
-        e = ExcaliburRX(0)
+        e = ExcaliburNode(0)
         self.assertEqual(e.ipaddress, "192.168.0.106")
 
     def test_given_node_invalid_node(self):
-        e = ExcaliburRX(8)
+        e = ExcaliburNode(8)
         self.assertEqual(e.ipaddress, "192.168.0.10-1")
 
 
@@ -88,7 +88,7 @@ class ThresholdEqualizationTest(unittest.TestCase):
 
     def test_correct_calls_made(self, cal_disc_mock, set_gnd_mock,
                                 set_dacs_mock, log_mock, check_mock):
-        e = ExcaliburRX()
+        e = ExcaliburNode()
         chips = [1, 4, 6, 7]
 
         e.threshold_equalization(chips)
@@ -108,7 +108,7 @@ class ThresholdEqualizationTest(unittest.TestCase):
 class ThresholdCalibrationTest(unittest.TestCase):
 
     def setUp(self):
-        self.e = ExcaliburRX()
+        self.e = ExcaliburNode()
 
     def test_threshold_calibration_shgm(self, save_mock, check_mock):
         expected_slope = np.array([8.81355932203]*8)
@@ -193,7 +193,7 @@ class ThresholdCalibrationTest(unittest.TestCase):
 class SaveKev2DacCalibTest(unittest.TestCase):
 
     def setUp(self):
-        self.e = ExcaliburRX()
+        self.e = ExcaliburNode()
         self.threshold = '0'
         self.gain = [1.1, 0.7, 1.1, 1.3, 1.0, 0.9, 1.2, 0.9]
         self.offset = [0.2, -0.7, 0.1, 0.0, 0.3, -0.1, 0.2, 0.5]
@@ -225,7 +225,7 @@ class FindXrayEnergyDacTest(unittest.TestCase):
            return_value=[mock_scan_data.copy(), mock_scan_range])
     def test_correct_calls_made(self, scan_mock, plot_mock, fit_mock,
                                 load_mock):
-        e = ExcaliburRX()
+        e = ExcaliburNode()
         chips = range(8)
         expected_array = self.mock_scan_data
         expected_array[expected_array > 200] = 0
@@ -249,7 +249,7 @@ class MaskRowBlockTest(unittest.TestCase):
     @patch(ED_patch_path + '.plot_image')
     def test_correct_calls_made(self, plot_mock, save_mock, load_mock):
 
-        e = ExcaliburRX(0)
+        e = ExcaliburNode(0)
         e.full_array_shape = [4, 16]  # Make testing easier
         e.chip_size = 4  # Make testing easier
         e.num_chips = 4  # Make testing easier
@@ -284,7 +284,7 @@ class MaskRowBlockTest(unittest.TestCase):
 class SetThreshold0Test(unittest.TestCase):
 
     def test_correct_calls_made(self, set_thresh_energy_mock):
-        e = ExcaliburRX(0)
+        e = ExcaliburNode(0)
 
         e.set_threshold0('7')
 
@@ -292,7 +292,7 @@ class SetThreshold0Test(unittest.TestCase):
 
     def test_correct_calls_made_with_default_param(self,
                                                    set_thresh_energy_mock):
-        e = ExcaliburRX(0)
+        e = ExcaliburNode(0)
 
         e.set_threshold0()
 
@@ -304,7 +304,7 @@ class SetThreshold0Test(unittest.TestCase):
 class SetThreshold0DacTest(unittest.TestCase):
 
     def test_correct_calls_made(self, set_dac_mock, expose_mock):
-        e = ExcaliburRX(0)
+        e = ExcaliburNode(0)
         chips = [1, 2, 3]
 
         e.set_threshold0_dac(chips, 1)
@@ -314,7 +314,7 @@ class SetThreshold0DacTest(unittest.TestCase):
 
     def test_correct_calls_made_with_default_param(self, set_dac_mock,
                                                    expose_mock):
-        e = ExcaliburRX(0)
+        e = ExcaliburNode(0)
         chips = [0, 1, 2, 3, 4, 5, 6, 7]
 
         e.set_threshold0_dac()
@@ -331,7 +331,7 @@ class SetThreshEnergyTest(unittest.TestCase):
 
     def test_correct_calls_made(self, expose_mock, set_dac_mock, gen_mock,
                                 sleep_mock):
-        e = ExcaliburRX(0)
+        e = ExcaliburNode(0)
         expected_filepath = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/threshold0'
 
         e.set_thresh_energy('0', 7.0)
@@ -343,7 +343,7 @@ class SetThreshEnergyTest(unittest.TestCase):
     def test_correct_calls_made_with_default_param(self, expose_mock,
                                                    set_dac_mock, gen_mock,
                                                    sleep_mock):
-        e = ExcaliburRX(0)
+        e = ExcaliburNode(0)
         expected_filepath = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/threshold0'
 
         e.set_thresh_energy()
@@ -358,7 +358,7 @@ class SetDacsTest(unittest.TestCase):
 
     @patch(ERX_patch_path + '.set_dac')
     def test_correct_calls_made(self, set_dac_mock):
-        e = ExcaliburRX(0)
+        e = ExcaliburNode(0)
         chips = [0]
         expected_calls = [('Threshold1', 0), ('Threshold2', 0),
                           ('Threshold3', 0), ('Threshold4', 0),
@@ -381,7 +381,7 @@ class SubprocessCallsTest(unittest.TestCase):  # TODO: Rename
     file_mock = MagicMock()
 
     def setUp(self):
-        self.e = ExcaliburRX(0)
+        self.e = ExcaliburNode(0)
 
     @patch(ETAI_patch_path + '.read_chip_ids')
     def test_read_chip_id(self, read_mock):
@@ -550,7 +550,7 @@ class SubprocessCallsTest(unittest.TestCase):  # TODO: Rename
 class LoadConfigTest(unittest.TestCase):
 
     def setUp(self):
-        self.e = ExcaliburRX(0)
+        self.e = ExcaliburNode(0)
         self.chips = [0]
 
     def test_correct_calls_made(self, expose_mock, set_mock, load_mock):
@@ -579,7 +579,7 @@ class Fe55ImageRX001Test(unittest.TestCase):
 
     def test_correct_calls_made(self, expose_mock, set_threshhold_mock,
                                 load_mock, sleep_mock):
-        e = ExcaliburRX(0)
+        e = ExcaliburNode(0)
         chips = [1, 4, 6, 7]
         exposure_time = 10000
 
@@ -596,7 +596,7 @@ class Fe55ImageRX001Test(unittest.TestCase):
     def test_correct_calls_made_with_default_params(self, expose_mock,
                                                     set_threshhold_mock,
                                                     load_mock, sleep_mock):
-        e = ExcaliburRX(0)
+        e = ExcaliburNode(0)
         chips = [0, 1, 2, 3, 4, 5, 6, 7]
         exposure_time = 60000
 
@@ -621,7 +621,7 @@ class ScanDacTest(unittest.TestCase):
                                          update_mock, load_mock):
         dac_file = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem/spm/shgm/dacs'
         save_file = 'image_dacscan.hdf5'
-        e = ExcaliburRX(0)
+        e = ExcaliburNode(0)
         chips = [0]
         dac_range = [1, 10, 1]
 
@@ -638,7 +638,7 @@ class UpdateFilenameIndexTest(unittest.TestCase):
     file_mock = MagicMock()
 
     def setUp(self):
-        self.e = ExcaliburRX(0)
+        self.e = ExcaliburNode(0)
         self.file_mock.read.return_value = 1
 
     def tearDown(self):
@@ -680,7 +680,7 @@ class AcquireFFTest(unittest.TestCase):
            return_value=mock_array)
     @patch(ED_patch_path + '.plot_image')
     def test_acquire_ff(self, plot_mock, expose_mock):
-        e = ExcaliburRX(0)
+        e = ExcaliburNode(0)
         mean = self.mock_array[0:256, 3*256:4*256].mean()
         array = np.copy(self.mock_array)
         array[array == 0] = mean
@@ -704,7 +704,7 @@ class ApplyFFCorrectionTest(unittest.TestCase):
     @patch(ED_patch_path + '.load_image_data')
     @patch('time.sleep')
     def test_apply_ff_correction(self, sleep_mock, load_mock, plot_mock):
-        e = ExcaliburRX(0)
+        e = ExcaliburNode(0)
 
         e.apply_ff_correction(1, 0.1)
 
@@ -729,7 +729,7 @@ class LogoTestTest(unittest.TestCase):
     mock_array = rand.randint(2, size=(243, 1598))
 
     def setUp(self):
-        self.e = ExcaliburRX(0)
+        self.e = ExcaliburNode(0)
         self.e.num_chips = 1  # Make test easier - only run for one chip
 
         logo_tp = np.ones([256, 8*256])
@@ -802,7 +802,7 @@ class TestPulseTest(unittest.TestCase):
     # TODO: Test other if branch?
 
     def setUp(self):
-        self.e = ExcaliburRX(0)
+        self.e = ExcaliburNode(0)
 
     @patch('time.asctime', return_value='Tue Sep 27 10:43:52 2016')
     @patch(ED_patch_path + '.plot_image')
@@ -831,7 +831,7 @@ class SaveDiscbitsTest(unittest.TestCase):
     def test_correct_call_made(self, save_mock):
         discbits = np.random.randint(10, size=(256, 8*256))
         expected_subarray = discbits[0:256, 0:256]
-        e = ExcaliburRX(0)
+        e = ExcaliburNode(0)
 
         e.save_discbits([0], discbits, 'test')
 
@@ -849,7 +849,7 @@ class SaveDiscbitsTest(unittest.TestCase):
 class MaskUnmaskTest(unittest.TestCase):
 
     def setUp(self):
-        self.e = ExcaliburRX(0)
+        self.e = ExcaliburNode(0)
 
     def test_mask_col(self, load_mock, save_mock, plot_mock):
         expected_file_1 = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/discLbits.chip0'
@@ -960,7 +960,7 @@ class CheckCalibDirTest(unittest.TestCase):
     def test_doesnt_exist_then_create(self, isdir_mock, isfile_mock,
                                       make_mock, copy_mock, copy_tree_mock):
         expected_path = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm'
-        e = ExcaliburRX(0)
+        e = ExcaliburNode(0)
 
         e.check_calib_dir()
 
@@ -977,7 +977,7 @@ class CheckCalibDirTest(unittest.TestCase):
     def test_does_exist_then_backup(self, isdir_mock, isfile_mock, _,
                                     make_mock, copy_mock, copy_tree_mock):
         expected_path = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm'
-        e = ExcaliburRX(0)
+        e = ExcaliburNode(0)
 
         e.check_calib_dir()
 
@@ -996,7 +996,7 @@ class CopySLGMIntoOtherGainModesTest(unittest.TestCase):
     @patch('os.path.exists', return_value=True)
     def test_exist_then_rm_and_copy(self, exists_mock, rm_mock, copytree_mock):
         expected_path = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/'
-        e = ExcaliburRX(0)
+        e = ExcaliburNode(0)
 
         e.copy_slgm_into_other_gain_modes()
 
@@ -1017,7 +1017,7 @@ class CopySLGMIntoOtherGainModesTest(unittest.TestCase):
     def test_dont_exist_then_just_copy(self, exists_mock, rm_mock,
                                        copytree_mock):
         expected_path = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/'
-        e = ExcaliburRX(0)
+        e = ExcaliburNode(0)
 
         e.copy_slgm_into_other_gain_modes()
 
@@ -1040,7 +1040,7 @@ class OpenDiscbitsFileTest(unittest.TestCase):
     @patch('numpy.loadtxt', return_value=mock_array)
     def test_correct_call_made(self, load_mock):
         expected_path = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/test_file.chip0'
-        e = ExcaliburRX(0)
+        e = ExcaliburNode(0)
 
         value = e.open_discbits_file([0], 'test_file')
 
@@ -1063,7 +1063,7 @@ class CombineROIsTest(unittest.TestCase):
     def test_correct_calls_made(self, open_mock, save_mock, roi_mock,
                                plot_mock):
         expected_path = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/test_file.chip0'
-        e = ExcaliburRX(0)
+        e = ExcaliburNode(0)
 
         value = e.combine_rois([0], 'test_file', 1, 'rect')
 
@@ -1080,7 +1080,7 @@ class CombineROIsTest(unittest.TestCase):
 class FindTest(unittest.TestCase):  # TODO: Improve
 
     def setUp(self):
-        self.e = ExcaliburRX(0)
+        self.e = ExcaliburNode(0)
 
         # Make sure we always get the same random numbers
         self.rand = np.random.RandomState(123)
@@ -1122,7 +1122,7 @@ class OptimizeDacDiscTest(unittest.TestCase):
     @patch(ED_patch_path + '.plot_image')
     @patch('numpy.histogram')
     @patch('numpy.asarray')
-    @patch('scripts.ExcaliburDAWN.curve_fit',
+    @patch('excaliburcalibrationdawn.excaliburdawn.curve_fit',
            return_value=[[1, 2, 3], None])
     @patch(ED_patch_path + '.gauss_function')
     @patch(ERX_patch_path + '.set_dac')
@@ -1134,7 +1134,7 @@ class OptimizeDacDiscTest(unittest.TestCase):
     def test_(self, find_mock, load_mock, open_mock, scan_mock, set_mock, gauss_mock,
               fit_mock, asarray_mock, histo_mock, plot_mock, clear_mock):
         # TODO: Write proper tests once function is split up
-        e = ExcaliburRX()
+        e = ExcaliburNode()
         chips = [0]
         roi_mock = np.ones([256, 8*256])
 
@@ -1161,7 +1161,7 @@ class EqualizeDiscbitsTest(unittest.TestCase):
                                 clear_mock, plot_mock):
         # TODO: Finish once run on real system, know what it does and
         # TODO: maybe split up / refactored.
-        e = ExcaliburRX(0)
+        e = ExcaliburNode(0)
         chips = [0]
         roi = np.zeros([256, 8*256])
 
@@ -1185,7 +1185,7 @@ class CheckCalibTest(unittest.TestCase):
     @patch(ERX_patch_path + '.load_config')
     def test_correct_call_made(self, load_mock, find_mock):
         pass  # TODO: Function doesn't work
-        e = ExcaliburRX(0)
+        e = ExcaliburNode(0)
         chips = [0]
 
         # e.check_calib(chips, [0, 10, 1])
@@ -1197,7 +1197,7 @@ class CheckCalibTest(unittest.TestCase):
 class ROITest(unittest.TestCase):
 
     def setUp(self):
-        self.e = ExcaliburRX(0)
+        self.e = ExcaliburNode(0)
 
     def test_rect(self, plot_mock):
         chips = range(8)
@@ -1235,7 +1235,7 @@ class CalibrateDiscTest(unittest.TestCase):
     @patch(ERX_patch_path + '.copy_slgm_into_other_gain_modes')
     def test_correct_calls_made(self, copy_mock, load_mock, combine_rois,
                                 save_mock, equalize_mock, roi_mock, opt_mock):
-        e = ExcaliburRX(0)
+        e = ExcaliburNode(0)
         chips = [0]
 
         e.calibrate_disc(chips, 'discL', 1, 'rect')
@@ -1254,7 +1254,7 @@ class LoopTest(unittest.TestCase):
     @patch(ED_patch_path + '.plot_image')
     @patch(ERX_patch_path + '.expose')
     def test_correct_calls_made(self, expose_mock, plot_mock):
-        e = ExcaliburRX(0)
+        e = ExcaliburNode(0)
 
         e.loop(1)
 
@@ -1268,7 +1268,7 @@ class CSMTest(unittest.TestCase):
     @patch(ERX_patch_path + '.load_config')
     @patch(ERX_patch_path + '.set_dac')
     def test_correct_calls_made(self, set_mock, load_mock, expose_mock):
-        e = ExcaliburRX(0)
+        e = ExcaliburNode(0)
         chips = range(8)
 
         e.csm()
@@ -1289,7 +1289,7 @@ class SetGNDFBKCasExcaliburRX001Test(unittest.TestCase):
 
     @patch(ERX_patch_path + '.set_dac')
     def test_correct_calls_made(self, set_mock):
-        e = ExcaliburRX(0)
+        e = ExcaliburNode(0)
         chips = [0]
 
         e.set_gnd_fbk_cas_excalibur_rx001(chips, 1)
@@ -1302,7 +1302,7 @@ class SetGNDFBKCasExcaliburRX001Test(unittest.TestCase):
 class RotateTest(unittest.TestCase):
 
     def setUp(self):
-        self.e = ExcaliburRX(0)
+        self.e = ExcaliburNode(0)
 
     @patch('numpy.rot90')
     @patch('numpy.savetxt')
@@ -1341,7 +1341,7 @@ class RotateTest(unittest.TestCase):
 class SliceGrabSetTest(unittest.TestCase):
 
     def setUp(self):
-        self.e = ExcaliburRX(0)
+        self.e = ExcaliburNode(0)
 
     def test_grab_slice(self):
         array = np.array([[1, 2, 3, 4, 5],
