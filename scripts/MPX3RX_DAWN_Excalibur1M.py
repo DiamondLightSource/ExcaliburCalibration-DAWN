@@ -443,33 +443,25 @@ class ExcaliburRX(object):
             threshold: Threshold to calibrate (0 or 1)
 
         """
-        self.check_calib_dir()
+        gain_values = dict(shgm=1.0, hgm=0.75, lgm=0.5, slgm=0.25)
         default_6kev_dac = 62
-
         E0 = 0
-        E1 = 5.9  # keV
-        Dac0 = self.dac_target * np.ones([6, 8]).astype('float')
+        E1 = 5.9
+        dac0 = self.dac_target * np.ones([6, 8]).astype('float')
 
-        if self.settings['gain'] == 'shgm':
-            Dac1 = Dac0 + 1*(default_6kev_dac - Dac0) * \
-                          np.ones([6, 8]).astype('float')
-        if self.settings['gain'] == 'hgm':
-            Dac1 = Dac0 + 0.75*(default_6kev_dac - Dac0) * \
-                          np.ones([6, 8]).astype('float')
-        if self.settings['gain'] == 'lgm':
-            Dac1 = Dac0 + 0.5*(default_6kev_dac - Dac0) * \
-                          np.ones([6, 8]).astype('float')
-        if self.settings['gain'] == 'slgm':
-            Dac1 = Dac0 + 0.25*(default_6kev_dac - Dac0) * \
-                          np.ones([6, 8]).astype('float')
+        self.check_calib_dir()
+
+        gain = gain_values[self.settings['gain']]
+        dac1 = dac0 + gain * (default_6kev_dac - dac0) * \
+            np.ones([6, 8]).astype('float')
 
         logging.debug("E0: {E}".format(E=E0))
-        logging.debug("DAC 0 Array: {array}".format(array=Dac0))
+        logging.debug("DAC0 Array: {array}".format(array=dac0))
         logging.debug("E1: {E}".format(E=E1))
-        logging.debug("DAC 1 Array: {array}".format(array=Dac1))
+        logging.debug("DAC1 Array: {array}".format(array=dac1))
 
-        slope = (Dac1[self.fem - 1, :] - Dac0[self.fem - 1, :])/(E1 - E0)
-        offset = Dac0[self.fem - 1, :]
+        slope = (dac1[self.fem - 1, :] - dac0[self.fem - 1, :])/(E1 - E0)
+        offset = dac0[self.fem - 1, :]
         self.save_kev2dac_calib(threshold, slope, offset)
         logging.debug("Slope: {slope}, Offset: {offset}".format(slope=slope,
                                                                 offset=offset))
@@ -491,9 +483,7 @@ class ExcaliburRX(object):
             offset: Conversion offset
 
         """
-        thresh_coeff = np.zeros([2, 8])
-        thresh_coeff[0, :] = gain
-        thresh_coeff[1, :] = offset
+        thresh_coeff = np.array([gain, offset])
 
         thresh_filename = posixpath.join(self.calib_dir,
                                          'fem{fem}',
@@ -502,15 +492,11 @@ class ExcaliburRX(object):
                                          'threshold{threshold}'
                                          ).format(fem=self.fem,
                                                   threshold=threshold)
-        logging.debug(thresh_filename)
 
-        if os.path.isfile(thresh_filename):
-            np.savetxt(thresh_filename, thresh_coeff, fmt='%.2f')
-        else:
-            np.savetxt(thresh_filename, thresh_coeff, fmt='%.2f')
-            os.chmod(thresh_filename, 0777)  # First time the file is created,
-            # permissions need to be changed to allow anyone to overwrite
-            # calibration data
+        logging.debug("Saving calibration to: " + thresh_filename)
+        np.savetxt(thresh_filename, thresh_coeff, fmt='%.2f')
+        os.chmod(thresh_filename, 0777)  # Allow anyone to overwrite
+        # calibration data
 
     def find_xray_energy_dac(self, chips=range(8), threshold="0", energy=5.9):
         """############## NOT TESTED
@@ -535,8 +521,7 @@ class ExcaliburRX(object):
 
         self.load_config(chips)
         filename = 'Threshold{threshold}Scan_{energy}keV'.format(
-            threshold=threshold,
-            energy=energy)
+            threshold=threshold, energy=energy)
         self.settings['filename'] = filename
 
         [dac_scan_data, scan_range] = self.scan_dac(chips, "Threshold" +
@@ -561,7 +546,7 @@ class ExcaliburRX(object):
         Args:
             chips(list(int)): List of indexes of chips to mask
             start(int): Index of starting row of mask
-            stop(int):  Index of final row to be included in mask
+            stop(int): Index of final row to be included in mask
 
         Returns:
             numpy.array: Array mask that was written to config
@@ -572,10 +557,9 @@ class ExcaliburRX(object):
 
         chip_size = self.chip_size
         for chip_idx in chips:
-            # Slicing doesn't include the end, so add 1 to stop; chip_size is
-            # in number, not index, so already has the necessary increment
-            bad_pixels[start:stop + 1,
-                       chip_idx*chip_size:(chip_idx + 1)*chip_size] = 1
+            # Subtract 1 to convert chip_size from number to index
+            self._set_slice(bad_pixels, [start, chip_idx * chip_size],
+                            [stop, (chip_idx + 1) * chip_size - 1], 1)
 
         for chip_idx in chips:
             pixel_mask_file = posixpath.join(self.calib_dir,
@@ -586,8 +570,7 @@ class ExcaliburRX(object):
                                              ).format(fem=self.fem,
                                                       idx=chip_idx)
             np.savetxt(pixel_mask_file,
-                       bad_pixels[0:chip_size,
-                                  chip_idx*chip_size:(chip_idx + 1)*chip_size],
+                       self._grab_chip_slice(bad_pixels, chip_idx),
                        fmt='%.18g', delimiter=' ')
 
         self.dawn.plot_image(bad_pixels, "Mask")
@@ -1289,17 +1272,14 @@ class ExcaliburRX(object):
             ff_image += image
 
         chip = 3  # TODO: Why?
-        chip_size = self.chip_size
-        # Set all zero elements to the mean value
-        ff_image[ff_image == 0] = \
-            ff_image[0:chip_size, chip*chip_size:(chip + 1) * chip_size].mean()
+        chip_mean = self._grab_chip_slice(ff_image, chip).mean()
+        # Set all zero elements in the chip to the mean value
+        ff_image[ff_image == 0] = chip_mean
         # Coeff array is array of means divided by actual values
-        ff_coeff = np.ones([256, 256*8]) * \
-            ff_image[0:chip_size,
-                     chip*chip_size:(chip + 1) * chip_size].mean()
+        ff_coeff = np.ones([256, 256*8]) * chip_mean
         ff_coeff = ff_coeff/ff_image
 
-        self.dawn.plot_image(ff_coeff[0:256, chip*256:(chip + 1)*256],
+        self.dawn.plot_image(self._grab_chip_slice(ff_image, chip),
                              name='Flat Field coefficients')
 
         # Set any elements outside range 0-2 to 1 TODO: Why?
@@ -1332,7 +1312,7 @@ class ExcaliburRX(object):
             ff = images[image_idx, :, :] * ff_coeff
             ff[ff > 3000] = 0
             chip = 3
-            self.dawn.plot_image(ff[0:256, chip*256:(chip + 1)*256],
+            self.dawn.plot_image(self._grab_chip_slice(ff, chip),
                                  name='Image data Cor')  # TODO: 'Cor'?
             time.sleep(1)
 
@@ -1345,7 +1325,7 @@ class ExcaliburRX(object):
         logo_file = posixpath.join(self.config_dir,
                                    'logo.txt')
         logo_small = np.loadtxt(logo_file)
-        logo_tp[7:250, 225:1823] = logo_small
+        self._set_slice(logo_tp, [7, 225], [249, 1822], logo_small)
         logo_tp[logo_tp > 0] = 1
         logo_tp = 1 - logo_tp
 
@@ -1353,7 +1333,7 @@ class ExcaliburRX(object):
             test_bits_file = posixpath.join(self.calib_dir,
                                             'Logo_chip{chip}_mask').format(
                                             chip=chip)
-            np.savetxt(test_bits_file, logo_tp[0:256, chip*256:(chip + 1)*256],
+            np.savetxt(test_bits_file, self._grab_chip_slice(logo_tp, chip),
                        fmt='%.18g', delimiter=' ')
 
             template_path = posixpath.join(self.template_path,
@@ -1444,7 +1424,7 @@ class ExcaliburRX(object):
                                                     chip=chip_idx)
 
             np.savetxt(discbits_file,
-                       discbits[0:256, chip_idx*256:chip_idx*256 + 256],
+                       self._grab_chip_slice(discbits, chip_idx),
                        fmt='%.18g', delimiter=' ')
 
     def mask_super_column(self, chip, super_column):
@@ -1461,11 +1441,10 @@ class ExcaliburRX(object):
                    super_column * 32 + 64] = 1  # TODO: Should it be 64 wide?
 
         template_path = posixpath.join(self.template_path, '{disc}.chip{chip}')
-
         discLbits_file = template_path.format(disc='discLbits', chip=chip)
         pixel_mask_file = template_path.format(disc='pixelmask', chip=chip)
 
-        np.savetxt(pixel_mask_file, bad_pixels[0:256, chip*256:(chip + 1)*256],
+        np.savetxt(pixel_mask_file, self._grab_chip_slice(bad_pixels, chip),
                    fmt='%.18g', delimiter=' ')
         self.app.load_config([chip], discLbits_file, pixelmask=pixel_mask_file)
 
@@ -1488,7 +1467,7 @@ class ExcaliburRX(object):
         discLbits_file = template_path.format(disc='discLbits', chip=chip)
         pixel_mask_file = template_path.format(disc='pixelmask', chip=chip)
 
-        np.savetxt(pixel_mask_file, bad_pixels[0:256, chip*256:chip*256 + 256],
+        np.savetxt(pixel_mask_file, self._grab_chip_slice(bad_pixels, chip),
                    fmt='%.18g', delimiter=' ')
 
         self.app.load_config([chip], discLbits_file, pixelmask=pixel_mask_file)
@@ -1519,7 +1498,7 @@ class ExcaliburRX(object):
                                                    chip=chip_idx)
 
             bad_pix_tot[chip_idx] = \
-                bad_pixels[0:256, chip_idx*256:(chip_idx + 1)*256].sum()
+                self._grab_chip_slice(bad_pixels, chip_idx).sum()
 
             print('####### {pix} noisy pixels in chip {chip} ({tot})'.format(
                 pix=str(bad_pix_tot[chip_idx]),
@@ -1527,7 +1506,7 @@ class ExcaliburRX(object):
                 tot=str(100 * bad_pix_tot[chip_idx] / (256**2))))
 
             np.savetxt(pixel_mask_file,
-                       bad_pixels[0:256, chip_idx*256:chip_idx*256 + 256],
+                       self._grab_chip_slice(bad_pixels, chip_idx),
                        fmt='%.18g', delimiter=' ')
             self.app.load_config([chip_idx], discLbits_file,
                                  pixelmask=pixel_mask_file)
@@ -1558,7 +1537,7 @@ class ExcaliburRX(object):
 
         for chip_idx in chips:
             bad_pix_tot[chip_idx] = \
-                bad_pixels[0:256, chip_idx*256:chip_idx*256 + 256].sum()
+                self._grab_chip_slice(bad_pixels, chip_idx).sum()
 
             print('####### {pix} noisy pixels in chip {chip} ({tot})'.format(
                 pix=str(bad_pix_tot[chip_idx]),
@@ -1609,7 +1588,7 @@ class ExcaliburRX(object):
                                                    chip=chip_idx)
 
             np.savetxt(pixel_mask_file,
-                       bad_pixels[0:256, chip_idx*256:chip_idx*256 + 256],
+                       self._grab_chip_slice(bad_pixels, chip_idx),
                        fmt='%.18g', delimiter=' ')
             self.app.load_config([chip_idx], discLbits_file,
                                  pixelmask=pixel_mask_file)
@@ -1637,7 +1616,7 @@ class ExcaliburRX(object):
                                                    chip=chip_idx)
 
             np.savetxt(discLbits_file,
-                       discL_bits[0:256, chip_idx*256:(chip_idx + 1)*256],
+                       self._grab_chip_slice(discL_bits, chip_idx),
                        fmt='%.18g', delimiter=' ')
             self.app.load_config([chip_idx], discLbits_file,
                                  pixelmask=pixel_mask_file)
@@ -1716,8 +1695,7 @@ class ExcaliburRX(object):
                                            '{disc}.chip{chip}').format(
                 fem=self.fem, disc=discbits_filename, chip=chip_idx)
 
-            discbits[0:256, chip_idx*256:(chip_idx + 1)*256] = \
-                np.loadtxt(discbits_file)
+            self._set_chip_slice(discbits, chip_idx, np.loadtxt(discbits_file))
 
         return discbits
 
@@ -2494,12 +2472,10 @@ class ExcaliburRX(object):
                                        'fem{fem}',
                                        'spm',
                                        'slgm',
-                                       '{disc}.chip{chip}'
-                                       )
+                                       '{disc}.chip{chip}')
 
         for fem in [1, 3, 5]:
             for chip_idx in chips:
-
                 discLbits_file = template_path.format(fem=fem,
                                                       disc='discLbits',
                                                       chip=chip_idx)
@@ -2518,3 +2494,74 @@ class ExcaliburRX(object):
                 if os.path.isfile(pixel_mask_file):
                     self.rotate_config(pixel_mask_file)
                     print("{file} rotated".format(file=pixel_mask_file))
+
+    @staticmethod
+    def _grab_slice(array, start, stop):
+        """Grab a section of a 2D numpy array.
+
+        Args:
+            array: Array to grab from
+            start: Start coordinate of sub array
+            stop: Stop coordinate of sub array
+
+        Returns:
+            numpy.array: Sub array
+
+        """
+        return array[start[0]:stop[0] + 1, start[1]:stop[1] + 1]
+
+    def _grab_chip_slice(self, array, chip_idx):
+        """Grab a chip from a full array.
+
+        Args:
+            array: Array to grab from
+            chip_idx: Index of section of array to grab
+
+        Returns:
+            numpy.array: Sub array
+
+        """
+        start, stop = self._generate_chip_range(chip_idx)
+        return self._grab_slice(array, start, stop)
+
+    @staticmethod
+    def _set_slice(array, start, stop, value):
+        """Grab a section of a 2D numpy array.
+
+        Args:
+            array: Array to grab from
+            start: Start coordinate of sub array
+            stop: Stop coordinate of sub array
+            value: Value to set slice to (array of same shape or single value)
+
+        Returns:
+            numpy.array: Sub array
+
+        """
+        array[start[0]:stop[0] + 1, start[1]:stop[1] + 1] = value
+
+    def _set_chip_slice(self, array, chip_idx, value):
+        """Grab a section of a 2D numpy array.
+
+        Args:
+            array: Array to grab from
+            chip_idx: Index of section of array to grab
+            value: Value to set slice to
+
+        Returns:
+            numpy.array: Sub array
+
+        """
+        start, stop = self._generate_chip_range(chip_idx)
+        self._set_slice(array, start, stop, value)
+
+    def _generate_chip_range(self, chip_idx):
+        """Calculate start and stop coordinates of given chip.
+
+        Args:
+            chip_idx: Chip to calculate range for
+
+        """
+        start = [0, chip_idx * self.chip_size]
+        stop = [self.chip_size - 1, (chip_idx + 1) * self.chip_size - 1]
+        return start, stop

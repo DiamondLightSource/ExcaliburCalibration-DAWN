@@ -200,36 +200,15 @@ class SaveKev2DacCalibTest(unittest.TestCase):
         self.expected_array = np.array([self.gain, self.offset])
         self.expected_filename = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/threshold0'
 
-    @patch('os.path.isfile', return_value=True)
     @patch('numpy.savetxt')
     @patch('os.chmod')
-    def test_given_existing_file_then_save(self, chmod_mock, save_mock,
-                                           isfile_mock):
+    def test_given_file_then_save(self, chmod_mock, save_mock):
 
         self.e.save_kev2dac_calib(self.threshold, self.gain, self.offset)
 
-        isfile_mock.assert_called_once_with(self.expected_filename)
-        call_args = save_mock.call_args[0]
-        call_kwargs = save_mock.call_args[1]
-        self.assertEqual(self.expected_filename, call_args[0])
-        self.assertTrue((self.expected_array == call_args[1]).all())
-        self.assertEqual(dict(fmt='%.2f'), call_kwargs)
-        self.assertFalse(chmod_mock.call_count)
-
-    @patch('os.path.isfile', return_value=False)
-    @patch('numpy.savetxt')
-    @patch('os.chmod')
-    def test_given_no_file_then_create_and_chmod(self, chmod_mock, save_mock,
-                                                 isfile_mock):
-
-        self.e.save_kev2dac_calib(self.threshold, self.gain, self.offset)
-
-        isfile_mock.assert_called_once_with(self.expected_filename)
-        call_args = save_mock.call_args[0]
-        call_kwargs = save_mock.call_args[1]
-        self.assertEqual(self.expected_filename, call_args[0])
-        self.assertTrue((self.expected_array == call_args[1]).all())
-        self.assertEqual(dict(fmt='%.2f'), call_kwargs)
+        self.assertEqual(self.expected_filename, save_mock.call_args[0][0])
+        np.testing.assert_array_equal(self.expected_array, save_mock.call_args[0][1])
+        self.assertEqual(dict(fmt='%.2f'), save_mock.call_args[1])
         chmod_mock.assert_called_once_with(self.expected_filename, 0777)
 
 
@@ -1347,3 +1326,72 @@ class RotateTest(unittest.TestCase):
         self.assertEqual(rotate_mock.call_args_list[1][0][0], expected_discH_path)
         self.assertEqual(rotate_mock.call_args_list[2][0][0], expected_mask_path)
         self.assertEqual(9, rotate_mock.call_count)
+
+
+class SliceGrabSetTest(unittest.TestCase):
+
+    def setUp(self):
+        self.e = ExcaliburRX(0)
+
+    def test_grab_slice(self):
+        array = np.array([[1, 2, 3, 4, 5],
+                          [10, 20, 30, 40, 50],
+                          [100, 200, 300, 400, 500]])
+        expected_subarray = np.array([[2, 3, 4],
+                                      [20, 30, 40],
+                                      [200, 300, 400]])
+
+        value = self.e._grab_slice(array, [0, 1], [2, 3])
+
+        np.testing.assert_array_equal(expected_subarray, value)
+
+    @patch(ERX_patch_path + '._grab_slice')
+    @patch(ERX_patch_path + '._generate_chip_range')
+    def test_grab_chip_slice(self, generate_mock, grab_mock):
+        array = MagicMock()
+        generate_mock.return_value = MagicMock(), MagicMock
+
+        value = self.e._grab_chip_slice(array, 1)
+
+        generate_mock.assert_called_once_with(1)
+        grab_mock.assert_called_once_with(array, generate_mock.return_value[0], generate_mock.return_value[1])
+        self.assertEqual(grab_mock.return_value, value)
+
+    def test_set_slice(self):
+        array = np.array([[1, 2, 3, 4, 5],
+                          [10, 20, 30, 40, 50],
+                          [100, 200, 300, 400, 500]])
+        array_copy = array.copy()
+        expected_array = np.array([[1, 0, 0, 0, 5],
+                                   [10, 0, 0, 0, 50],
+                                   [100, 0, 0, 0, 500]])
+        subarray = np.array([[2, 3, 4],
+                             [20, 30, 40],
+                             [200, 300, 400]])
+
+        self.e._set_slice(array, [0, 1], [2, 3], 0)
+        np.testing.assert_array_equal(expected_array, array)
+        self.e._set_slice(array, [0, 1], [2, 3], subarray)
+        np.testing.assert_array_equal(array_copy, array)
+
+    @patch(ERX_patch_path + '._set_slice')
+    @patch(ERX_patch_path + '._generate_chip_range')
+    def test_set_chip_slice(self, generate_mock, set_mock):
+        array = np.array([[1, 2, 3, 4, 5],
+                          [10, 20, 30, 40, 50],
+                          [100, 200, 300, 400, 500]])
+        generate_mock.return_value = MagicMock(), MagicMock
+
+        self.e._set_chip_slice(array, 1, 0)
+
+        generate_mock.assert_called_once_with(1)
+        set_mock.assert_called_once_with(array, generate_mock.return_value[0], generate_mock.return_value[1], 0)
+
+    def test_generate_chip_range(self):
+        expected_start = [0, 256]
+        expected_stop = [255, 511]
+
+        start, stop = self.e._generate_chip_range(1)
+
+        np.testing.assert_array_equal(expected_start, start)
+        np.testing.assert_array_equal(expected_stop, stop)
