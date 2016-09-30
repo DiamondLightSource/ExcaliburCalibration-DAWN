@@ -1,4 +1,4 @@
-"""Python class to provide DAWN plotting, io and analysis to ExcaliburRX"""
+"""Python class to provide DAWN plotting, io and analysis to ExcaliburNode"""
 import math as m
 import logging
 

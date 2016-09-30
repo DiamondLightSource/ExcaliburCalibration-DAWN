@@ -264,8 +264,8 @@ from collections import namedtuple
 
 import numpy as np
 
-from scripts.ExcaliburTestAppInterface import ExcaliburTestAppInterface
-from scripts.ExcaliburDAWN import ExcaliburDAWN
+from excaliburcalibrationdawn.excaliburtestappinterface import ExcaliburTestAppInterface
+from excaliburcalibrationdawn.excaliburdawn import ExcaliburDAWN
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -273,7 +273,7 @@ logging.basicConfig(level=logging.DEBUG)
 Range = namedtuple("Range", "start stop step")
 
 
-class ExcaliburRX(object):
+class ExcaliburNode(object):
     """Class to calibrate Excalibur-RX detectors.
 
     ExcaliburRX is a class defining methods required to calibrate each 1/2
