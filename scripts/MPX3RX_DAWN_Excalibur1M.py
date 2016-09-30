@@ -356,6 +356,9 @@ class ExcaliburRX(object):
         self.app = ExcaliburTestAppInterface(self.ipaddress, port='6969')
         self.dawn = ExcaliburDAWN()
 
+        self.full_array_shape = [self.chip_size,
+                                 self.num_chips * self.chip_size]
+
         # self.read_chip_ids()
 
     def threshold_equalization(self, chips=range(8)):
@@ -552,14 +555,12 @@ class ExcaliburRX(object):
             numpy.array: Array mask that was written to config
 
         """
-        bad_pixels = np.zeros([self.chip_size,
-                               self.chip_size * self.num_chips])
+        bad_pixels = np.zeros(self.full_array_shape)
 
-        chip_size = self.chip_size
         for chip_idx in chips:
             # Subtract 1 to convert chip_size from number to index
-            self._set_slice(bad_pixels, [start, chip_idx * chip_size],
-                            [stop, (chip_idx + 1) * chip_size - 1], 1)
+            self._set_slice(bad_pixels, [start, chip_idx * self.chip_size],
+                            [stop, (chip_idx + 1) * self.chip_size - 1], 1)
 
         for chip_idx in chips:
             pixel_mask_file = posixpath.join(self.calib_dir,
@@ -1435,8 +1436,7 @@ class ExcaliburRX(object):
             super_column: Super column to mask (0 to 7)
 
         """
-        bad_pixels = np.zeros([self.chip_size,
-                               self.chip_size * self.num_chips])
+        bad_pixels = np.zeros(self.full_array_shape)
         bad_pixels[:, chip*256 + super_column * 32:chip * 256 +
                    super_column * 32 + 64] = 1  # TODO: Should it be 64 wide?
 
@@ -1458,8 +1458,7 @@ class ExcaliburRX(object):
             column: Column to mask (0 to 255)
 
         """
-        bad_pixels = np.zeros([self.chip_size,
-                               self.chip_size * self.num_chips])
+        bad_pixels = np.zeros(self.full_array_shape)
         bad_pixels[:, column] = 1
 
         template_path = posixpath.join(self.template_path, '{disc}.chip{chip}')
@@ -1575,8 +1574,7 @@ class ExcaliburRX(object):
 
         """
 
-        bad_pixels = np.zeros([self.chip_size,
-                               self.chip_size * self.num_chips])
+        bad_pixels = np.zeros(self.full_array_shape)
 
         for chip_idx in chips:
             template_path = posixpath.join(self.template_path,
@@ -1604,8 +1602,7 @@ class ExcaliburRX(object):
         # TODO: File path slightly different to above; discL_bits vs discLbits
         # TODO: Are they supposed to be the same?
 
-        discL_bits = 31*np.zeros([self.chip_size,
-                                  self.chip_size * self.num_chips])
+        discL_bits = 31*np.zeros(self.full_array_shape)
         for chip_idx in chips:
             template_path = posixpath.join(self.template_path,
                                            '{disc}.chip{chip}')
@@ -1686,7 +1683,7 @@ class ExcaliburRX(object):
             numpy.array: Discbits array
 
         """
-        discbits = np.zeros([self.chip_size, self.chip_size * self.num_chips])
+        discbits = np.zeros(self.full_array_shape)
         for chip_idx in chips:
             discbits_file = posixpath.join(self.calib_dir,
                                            'fem{fem}',
@@ -1712,7 +1709,7 @@ class ExcaliburRX(object):
             roi_type: Type of ROI ('rect' or 'spacing')
 
         """
-        discbits = np.zeros([self.chip_size, self.chip_size * self.num_chips])
+        discbits = np.zeros(self.full_array_shape)
         for step in range(steps):
             roi_full_mask = self.roi(chips, step, steps, roi_type)
             discbits_roi = self.open_discbits_file(chips, disc_name +
@@ -1833,21 +1830,19 @@ class ExcaliburRX(object):
         # dnp.plot.clear(calib_plot_name)
 
         # Set discbits at 0
-        discbits = discbit*np.ones([self.chip_size,
-                                    self.chip_size * self.num_chips])
+        discbits = discbit*np.ones(self.full_array_shape)
         for chip in chips:
             if disc_name == 'discH':
                 discLbits = self.open_discbits_file(chips, 'discLbits')
-                self.load_config_bits(range(chip, chip + 1),
+                self.load_config_bits([chip],
                                       discLbits[:, chip*256:chip*256 + 256],
                                       discbits[:, chip*256:chip*256 + 256],
                                       roi_full_mask[:,
                                                     chip*256:chip*256 + 256])
             if disc_name == 'discL':
-                discHbits = np.zeros([self.chip_size,
-                                      self.chip_size * self.num_chips])
+                discHbits = np.zeros(self.full_array_shape)
                 # Set discL and DiscH bits at 0 and unmask the whole matrix
-                self.load_config_bits(range(chip, chip + 1),
+                self.load_config_bits([chip],
                                       discbits[:, chip*256:chip*256 + 256],
                                       discHbits[:, chip*256:chip*256 + 256],
                                       roi_full_mask[:,
@@ -1931,8 +1926,7 @@ class ExcaliburRX(object):
         # dnp.plot.clear(calib_plot_name)
 
         # Set discbits at 15
-        discbits = discbit*np.ones([self.chip_size,
-                                    self.chip_size * self.num_chips])
+        discbits = discbit*np.ones(self.full_array_shape)
         for chip in chips:
             if disc_name == 'discH':
                 # discLbits = np.zeros([self.chipSize,
@@ -1944,13 +1938,16 @@ class ExcaliburRX(object):
                                       roi_full_mask[:,
                                                     chip*256:chip*256 + 256])
             if disc_name == 'discL':
-                discHbits = np.zeros([self.chip_size,
-                                      self.chip_size * self.num_chips])
+                discHbits = np.zeros(self.full_array_shape)
                 self.load_config_bits(range(chip, chip + 1),
                                       discbits[:, chip*256:chip*256 + 256],
                                       discHbits[:, chip*256:chip*256 + 256],
                                       roi_full_mask[:,
                                                     chip*256:chip*256 + 256])
+
+            # TODO: Use this once have tests
+            # self.load_all_discbits(chips, disc_name,
+            #                        discbits_tmp, roi_full_mask)
 
         self.set_dac(chips, dac_disc_name, DAC_disc)
         [dac_scan_data, scan_range] = self.scan_dac(chips, threshold,
@@ -2004,7 +2001,8 @@ class ExcaliburRX(object):
 
         # TODO: Should say '+/- <something> sigma' ?
         print("DAC shift (DAC units) required to bring all pixels with an edge"
-              "within +/- sigma of the target, at the target of {target}:".format(target=self.dac_target))
+              "within +/- sigma of the target, at the target "
+              "of {target}:".format(target=self.dac_target))
         for chip in chips:
             print("Chip {chip}: {shift}".format(
                 chip=chip, shift=int(self.num_sigma * sigma[chip])))
@@ -2072,27 +2070,23 @@ class ExcaliburRX(object):
             # discL bits are loaded
             self.settings['disccsmspm'] = '1'
 
-        dnp.plot.image(roi_full_mask, name='roi')
+        self.dawn.plot_image(roi_full_mask, name='roi')
 
         if method == 'stripes':
             dac_range = (0, 20, 2)
-            discbits_tmp = np.zeros([self.chip_size,
-                                     self.chip_size * self.num_chips]) * \
+            discbits_tmp = np.zeros(self.full_array_shape) * \
                            (1 - roi_full_mask)
             for idx in range(self.chip_size):
                 discbits_tmp[idx, :] = idx % 32
-            for idx in range(self.chip_size*self.num_chips):
+            for idx in range(self.chip_size * self.num_chips):
                 discbits_tmp[:, idx] = (idx % 32 + discbits_tmp[:, idx]) % 32
-            edge_dacs_stack = np.zeros([32, self.chip_size,
-                                        self.chip_size * self.num_chips])
-            discbits_stack = np.zeros([32, self.chip_size,
-                                       self.chip_size * self.num_chips])
             discbits_tmp *= (1 - roi_full_mask)
-            discbits = -10*np.ones([self.chip_size,
-                                    self.chip_size * self.num_chips]) * \
+            discbits = -10*np.ones(self.full_array_shape) * \
                        (1 - roi_full_mask)
+            edge_dacs_stack = np.zeros([32] + self.full_array_shape)
+            discbits_stack = np.zeros([32] + self.full_array_shape)
             for scan in range(0, 32, 1):
-                discbits_tmp = ((discbits_tmp + 1) % 32)*(1 - roi_full_mask)
+                discbits_tmp = ((discbits_tmp + 1) % 32) * (1 - roi_full_mask)
                 discbits_stack[scan, :, :] = discbits_tmp
                 for chip in chips:
                     if disc_name == 'discH':
@@ -2105,8 +2099,7 @@ class ExcaliburRX(object):
                                               roi_full_mask[:,
                                                   chip*256:chip*256 + 256])
                     if disc_name == 'discL':
-                        discHbits = np.zeros([self.chip_size,
-                                              self.chip_size * self.num_chips])
+                        discHbits = np.zeros(self.full_array_shape)
                         self.load_config_bits(range(chip, chip + 1),
                                               discbits_tmp[:,
                                                   chip*256:chip*256 + 256],
@@ -2115,8 +2108,11 @@ class ExcaliburRX(object):
                                               roi_full_mask[:,
                                                   chip*256:chip*256 + 256])
 
-                [dacscan_data, scan_range] = self.scan_dac(chips, threshold,
-                                                           dac_range)
+                # TODO: Use this once have tests
+                # self.load_all_discbits(chips, disc_name,
+                #                        discbits_tmp, roi_full_mask)
+
+                [dacscan_data, _] = self.scan_dac(chips, threshold, dac_range)
                 edge_dacs = self.find_max(chips, dacscan_data, dac_range)
                 edge_dacs_stack[scan, :, :] = edge_dacs
                 scan_nb = np.argmin((abs(edge_dacs_stack - self.dac_target)),
@@ -2127,19 +2123,23 @@ class ExcaliburRX(object):
                             discbits[x, y] = \
                                 discbits_stack[scan_nb[x, y], x, y]
 
-                dnp.plot.image(discbits, name='discbits')
-                dnp.plot.clear('Histogram of Final Discbits')
+                self.dawn.plot_image(discbits, name='discbits')
+                self.dawn.clear_plot('Histogram of Final Discbits')
 
                 for chip in chips:
                     roi_chip_mask = 1 - roi_full_mask[0:256,
                                                       chip*256:chip*256 + 256]
                     discbits_chip = discbits[0:256, chip*256:chip*256 + 256]
-                    dnp.plot.addline(
-                        np.histogram(discbits_chip[roi_chip_mask.astype(bool)],
-                                     bins=range(32))[1][0:-1],
-                        np.histogram(discbits_chip[roi_chip_mask.astype(bool)],
-                                     bins=range(32))[0],
-                        name='Histogram of Final Discbits')
+                    self.dawn.plot.addline(np.histogram(discbits_chip[roi_chip_mask.astype(bool)],
+                                                        bins=range(32))[1][0:-1],
+                                           np.histogram(discbits_chip[roi_chip_mask.astype(bool)],
+                                                        bins=range(32))[0],
+                                           name='Histogram of Final Discbits')
+
+                    # TODO: Use this once have tests
+                    # self.dawn.plot_histogram_with_mask(
+                    #     chips, discbits, 1 - roi_full_mask,
+                    #     name='Histogram of Final Discbits')
 
         self.settings['disccsmspm'] = '0'
         self.settings['equalization'] = '0'
@@ -2150,6 +2150,29 @@ class ExcaliburRX(object):
         self.scan_dac(chips, threshold, (40, 10, 2))
 
         return discbits
+
+    def load_all_discbits(self, chips, disc_name, temp_bits, mask):
+        """Load the appropriate discriminator bits to calibrate the given disc.
+
+        Args:
+            chips: Chips to load for
+            disc_name: Discriminator that will be calibrated
+            temp_bits: Temporary array to be used for the non-calibratee
+            mask: Pixel mask to load
+
+        """
+        for chip in chips:
+            if disc_name == 'discH':
+                discLbits = self.open_discbits_file(chips, 'discLbits')
+                discHbits = temp_bits
+            elif disc_name == 'discL':
+                discLbits = temp_bits
+                discHbits = np.zeros(self.full_array_shape)
+
+            self.load_config_bits([chip],
+                                  self._grab_chip_slice(discLbits, chip),
+                                  self._grab_chip_slice(discHbits, chip),
+                                  self._grab_chip_slice(mask, chip))
 
     def check_calib(self, chips, dac_range):
         """Check if dac scan looks OK after threshold calibration.
@@ -2209,8 +2232,7 @@ class ExcaliburRX(object):
 
         """
         if roi_type == 'rect':
-            roi_full_mask = np.zeros([self.chip_size,
-                                      self.num_chips * self.chip_size])
+            roi_full_mask = np.zeros(self.full_array_shape)
             for chip in chips:
                 roi_full_mask[step*256/steps:step*256/steps + 256/steps,
                               chip*256:chip*256 + 256] = 1
@@ -2218,8 +2240,7 @@ class ExcaliburRX(object):
                 # TODO: x range is always 256-512...
         if roi_type == 'spacing':
             spacing = steps**0.5
-            roi_full_mask = np.zeros([self.chip_size,
-                                      self.num_chips * self.chip_size])
+            roi_full_mask = np.zeros(self.full_array_shape)
             bin_repr = np.binary_repr(step, 2)
             for chip in chips:
                 roi_full_mask[0 + int(bin_repr[0]):256 -
