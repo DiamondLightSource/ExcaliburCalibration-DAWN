@@ -680,11 +680,18 @@ class AcquireFFTest(unittest.TestCase):
     @patch(ED_patch_path + '.plot_image')
     def test_acquire_ff(self, plot_mock, expose_mock):
         e = ExcaliburRX(0)
+        mean = self.mock_array[0:256, 3*256:4*256].mean()
+        array = np.copy(self.mock_array)
+        array[array == 0] = mean
+        expected_array = (np.ones([256, 8*256]) * mean) / array
+        expected_array[expected_array > 2] = 1
+        expected_array[expected_array < 0] = 1
 
         ff_coeff = e.acquire_ff(1, 0.1)
 
         expose_mock.assert_called_once_with()
         plot_mock.assert_called_once_with(ANY, name='Flat Field coefficients')
+        np.testing.assert_array_almost_equal(expected_array, ff_coeff, 5)
 
 
 class ApplyFFCorrectionTest(unittest.TestCase):
