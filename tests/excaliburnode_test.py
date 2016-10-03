@@ -8,6 +8,7 @@ from excaliburcalibrationdawn.excaliburnode import ExcaliburNode, np, Range
 ERX_patch_path = "excaliburcalibrationdawn.excaliburnode.ExcaliburNode"
 ETAI_patch_path = "excaliburcalibrationdawn.excaliburnode.ExcaliburTestAppInterface"
 ED_patch_path = "excaliburcalibrationdawn.excaliburnode.ExcaliburDAWN"
+from config import MPX3RX
 
 
 class InitTest(unittest.TestCase):
@@ -165,14 +166,13 @@ class ThresholdCalibrationTest(unittest.TestCase):
         self.assertEqual(4, calibration_mock.call_count)
 
     def test_one_energy_thresh_calib(self, save_mock, _):
-        # TODO: Test actual values used once not hard-coded in
-        expected_slope = np.array([9.0]*8)
+        expected_slope = np.array([8.6666666]*8)
         expected_offset = np.array([10.0]*8)
 
         self.e.settings['gain'] = 'slgm'
-        self.e.one_energy_thresh_calib('0.1')
+        self.e.one_energy_thresh_calib()
 
-        self.assertEqual(save_mock.call_args[0][0], '0.1')
+        self.assertEqual(save_mock.call_args[0][0], '0')
         np.testing.assert_array_almost_equal(expected_slope, save_mock.call_args[0][1][0])
         self.assertTrue((save_mock.call_args[0][2] == expected_offset).all())
 
@@ -180,11 +180,15 @@ class ThresholdCalibrationTest(unittest.TestCase):
     def test_multiple_energy_thresh_calib(self, plot_mock, save_mock, _):
         expected_slope = np.array([2.0] + [0.0]*7)
         expected_offset = np.array([10.0] + [0.0]*7)
+        expected_array_1 = np.array([6, 12, 24])
+        expected_array_2 = np.array([62, 62, 62])
 
         self.e.settings['gain'] = 'slgm'
-        self.e.multiple_energy_thresh_calib([0], '0.1')
+        self.e.multiple_energy_thresh_calib([0])
 
         plot_mock.assert_called_once_with(ANY, ANY, [0, 1], name='DAC vs Energy', clear=True)
+        np.testing.assert_array_equal(expected_array_1, plot_mock.call_args[0][0])
+        np.testing.assert_array_equal(expected_array_2, plot_mock.call_args[0][1])
 
         np.testing.assert_array_almost_equal(expected_slope, save_mock.call_args[0][1])
         np.testing.assert_array_almost_equal(expected_offset, save_mock.call_args[0][2])
@@ -198,7 +202,7 @@ class SaveKev2DacCalibTest(unittest.TestCase):
         self.gain = [1.1, 0.7, 1.1, 1.3, 1.0, 0.9, 1.2, 0.9]
         self.offset = [0.2, -0.7, 0.1, 0.0, 0.3, -0.1, 0.2, 0.5]
         self.expected_array = np.array([self.gain, self.offset])
-        self.expected_filename = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem0/spm/shgm/threshold0'
+        self.expected_filename = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem1/spm/shgm/threshold0'
 
     @patch('numpy.savetxt')
     @patch('os.chmod')
