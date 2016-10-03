@@ -264,8 +264,10 @@ from collections import namedtuple
 
 import numpy as np
 
-from excaliburcalibrationdawn.excaliburtestappinterface import ExcaliburTestAppInterface
+from excaliburcalibrationdawn.excaliburtestappinterface import \
+    ExcaliburTestAppInterface
 from excaliburcalibrationdawn.excaliburdawn import ExcaliburDAWN
+from config import MPX3RX
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -274,6 +276,7 @@ Range = namedtuple("Range", "start stop step")
 
 
 class ExcaliburNode(object):
+
     """Class to calibrate Excalibur-RX detectors.
 
     ExcaliburRX is a class defining methods required to calibrate each 1/2
@@ -283,6 +286,7 @@ class ExcaliburNode(object):
     the half-module which you wish to calibrate
 
     """
+
     # Threshold equalization will align pixel noise peaks at this DAC value
     dac_target = 10
     # Acceptable difference compared to dac_target
@@ -313,7 +317,7 @@ class ExcaliburNode(object):
     chip_range = range(num_chips)
     plot_name = ''
 
-    def __init__(self, node=0):
+    def __init__(self, node=1):
         """Initialize EXCALIBUR detector object.
 
         For example: On I13 the top FEM of EXCALIBUR-3M-RX001 is connected to
@@ -463,7 +467,7 @@ class ExcaliburNode(object):
         logging.debug("E1: {E}".format(E=E1))
         logging.debug("DAC1 Array: {array}".format(array=dac1))
 
-        slope = (dac1[self.fem - 1, :] - dac0[self.fem - 1, :])/(E1 - E0)
+        slope = (dac1[self.fem - 1, :] - dac0[self.fem - 1, :]) / (E1 - E0)
         offset = dac0[self.fem - 1, :]
         self.save_kev2dac_calib(threshold, slope, offset)
         logging.debug("Slope: {slope}, Offset: {offset}".format(slope=slope,
@@ -613,45 +617,11 @@ class ExcaliburNode(object):
         #     chipEdgeDacs[chip] = \
         #         edgeDacs[0:256, chip*256:chip*256 + 256].mean()
 
-        OneE_Dac = np.ones([6, 8]).astype('float')
-        OneE_E = 6  # keV
-
-        # Edit Energy Dac array
-
-        if self.settings['gain'] == 'shgm':
-            OneE_Dac[0, :] = [20, 62, 62, 62, 62, 62, 62, 62]
-            OneE_Dac[1, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-            OneE_Dac[2, :] = [62, 62, 62, 62, 62, 62, 62, 62]
-            OneE_Dac[3, :] = [60, 35, 64, 64, 64, 64, 64, 64]
-            OneE_Dac[4, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-            OneE_Dac[5, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-
-        if self.settings['gain'] == 'hgm':
-            OneE_Dac[0, :] = [62, 62, 62, 62, 62, 62, 62, 62]
-            OneE_Dac[1, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-            OneE_Dac[2, :] = [62, 62, 62, 62, 62, 62, 62, 62]
-            OneE_Dac[3, :] = [60, 35, 64, 64, 64, 64, 64, 64]
-            OneE_Dac[4, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-            OneE_Dac[5, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-
-        if self.settings['gain'] == 'lgm':
-            OneE_Dac[0, :] = [20, 62, 62, 62, 62, 62, 62, 62]
-            OneE_Dac[1, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-            OneE_Dac[2, :] = [62, 62, 62, 62, 62, 62, 62, 62]
-            OneE_Dac[3, :] = [60, 35, 64, 64, 64, 64, 64, 64]
-            OneE_Dac[4, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-            OneE_Dac[5, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-
-        if self.settings['gain'] == 'slgm':
-            OneE_Dac[0, :] = [62, 62, 62, 62, 62, 62, 62, 62]
-            OneE_Dac[1, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-            OneE_Dac[2, :] = [62, 62, 62, 62, 62, 62, 62, 62]
-            OneE_Dac[3, :] = [60, 35, 64, 64, 64, 64, 64, 64]
-            OneE_Dac[4, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-            OneE_Dac[5, :] = [64, 64, 64, 64, 64, 64, 64, 64]
+        OneE_E = 6
+        OneE_Dac = MPX3RX.E1_DAC[self.settings['gain']]
 
         slope = (OneE_Dac[self.fem - 1, :] - self.dac_target) / OneE_E
-        offset = [self.dac_target]*8
+        offset = [self.dac_target] * 8
         self.save_kev2dac_calib(threshold, slope, offset)
         logging.debug("Slope: {slope}, Offset: {offset}".format(slope=slope,
                                                                 offset=offset))
@@ -687,112 +657,14 @@ class ExcaliburNode(object):
         # for chip in chips:
         #    chipEdgeDacs[chip] = edgeDacs[0:256, chip*256:chip*256+256].mean()
 
-        # Edit Energy Dac arrays
+        E1_E = 6
+        E1_Dac = MPX3RX.E1_DAC[self.settings['gain']]
 
-        E1_Dac = np.ones([6, 8]).astype('float')
-        E1_E = 6  # keV
+        E2_E = 12
+        E2_Dac = MPX3RX.E2_DAC[self.settings['gain']]
 
-        if self.settings['gain'] == 'shgm':
-            E1_Dac[0, :] = [20, 62, 62, 62, 62, 62, 62, 62]
-            E1_Dac[1, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-            E1_Dac[2, :] = [62, 62, 62, 62, 62, 62, 62, 62]
-            E1_Dac[3, :] = [60, 35, 64, 64, 64, 64, 64, 64]
-            E1_Dac[4, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-            E1_Dac[5, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-
-        if self.settings['gain'] == 'hgm':
-            E1_Dac[0, :] = [62, 62, 62, 62, 62, 62, 62, 62]
-            E1_Dac[1, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-            E1_Dac[2, :] = [62, 62, 62, 62, 62, 62, 62, 62]
-            E1_Dac[3, :] = [60, 35, 64, 64, 64, 64, 64, 64]
-            E1_Dac[4, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-            E1_Dac[5, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-
-        if self.settings['gain'] == 'lgm':
-            E1_Dac[0, :] = [20, 62, 62, 62, 62, 62, 62, 62]
-            E1_Dac[1, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-            E1_Dac[2, :] = [62, 62, 62, 62, 62, 62, 62, 62]
-            E1_Dac[3, :] = [60, 35, 64, 64, 64, 64, 64, 64]
-            E1_Dac[4, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-            E1_Dac[5, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-
-        if self.settings['gain'] == 'slgm':
-            E1_Dac[0, :] = [62, 62, 62, 62, 62, 62, 62, 62]
-            E1_Dac[1, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-            E1_Dac[2, :] = [62, 62, 62, 62, 62, 62, 62, 62]
-            E1_Dac[3, :] = [60, 35, 64, 64, 64, 64, 64, 64]
-            E1_Dac[4, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-            E1_Dac[5, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-
-        E2_Dac = np.ones([6, 8]).astype('float')
-        E2_E = 12  # keV
-
-        if self.settings['gain'] == 'shgm':
-            E2_Dac[0, :] = [120, 110, 100, 90, 80, 70, 60, 50]
-            E2_Dac[1, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-            E2_Dac[2, :] = [62, 62, 62, 62, 62, 62, 62, 62]
-            E2_Dac[3, :] = [60, 35, 64, 64, 64, 64, 64, 64]
-            E2_Dac[4, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-            E2_Dac[5, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-
-        if self.settings['gain'] == 'hgm':
-            E2_Dac[0, :] = [62, 62, 62, 62, 62, 62, 62, 62]
-            E2_Dac[1, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-            E2_Dac[2, :] = [62, 62, 62, 62, 62, 62, 62, 62]
-            E2_Dac[3, :] = [60, 35, 64, 64, 64, 64, 64, 64]
-            E2_Dac[4, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-            E2_Dac[5, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-
-        if self.settings['gain'] == 'lgm':
-            E2_Dac[0, :] = [20, 62, 62, 62, 62, 62, 62, 62]
-            E2_Dac[1, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-            E2_Dac[2, :] = [62, 62, 62, 62, 62, 62, 62, 62]
-            E2_Dac[3, :] = [60, 35, 64, 64, 64, 64, 64, 64]
-            E2_Dac[4, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-            E2_Dac[5, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-
-        if self.settings['gain'] == 'slgm':
-            E2_Dac[0, :] = [62, 62, 62, 62, 62, 62, 62, 62]
-            E2_Dac[1, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-            E2_Dac[2, :] = [62, 62, 62, 62, 62, 62, 62, 62]
-            E2_Dac[3, :] = [60, 35, 64, 64, 64, 64, 64, 64]
-            E2_Dac[4, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-            E2_Dac[5, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-
-        E3_Dac = np.ones([6, 8]).astype('float')
-        E3_E = 24  # keV
-
-        if self.settings['gain'] == 'shgm':
-            E3_Dac[0, :] = [250, 110, 100, 90, 80, 70, 60, 50]
-            E3_Dac[1, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-            E3_Dac[2, :] = [62, 62, 62, 62, 62, 62, 62, 62]
-            E3_Dac[3, :] = [60, 35, 64, 64, 64, 64, 64, 64]
-            E3_Dac[4, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-            E3_Dac[5, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-
-        if self.settings['gain'] == 'hgm':
-            E3_Dac[0, :] = [62, 62, 62, 62, 62, 62, 62, 62]
-            E3_Dac[1, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-            E3_Dac[2, :] = [62, 62, 62, 62, 62, 62, 62, 62]
-            E3_Dac[3, :] = [60, 35, 64, 64, 64, 64, 64, 64]
-            E3_Dac[4, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-            E3_Dac[5, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-
-        if self.settings['gain'] == 'lgm':
-            E3_Dac[0, :] = [20, 62, 62, 62, 62, 62, 62, 62]
-            E3_Dac[1, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-            E3_Dac[2, :] = [62, 62, 62, 62, 62, 62, 62, 62]
-            E3_Dac[3, :] = [60, 35, 64, 64, 64, 64, 64, 64]
-            E3_Dac[4, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-            E3_Dac[5, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-
-        if self.settings['gain'] == 'slgm':
-            E3_Dac[0, :] = [62, 62, 62, 62, 62, 62, 62, 62]
-            E3_Dac[1, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-            E3_Dac[2, :] = [62, 62, 62, 62, 62, 62, 62, 62]
-            E3_Dac[3, :] = [60, 35, 64, 64, 64, 64, 64, 64]
-            E3_Dac[4, :] = [64, 64, 64, 64, 64, 64, 64, 64]
-            E3_Dac[5, :] = [64, 64, 64, 64, 64, 64, 64, 64]
+        E3_E = 24
+        E3_Dac = MPX3RX.E3_DAC[self.settings['gain']]
 
         offset = np.zeros(8)
         gain = np.zeros(8)
@@ -879,37 +751,15 @@ class ExcaliburNode(object):
             chips: Chips to set DACs for
 
         """
-        self.set_dac(chips, 'Threshold1', 0)
-        self.set_dac(chips, 'Threshold2', 0)
-        self.set_dac(chips, 'Threshold3', 0)
-        self.set_dac(chips, 'Threshold4', 0)
-        self.set_dac(chips, 'Threshold5', 0)
-        self.set_dac(chips, 'Threshold6', 0)
-        self.set_dac(chips, 'Threshold7', 0)
-        self.set_dac(chips, 'Preamp', 175)  # Could use 200
-        self.set_dac(chips, 'Ikrum', 10)  # Low Ikrum for better low energy
-        # X-ray sensitivity
-        self.set_dac(chips, 'Shaper', 150)
-        self.set_dac(chips, 'Disc', 125)
-        self.set_dac(chips, 'DiscLS', 100)
-        self.set_dac(chips, 'ShaperTest', 0)
-        self.set_dac(chips, 'DACDiscL', 90)
-        self.set_dac(chips, 'DACTest', 0)
-        self.set_dac(chips, 'DACDiscH', 90)
-        self.set_dac(chips, 'Delay', 30)
-        self.set_dac(chips, 'TPBuffIn', 128)
-        self.set_dac(chips, 'TPBuffOut', 4)
-        self.set_dac(chips, 'RPZ', 255)  # RPZ is disabled at 255
-        self.set_dac(chips, 'TPREF', 128)
-        self.set_dac(chips, 'TPREFA', 500)
-        self.set_dac(chips, 'TPREFB', 500)
+        for dac, value in MPX3RX.DACS.items():
+            self.set_dac(chips, dac, value)
 
     def read_chip_ids(self):
         """Read chip IDs."""
         self.app.read_chip_ids()
 
     def log_chip_id(self):
-        """Reads chip IDs and logs chipIDs in calibration directory."""
+        """Read chip IDs and logs chipIDs in calibration directory."""
         log_filename = posixpath.join(self.calib_dir,
                                       'fem{fem}',
                                       '/efuseIDs'
@@ -962,7 +812,7 @@ class ExcaliburNode(object):
         self.settings['acqtime'] = '100'
 
     def set_dac(self, chips, dac_name="Threshold0", dac_value=40):
-        """Sets any chip DAC at a given value.
+        """Set any chip DAC at a given value.
 
         Args:
             chips: Chips to set DACs for
@@ -982,7 +832,7 @@ class ExcaliburNode(object):
             with open(dac_file_path, 'r') as dac_file:
                 f_content = dac_file.readlines()
 
-            line_nb = chip*29 + np.int(self.dac_number[dac_name])
+            line_nb = chip * 29 + np.int(self.dac_number[dac_name])
             f_content[line_nb] = new_line
             with open(dac_file_path, 'w') as dac_file:
                 dac_file.writelines(f_content)
@@ -1089,7 +939,7 @@ class ExcaliburNode(object):
         self.expose()
 
     def update_filename_index(self):
-        """Increments filename index in filename.idx file in image path.
+        """Increment filename index in filename.idx file in image path.
 
         If the file doesn't exist then create it starting at 0.
 
@@ -1250,14 +1100,14 @@ class ExcaliburNode(object):
                          readmode='1',
                          hdffile=self.settings['fullFilename'])
 
-    def acquire_ff(self, ni, acquire_time):
+    def acquire_ff(self, num, acquire_time):
         """Acquire and sum flat-field images.
 
         NOT TESTED
         Produces flat-field correction coefficients
 
         Args:
-            ni: Number of images to sum
+            num: Number of images to sum
             acquire_time: Exposure time for images
 
         Returns:
@@ -1268,7 +1118,7 @@ class ExcaliburNode(object):
         self.settings['acqtime'] = acquire_time
 
         ff_image = 0
-        for n in range(ni):
+        for _ in range(num):
             image = self.expose()
             ff_image += image
 
@@ -1451,7 +1301,7 @@ class ExcaliburNode(object):
         self.dawn.plot_image(bad_pixels, name='Bad Pixels')
 
     def mask_col(self, chip, column):
-        """Mask a column in a chip and update the maskfile
+        """Mask a column in a chip and update the maskfile.
 
         Args:
             chip: Chip to mask
@@ -1474,7 +1324,7 @@ class ExcaliburNode(object):
         self.dawn.plot_image(bad_pixels, name='Bad pixels')
 
     def mask_pixels(self, chips, image_data, max_counts):
-        """Mask pixels in image_data with counts above max_counts
+        """Mask pixels in image_data with counts above max_counts.
 
         Also updates the corresponding maskfile in the calibration directory
 
@@ -1552,7 +1402,7 @@ class ExcaliburNode(object):
                 chip=chip_idx)
 
             np.savetxt(pixel_mask_file,
-                       bad_pixels[0:256, chip_idx*256:(chip_idx + 1)*256],
+                       self._grab_chip_slice(bad_pixels, chip_idx),
                        fmt='%.18g', delimiter=' ')
             # subprocess.call([self.command, "-i", self.ipaddress,
             #                  "-p", self.port,
@@ -1564,7 +1414,7 @@ class ExcaliburNode(object):
 
         print('####### {pix} noisy pixels in half module ({tot}%)'.format(
             pix=str(bad_pix_tot.sum()),
-            tot=str(100 * bad_pix_tot.sum()/(8 * 256**2))))
+            tot=str(100 * bad_pix_tot.sum() / (8 * 256**2))))
 
     def unmask_all_pixels(self, chips):
         """Unmask all pixels and update maskfile in calibration directory.
@@ -1602,7 +1452,7 @@ class ExcaliburNode(object):
         # TODO: File path slightly different to above; discL_bits vs discLbits
         # TODO: Are they supposed to be the same?
 
-        discL_bits = 31*np.zeros(self.full_array_shape)
+        discL_bits = 31 * np.zeros(self.full_array_shape)  # TODO: Not 32?
         for chip_idx in chips:
             template_path = posixpath.join(self.template_path,
                                            '{disc}.chip{chip}')
@@ -1619,7 +1469,7 @@ class ExcaliburNode(object):
                                  pixelmask=pixel_mask_file)
 
     def check_calib_dir(self):
-        """Checks if calibration directory exists and backs it up."""
+        """Check if calibration directory exists and backs it up."""
         calib_dir = posixpath.join(self.calib_dir,
                                    'fem{fem}',
                                    self.settings['mode'],
@@ -1629,8 +1479,7 @@ class ExcaliburNode(object):
         if (os.path.isdir(calib_dir)) == 0:
             os.makedirs(calib_dir)
         else:
-            backup_dir = self.calib_dir + '_backup_' + \
-                         time.asctime()
+            backup_dir = self.calib_dir + '_backup_' + time.asctime()
             shutil.copytree(self.calib_dir, backup_dir)
 
             logging.debug(backup_dir)
@@ -1737,7 +1586,6 @@ class ExcaliburNode(object):
             numpy.array(?): Noise edge data
 
         """
-
         if dac_range[1] > dac_range[0]:
             edge_dacs = dac_range[1] - dac_range[2] * np.argmax(
                 (dac_scan_data[::-1, :, :] > edge_val), 0)
@@ -2281,15 +2129,15 @@ class ExcaliburNode(object):
         self.copy_slgm_into_other_gain_modes()  # Copy slgm threshold
         # equalization folder to other gain threshold_equalization folders
 
-    def loop(self, ni):
+    def loop(self, num):
         """Acquire images and plot the sum.
 
         Args:
-            ni: Number of images to acquire
+            num: Number of images to acquire
 
         """
         tmp = 0
-        for i in range(ni):
+        for _ in range(num):
             tmp = self.expose() + tmp
             self.dawn.plot_image(tmp, name='Sum')
 
@@ -2364,7 +2212,6 @@ class ExcaliburNode(object):
             fem: FEM to set
 
         """
-
         GND_Dacs = 145*np.ones([6, 8]).astype('int')
         FBK_Dacs = 190*np.ones([6, 8]).astype('int')
         CAS_Dacs = 180*np.ones([6, 8]).astype('int')
@@ -2460,7 +2307,7 @@ class ExcaliburNode(object):
 
     @staticmethod
     def rotate_config(config_file):
-        """Rotate array in given file 180 degrees
+        """Rotate array in given file 180 degrees.
 
         Args:
             config_file: Config file to rotate
