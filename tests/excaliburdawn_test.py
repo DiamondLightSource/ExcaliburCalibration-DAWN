@@ -138,7 +138,7 @@ class PlotLinearFitTest(unittest.TestCase):
         x = MagicMock()
         y = MagicMock()
 
-        e.plot_linear_fit(x, y, [0, 1], name="Test", clear=True)
+        e.plot_linear_fit(x, y, [0, 1], name="Test", fit_name="Test fits", clear=True)
 
         # Check clear calls
         self.assertEqual("Test", clear_mock.call_args_list[0][0][0])
