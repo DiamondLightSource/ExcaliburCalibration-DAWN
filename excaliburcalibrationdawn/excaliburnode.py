@@ -279,7 +279,7 @@ class ExcaliburNode(object):
 
     """Class to calibrate Excalibur-RX detectors.
 
-    ExcaliburRX is a class defining methods required to calibrate each 1/2
+    ExcaliburNode is a class defining methods required to calibrate each 1/2
     module (8 MPX3-RX chips) of an EXCALIBUR-RX detector.
     These calibration scripts will work only inside the Python interpreter of
     DAWN software running on the PC sever node connected to the FEM controlling
@@ -318,7 +318,7 @@ class ExcaliburNode(object):
     plot_name = ''
 
     def __init__(self, node=1):
-        """Initialize EXCALIBUR detector object.
+        """Initialize Excalibur node object.
 
         For example: On I13 the top FEM of EXCALIBUR-3M-RX001 is connected to
         node 1 (i13-1-excalibur01) and the bottom fem to node 6(?)
@@ -721,8 +721,7 @@ class ExcaliburNode(object):
                                self.settings['mode'],
                                self.settings['gain'],
                                'threshold{threshold}'
-                               ).format(fem=self.fem,
-                                        threshold=threshold)
+                               ).format(fem=self.fem, threshold=threshold)
 
         thresh_coeff = np.genfromtxt(fname)
         logging.debug(thresh_coeff[0, :].astype(np.int))
@@ -2016,6 +2015,9 @@ class ExcaliburNode(object):
             elif disc_name == 'discL':
                 discLbits = temp_bits
                 discHbits = np.zeros(self.full_array_shape)
+            else:
+                raise ValueError("Discriminator must be L or H, got {bad_disc}"
+                                 .format(bad_disc=disc_name))
 
             self.load_config_bits([chip],
                                   self._grab_chip_slice(discLbits, chip),
