@@ -1142,27 +1142,75 @@ class OptimizeDacDiscTest(unittest.TestCase):
 
     rand = np.random.RandomState(1234)
 
-    @patch(DAWN_patch_path + '.clear_plot')
-    @patch(DAWN_patch_path + '.plot_image')
-    @patch('numpy.histogram')
-    @patch('numpy.asarray')
-    @patch('excaliburcalibrationdawn.excaliburdawn.curve_fit',
-           return_value=[[1, 2, 3], None])
-    @patch(DAWN_patch_path + '.gauss_function')
+    def setUp(self):
+        self.e = ExcaliburNode()
+
     @patch(Node_patch_path + '.set_dac')
-    @patch(Node_patch_path + '.scan_dac',
-           return_value=[rand.randint(10, size=(3, 256, 8*256)), None])
-    @patch(Node_patch_path + '.open_discbits_file')
-    @patch(Node_patch_path + '.load_config_bits')
-    @patch(Node_patch_path + '.find_max')
-    def test_(self, find_mock, load_mock, open_mock, scan_mock, set_mock, gauss_mock,
-              fit_mock, asarray_mock, histo_mock, plot_mock, clear_mock):
-        # TODO: Write proper tests once function is split up
-        e = ExcaliburNode()
+    @patch(Node_patch_path + '._optimize_dac_disc')
+    def test_optimize_disc_l(self, optimize_mock, set_mock):
         chips = [0]
         roi_mock = np.ones([256, 8*256])
 
-        # e.optimize_dac_disc(chips, 'discL', roi_mock)
+        self.e.optimize_disc_l(chips, roi_mock)
+
+        set_mock.assert_called_once_with(chips, "Threshold1", 0)
+        self.assertEqual('0', self.e.settings['disccsmspm'])
+        optimize_mock.assert_called_once_with(chips, "DACDiscL", roi_mock)
+
+    @patch(Node_patch_path + '.set_dac')
+    @patch(Node_patch_path + '._optimize_dac_disc')
+    def test_optimize_disc_h(self, optimize_mock, set_mock):
+        chips = [0]
+        roi_mock = np.ones([256, 8*256])
+
+        self.e.optimize_disc_h(chips, roi_mock)
+
+        set_mock.assert_called_once_with(chips, "Threshold0", 60)
+        self.assertEqual('1', self.e.settings['disccsmspm'])
+        optimize_mock.assert_called_once_with(chips, "DACDiscH", roi_mock)
+
+    @patch(Node_patch_path + '._display_optimization_results')
+    @patch(Node_patch_path + '.set_dac')
+    @patch(DAWN_patch_path + '.clear_plot')
+    @patch(DAWN_patch_path + '.plot_linear_fit', return_value=(1, 1))
+    @patch(DAWN_patch_path + '.add_plot_line')
+    @patch(Node_patch_path + '.load_all_discbits')
+    @patch(Node_patch_path + '._chip_dac_scan', return_value=([1], [1]))
+    def test_optimize_dac_disc(self, scan_mock, load_mock, add_mock, plot_mock,
+                               clear_mock, set_mock, display_mock):
+        chips = [0]
+        roi_mock = np.ones([256, 8*256])
+
+        self.e._optimize_dac_disc(chips, "DACDiscL", roi_mock)
+
+        self.assertEqual(2, load_mock.call_count)
+        self.assertEqual(4, scan_mock.call_count)
+        self.assertEqual(3, clear_mock.call_count)
+        self.assertEqual(3, add_mock.call_count)
+        self.assertEqual(1, plot_mock.call_count)
+        self.assertEqual(1, set_mock.call_count)
+        self.assertEqual(1, display_mock.call_count)
+
+    @patch(DAWN_patch_path + '.plot_gaussian_fit', return_value=(0, 0))
+    @patch(Node_patch_path + '.set_dac')
+    @patch(Node_patch_path + '.scan_dac',
+           return_value=[rand.randint(10, size=(3, 256, 8*256)), None])
+    @patch(Node_patch_path + '.find_max')
+    def test_chip_dac_scan(self, find_mock, scan_mock, set_mock, plot_mock):
+        chips = [0]
+        expected_message = "Histogram of edges when scanning DAC_disc for discbit = 0"
+
+        self.e._chip_dac_scan(chips, "DACDiscL", 1, (0, 150, 50), 0, [5000, 0, 30])
+
+        set_mock.assert_called_once_with(chips, "DACDiscL", 1)
+        scan_mock.assert_called_once_with(chips, "DACDiscL", (0, 150, 50))
+        find_mock.assert_called_once_with(chips, scan_mock.return_value[0], (0, 150, 50))
+        plot_mock.assert_called_once_with(chips, expected_message, [5000, 0, 30], find_mock.return_value, 3)
+
+    def test_display_optimization_results(self):
+        chips = [0]
+
+        self.e._display_optimization_results(chips, MagicMock(), MagicMock(), MagicMock(), [1]*8)
 
 
 class EqualizeDiscbitsTest(unittest.TestCase):
@@ -1250,7 +1298,7 @@ class ROITest(unittest.TestCase):
 
 class CalibrateDiscTest(unittest.TestCase):
 
-    @patch(Node_patch_path + '.optimize_dac_disc')
+    @patch(Node_patch_path + '._optimize_dac_disc')
     @patch(Node_patch_path + '.roi')
     @patch(Node_patch_path + '.equalise_discbits')
     @patch(Node_patch_path + '.save_discbits')

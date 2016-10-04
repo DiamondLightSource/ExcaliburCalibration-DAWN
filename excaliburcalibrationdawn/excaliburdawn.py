@@ -61,7 +61,8 @@ class ExcaliburDAWN(object):
         """
         self.plot.clear(name)
 
-    def plot_linear_fit(self, x_data, y_data, estimate, name="Linear", clear=False):
+    def plot_linear_fit(self, x_data, y_data, estimate,
+                        name="Linear", fit_name="Linear Fit", clear=False):
         """Plot the given 2D data with a linear least squares fit.
 
         Args:
@@ -69,17 +70,16 @@ class ExcaliburDAWN(object):
             y_data: Dependent variable data
             estimate: Starting estimate for offset and gain
             name: Name of plot
+            fit_name: Name of fit plot
             clear: Option to clear given plot before adding new one
 
         Returns:
             Optimal offset and gain values for least squares fit
 
         """
-        fit_plot_name = '{} fits'.format(name)
-
         if clear:
             self.clear_plot(name)
-            self.clear_plot(fit_plot_name)
+            self.clear_plot(fit_name)
 
         self.plot.addline(x_data, y_data, name=name)
 
@@ -88,9 +88,40 @@ class ExcaliburDAWN(object):
         gain = popt[1]
 
         self.plot.addline(x_data, self.lin_function(x_data, offset, gain),
-                          name=fit_plot_name)
+                          name=fit_name)
 
         return offset, gain
+
+    def add_plot_line(self, x, y, name):
+        self.plot.addline(x, y, name=name)
+
+    def plot_gaussian_fit(self, chips, plot_name, p0, edge_dacs, bins):
+
+        fit_plot_name = plot_name + " (fitted)"
+        a = np.zeros([8])
+        x0 = np.zeros([8])
+        sigma = np.zeros([8])
+        self.clear_plot(plot_name)
+        self.clear_plot(fit_plot_name)
+
+        for chip in chips:
+            edge_histo = np.histogram(edge_dacs[0:256,
+                                      chip*256:chip*256 + 256],
+                                      bins=bins)
+            self.plot.addline(edge_histo[1][0:-1], edge_histo[0],
+                              name=plot_name)
+            popt, _ = curve_fit(self.gauss_function, edge_histo[1][0:-2],
+                                edge_histo[0][0:-1], p0)
+
+            x = edge_histo[1][0:-1]
+            a[chip] = popt[0]
+            x0[chip] = popt[1]
+            sigma[chip] = popt[2]
+            self.plot.addline(x, self.gauss_function(x, a[chip], x0[chip],
+                                                     sigma[chip]),
+                              name=fit_plot_name)
+
+        return x0, sigma
 
     def plot_histogram(self, image_data, name="Histogram"):
         """Plot a histogram for each of the given chips.
@@ -110,6 +141,7 @@ class ExcaliburDAWN(object):
         Args:
             chips: Chips to plot for
             image_data: Data for full array
+            mask: Mask to apply before plotting data
             name: Name of plot
 
         """

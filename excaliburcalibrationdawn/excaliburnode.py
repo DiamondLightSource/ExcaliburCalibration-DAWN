@@ -1589,38 +1589,52 @@ class ExcaliburNode(object):
             image_data.append(self._grab_chip_slice(edge_dacs, chip_idx))
         self.dawn.plot_histogram(image_data)
 
-    def optimize_dac_disc(self, chips, disc_name, roi_full_mask):
+    def optimize_disc_l(self, chips, roi_full_mask):
+        """Optimize discriminator L for the given chips.
+
+        Args:
+            chips: Chips to optimize
+            roi_full_mask: Mask to apply during process
+
+        """
+        self.set_dac(chips, 'Threshold1', 0)
+        self.settings['disccsmspm'] = '0'
+        self._optimize_dac_disc(chips, "DACDiscL", roi_full_mask)
+
+    def optimize_disc_h(self, chips, roi_full_mask):
+        """Optimize discriminator L for the given chips.
+
+        Args:
+            chips: Chips to optimize
+            roi_full_mask: Mask to apply during process
+
+        """
+        self.set_dac(chips, 'Threshold0', 60)  # To be above the noise
+        # since DiscL is equalized before DiscH
+        self.settings['disccsmspm'] = '1'
+        self._optimize_dac_disc(chips, "DACDiscH", roi_full_mask)
+
+    def _optimize_dac_disc(self, chips, dac_disc_name, roi_full_mask):
         """Calculate optimum DAC disc values for given chips.
 
         Args:
             chips: Chips to optimize
-            disc_name: Discriminator to optimize ('DiscL' or 'DiscH')
+            dac_disc_name: Discriminator to optimize ('DiscL' or 'DiscH')
             roi_full_mask: Mask to exclude pixels from optimization calculation
 
         Returns:
             numpy.array: Optimum DAC discriminator value for each chip
 
         """
+        thresholds = dict(DACDiscL="Threshold0", DACDiscH="Threshold1")
+        threshold = thresholds[dac_disc_name]
+
         # Definition of parameters to be used for threshold scans
         self.settings['acqtime'] = '5'
         self.settings['counter'] = '0'
         self.settings['equalization'] = '1'  # Might not be necessary when
         # optimizing DAC Disc
         dac_range = (0, 150, 5)
-
-        # Setting variables depending on whether discL or discH is equalized
-        # (Note: equalize discL before discH)
-        if disc_name == 'discL':
-            threshold = 'Threshold0'
-            self.set_dac(chips, 'Threshold1', 0)
-            self.settings['disccsmspm'] = '0'
-            dac_disc_name = 'DACDiscL'
-        if disc_name == 'discH':
-            threshold = 'Threshold1'
-            self.set_dac(chips, 'Threshold0', 60)  # To be above the noise
-            # since DiscL is equalized before DiscH
-            self.settings['disccsmspm'] = '1'
-            dac_disc_name = 'DACDiscH'
 
         ######################################################################
         # STEP 1
@@ -1632,97 +1646,37 @@ class ExcaliburNode(object):
         ######################################################################
 
         discbit = 0
-        dac_disc_range = range(0, 150, 50)  # range(50,150,50)
-        bins = (dac_range[1] - dac_range[0]) / dac_range[2]
-
-        # Initialization of fit parameters and plots
-        opt_dac_disc = np.zeros(self.num_chips)
-        sigma = np.zeros([8, len(dac_disc_range)])
-        x0 = np.zeros([8, len(dac_disc_range)])
-        a = np.zeros([8, len(dac_disc_range)])
-        p0 = [5000, 50, 30]
-        offset = np.zeros(8)
-        gain = np.zeros(8)
-        name = "Histogram of edges when scanning DAC_disc"
-        plot_name = name + " for discbit =" + str(discbit)
-        fit_plot_name = plot_name + " (fitted)"
         calib_plot_name = "Mean edge shift in Threshold DACs as a function" \
                           "of DAC_disc for discbit =" + str(discbit)
-        self.dawn.clear_plot(plot_name)
-        self.dawn.clear_plot(fit_plot_name)
-        # dnp.plot.clear(calib_plot_name)
 
         # Set discbits at 0
-        discbits = discbit*np.ones(self.full_array_shape)
-        for chip in chips:
-            if disc_name == 'discH':
-                discLbits = self.open_discbits_file(chips, 'discLbits')
-                self.load_config_bits([chip],
-                                      discLbits[:, chip*256:chip*256 + 256],
-                                      discbits[:, chip*256:chip*256 + 256],
-                                      roi_full_mask[:,
-                                                    chip*256:chip*256 + 256])
-            if disc_name == 'discL':
-                discHbits = np.zeros(self.full_array_shape)
-                # Set discL and DiscH bits at 0 and unmask the whole matrix
-                self.load_config_bits([chip],
-                                      discbits[:, chip*256:chip*256 + 256],
-                                      discHbits[:, chip*256:chip*256 + 256],
-                                      roi_full_mask[:,
-                                                    chip*256:chip*256 + 256])
+        discbits = discbit * np.ones(self.full_array_shape)
+        self.load_all_discbits(chips, dac_disc_name, discbits, roi_full_mask)
 
         # Threshold DAC scans, fitting and plotting
-        idx = 0
-        for DAC_disc in dac_disc_range:
-            self.set_dac(chips, dac_disc_name, DAC_disc)
-            # Scan threshold
-            [dac_scan_data, scan_range] = self.scan_dac(chips, threshold,
-                                                        dac_range)
-            # Find noise edges
-            edge_dacs = self.find_max(chips, dac_scan_data, dac_range)
-            for chip in chips:
-                edge_histo = np.histogram(edge_dacs[0:256,
-                                          chip*256:chip*256 + 256],
-                                          bins=bins)
-                dnp.plot.addline(edge_histo[1][0:-1], edge_histo[0],
-                                 name=plot_name)
-                popt, pcov = curve_fit(gauss_function, edge_histo[1][0:-2],
-                                       edge_histo[0][0:-1], p0)
+        p0 = [5000, 50, 30]
+        dac_disc_range = range(0, 150, 50)
+        x0 = np.zeros([8, len(dac_disc_range)])
+        for idx, DAC_disc in enumerate(dac_disc_range):
+            x0[:, idx], _ = self._chip_dac_scan(chips, dac_disc_name, DAC_disc,
+                                                dac_range, discbit, threshold,
+                                                p0)
 
-                x = edge_histo[1][0:-1]
-                a[chip, idx] = popt[0]
-                sigma[chip, idx] = popt[2]
-                x0[chip, idx] = popt[1]
-                dnp.plot.addline(x, gauss_function(x, a[chip, idx],
-                                                   x0[chip, idx],
-                                                   sigma[chip, idx]),
-                                 name=fit_plot_name)
-            idx += 1
             self.dawn.clear_plot(calib_plot_name)
             for chip in chips:
-                dnp.plot.addline(np.asarray(dac_disc_range[0:idx]),
-                                 x0[chip, 0:idx],
-                                 name=calib_plot_name)
+                # TODO: idx:(idx+1), not 0:idx+1; why doesn't it plot at end?
+                self.dawn.add_plot_line(np.asarray(dac_disc_range[0:idx + 1]),
+                                        x0[chip, 0:idx + 1],
+                                        name=calib_plot_name)
 
         # Plots mean noise edge as a function of DAC Disc for all discbits
         # set at 0
+        offset = np.zeros(8)
+        gain = np.zeros(8)
         for chip in chips:
-            popt, pcov = curve_fit(lin_function, np.asarray(dac_disc_range),
-                                   x0[chip, :], [0, -1])
-            offset[chip] = popt[0]
-            gain[chip] = popt[1]  # Noise edge shift in DAC units per DACdisc
-            # DAC unit
-            dnp.plot.addline(np.asarray(dac_disc_range),
-                             lin_function(np.asarray(dac_disc_range),
-                                          offset[chip], gain[chip]),
-                             name=calib_plot_name)
-
-        print("Edge shift (in Threshold DAC units) produced by 1 DACdisc DAC"
-              "unit for discbits=15:")
-        for chip in chips:
-            print("Chip {chip}: {shift}".format(
-                chip=chip,
-                shift=str(round(gain[chip], 2))))
+            offset[chip], gain[chip] = self.dawn.plot_linear_fit(
+                np.asarray(dac_disc_range), x0[chip, :], [0, -1],
+                fit_name=calib_plot_name)
 
         # Fit range should be adjusted to remove outliers at 0 and max DAC 150
 
@@ -1735,62 +1689,61 @@ class ExcaliburNode(object):
         discbit = 15
         DAC_disc = 80  # Value does not matter since no correction is applied
         # when discbits = 15
-        bins = (dac_range[1] - dac_range[0]) / dac_range[2]
-
-        # Initialization of fit parameters and plots
-        sigma = np.zeros([8])
-        x0 = np.zeros([8])
-        a = np.zeros([8])
-        p0 = [5000, 0, 30]
-        plot_name = name + " for discbit =" + str(discbit)
-        fit_plot_name = plot_name + " (fitted)"
-        self.dawn.clear_plot(plot_name)
-        self.dawn.clear_plot(fit_plot_name)
-        # dnp.plot.clear(calib_plot_name)
 
         # Set discbits at 15
-        discbits = discbit*np.ones(self.full_array_shape)
+        discbits = discbit * np.ones(self.full_array_shape)
+        self.load_all_discbits(chips, dac_disc_name, discbits, roi_full_mask)
+
+        p0 = [5000, 0, 30]
+        x0, sigma = self._chip_dac_scan(chips, dac_disc_name, DAC_disc,
+                                        dac_range, discbit, threshold, p0)
+
+        opt_dac_disc = np.zeros(self.num_chips)
         for chip in chips:
-            if disc_name == 'discH':
-                # discLbits = np.zeros([self.chipSize,
-                #                       self.chipSize*self.nbOfChips])
-                discLbits = self.open_discbits_file(chips, 'discLbits')
-                self.load_config_bits(range(chip, chip + 1),
-                                      discLbits[:, chip*256:chip*256 + 256],
-                                      discbits[:, chip*256:chip*256 + 256],
-                                      roi_full_mask[:,
-                                                    chip*256:chip*256 + 256])
-            if disc_name == 'discL':
-                discHbits = np.zeros(self.full_array_shape)
-                self.load_config_bits(range(chip, chip + 1),
-                                      discbits[:, chip*256:chip*256 + 256],
-                                      discHbits[:, chip*256:chip*256 + 256],
-                                      roi_full_mask[:,
-                                                    chip*256:chip*256 + 256])
+            opt_value = int(self.num_sigma * sigma[chip] / gain[chip])
+            self.set_dac([chip], dac_disc_name, opt_value)
+            opt_dac_disc[chip] = opt_value
 
-            # TODO: Use this once have tests
-            # self.load_all_discbits(chips, disc_name,
-            #                        discbits_tmp, roi_full_mask)
+        self._display_optimization_results(chips, x0, sigma, gain,
+                                           opt_dac_disc)
 
-        self.set_dac(chips, dac_disc_name, DAC_disc)
-        [dac_scan_data, scan_range] = self.scan_dac(chips, threshold,
-                                                    dac_range)
+    def _chip_dac_scan(self, chips, dac_name, dac_value, dac_range, discbit,
+                       p0):
+        """Scan given DAC for given chips and perform a gaussian fit.
+
+        Args:
+            chips: Chips to scan
+            dac_name: DAC to scan
+            dac_value: Initial value to set dac to # TODO: Why
+            dac_range: Range to scan over
+            discbit: Current discbit value (for plot name)
+            p0: Initial estimate for gaussian fit parameters
+
+        Returns:
+            np.array, np.array: x0 and sigma values for fit
+        """
+        bins = (dac_range[1] - dac_range[0]) / dac_range[2]
+        plot_name = "Histogram of edges when scanning DAC_disc for " \
+                    "discbit = {discbit}".format(discbit=discbit)
+
+        self.set_dac(chips, dac_name, dac_value)  # TODO: Why set this first?
+        # Scan threshold
+        [dac_scan_data, _] = self.scan_dac(chips, dac_name, dac_range)
+        # Find noise edges
         edge_dacs = self.find_max(chips, dac_scan_data, dac_range)
+
+        x0, sigma = self.dawn.plot_gaussian_fit(chips, plot_name, p0,
+                                                edge_dacs, bins)
+        return x0, sigma
+
+    def _display_optimization_results(self, chips, x0, sigma, gain,
+                                      opt_dac_disc):
+
+        print("Edge shift (in Threshold DAC units) produced by 1 DACdisc DAC"
+              "unit for discbits=15:")
         for chip in chips:
-            edge_histo = np.histogram(edge_dacs[0:256,
-                                                chip*256:chip*256 + 256],
-                                      bins=bins)
-            dnp.plot.addline(edge_histo[1][0:-1], edge_histo[0],
-                             name=plot_name)
-            popt, pcov = curve_fit(gauss_function, edge_histo[1][0:-2],
-                                   edge_histo[0][0:-1], p0)
-            x = edge_histo[1][0:-1]
-            a[chip] = popt[0]
-            sigma[chip] = popt[2]
-            x0[chip] = popt[1]
-            dnp.plot.addline(x,
-                             gauss_function(x, a[chip], x0[chip], sigma[chip]),
-                             name=fit_plot_name)
+            print("Chip {chip}: {shift}".format(
+                chip=chip, shift=str(round(gain[chip], 2))))
 
         print("Mean noise edge (DAC Units) for discbits=15:")
         for chip in chips:
@@ -1822,10 +1775,10 @@ class ExcaliburNode(object):
             print("Default equalization target of {target} DAC units "
                   "can be used.".format(target=self.dac_target))
 
-        # TODO: Should say '+/- <something> sigma' ?
         print("DAC shift (DAC units) required to bring all pixels with an edge"
-              "within +/- sigma of the target, at the target "
-              "of {target}:".format(target=self.dac_target))
+              "within +/- {num_sigma} sigma of the target, at the target "
+              "of {target}:".format(num_sigma=self.num_sigma,
+                                    target=self.dac_target))
         for chip in chips:
             print("Chip {chip}: {shift}".format(
                 chip=chip, shift=int(self.num_sigma * sigma[chip])))
@@ -1835,9 +1788,6 @@ class ExcaliburNode(object):
         for chip in chips:
             print("Chip {chip}: {shift}".format(
                 chip=chip, shift=round(gain[chip], 2)))
-
-        for chip in chips:
-            opt_dac_disc[chip] = int(self.num_sigma * sigma[chip] / gain[chip])
 
         print("###############################################################"
               "########################")
@@ -1855,12 +1805,7 @@ class ExcaliburNode(object):
               "32 discbit correction steps:")
         for chip in chips:
             print("Chip {chip}: {shift}".format(
-                chip=chip, shift=opt_dac_disc[chip]/16))
-
-        for chip in chips:
-            self.set_dac([chip], dac_disc_name, int(opt_dac_disc[chip]))
-
-        return opt_dac_disc
+                chip=chip, shift=opt_dac_disc[chip] / 16))
 
     def equalise_discbits(self, chips, disc_name, roi_full_mask,
                           method='stripes'):
@@ -2090,8 +2035,8 @@ class ExcaliburNode(object):
             roi_type: ROI type to use (see roi)
 
         """
-        self.optimize_dac_disc(chips, disc_name,
-                               roi_full_mask=1 - self.roi(chips, 0, 1, 'rect'))
+        self._optimize_dac_disc(chips, disc_name,
+                                roi_full_mask=1 - self.roi(chips, 0, 1, 'rect'))
 
         # Run threshold_equalization over each roi
         for step in range(steps):
