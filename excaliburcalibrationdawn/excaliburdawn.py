@@ -130,6 +130,7 @@ class ExcaliburDAWN(object):
             bins: Bins to plot over
 
         """
+        # TODO: Pass function default bins=10 instead if else block
         if bins is not None:
             histogram = np.histogram(data, bins=bins)
         else:
