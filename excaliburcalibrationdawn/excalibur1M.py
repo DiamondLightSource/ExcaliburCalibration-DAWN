@@ -15,5 +15,6 @@ class Excalibur1M(object):
         self.nodes = Nodes(ExcaliburNode(0), ExcaliburNode(1))
 
     def optimize_dac_disc(self):
+        """"""
         self.nodes.Node1.optimize_dac_disc()
         self.nodes.Node2.optimize_dac_disc()
