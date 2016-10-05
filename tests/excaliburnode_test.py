@@ -1217,35 +1217,67 @@ class EqualizeDiscbitsTest(unittest.TestCase):
 
     rand = np.random.RandomState(1234)
 
-    @patch(DAWN_patch_path + '.plot_image')
-    @patch(DAWN_patch_path + '.clear_plot')
+    def setUp(self):
+        self.e = ExcaliburNode(1)
+        self.e.chip_size = 4
+        self.e.num_chips = 4
+        self.e.full_array_shape = [4, 16]
+
+    @patch(Node_patch_path + '._equalise_discbits')
     @patch(Node_patch_path + '.set_dac')
-    @patch(Node_patch_path + '.open_discbits_file')
-    @patch(Node_patch_path + '.load_config_bits')
+    def test_equalize_disc_l(self, set_mock, equalise_mock):
+        roi = MagicMock()
+        self.e.equalize_disc_l([0], roi, "Method")
+
+        set_mock.assert_called_once_with([0], "Threshold1", 0)
+        equalise_mock.assert_called_once_with([0], "DACDiscL", "Threshold0", roi, "Method")
+        self.assertEqual("0", self.e.settings['disccsmspm'])
+
+    @patch(Node_patch_path + '._equalise_discbits')
+    @patch(Node_patch_path + '.set_dac')
+    def test_equalize_disc_h(self, set_mock, equalise_mock):
+        roi = MagicMock()
+        self.e.equalize_disc_h([0], roi, "Method")
+
+        set_mock.assert_called_once_with([0], "Threshold0", 60)
+        equalise_mock.assert_called_once_with([0], "DACDiscH", "Threshold1", roi, "Method")
+        self.assertEqual("1", self.e.settings['disccsmspm'])
+
     @patch(Node_patch_path + '.load_config')
+    @patch(DAWN_patch_path + '.plot_histogram_with_mask')
+    @patch(DAWN_patch_path + '.clear_plot')
+    @patch(DAWN_patch_path + '.plot_image')
     @patch(Node_patch_path + '.find_max',
-           return_value=rand.randint(2, size=(256, 8*256)))
+           return_value=rand.randint(2, size=(4, 16)))
     @patch(Node_patch_path + '.scan_dac',
-           return_value=[rand.randint(10, size=(3, 256, 8*256)), None])
-    # @unittest.skip("Takes too long")
-    def test_correct_calls_made(self, scan_mock, find_mock, load_mock,
-                                load_bits_mock, open_mock, set_mock,
-                                clear_mock, plot_mock):
-        # TODO: Finish once run on real system, know what it does and
-        # TODO: maybe split up / refactored.
-        e = ExcaliburNode(1)
+           return_value=[rand.randint(10, size=(3, 4, 16)), None])
+    @patch(Node_patch_path + '.load_all_discbits')
+    def test_equalize_discbits(self, load_mock, scan_mock, find_mock,
+                                plot_mock, clear_mock, histo_mock,
+                                load_config_mock):
         chips = [0]
-        roi = np.zeros([256, 8*256])
+        roi = np.zeros([4, 16])
 
-        # e.equalise_discbits(chips, 'discL', roi)
+        self.e._equalise_discbits(chips, "DACDiscL", "Threshold0", roi, "Stripes")
 
-        # self.assertEqual(32 + 1, scan_mock.call_count)
-        # find_mock.assert_called_once_with()
-        # load_mock.assert_called_once_with()
-        # load_bits_mock.assert_called_once_with()
-        # open_mock.assert_called_once_with()
-        # set_mock.assert_called_once_with()
-        # plot_mock.assert_called_once_with()
+        self.assertEqual(32 + 1, scan_mock.call_count)
+        self.assertEqual(([0], "DACDiscL", ANY, ANY), load_mock.call_args_list[0][0])
+        np.testing.assert_array_equal(roi, load_mock.call_args_list[0][0][3])
+        self.assertEqual(([0], "Threshold0", (0, 20, 2)), scan_mock.call_args_list[0][0])
+        self.assertEqual(([0], scan_mock.return_value[0], (0, 20, 2)), find_mock.call_args_list[0][0])
+        self.assertEqual((ANY,), plot_mock.call_args_list[0][0])
+        self.assertEqual(dict(name="discbits"), plot_mock.call_args_list[0][1])
+        self.assertEqual(("Histogram of Final Discbits",), clear_mock.call_args_list[0][0])
+        self.assertEqual(("Histogram of Final Discbits",), clear_mock.call_args_list[0][0])
+        self.assertEqual((chips, ANY, ANY), histo_mock.call_args_list[0][0])
+        np.testing.assert_array_equal(1 - roi, histo_mock.call_args_list[0][0][2])
+        self.assertEqual(dict(name="Histogram of Final Discbits"), histo_mock.call_args_list[0][1])
+        load_config_mock.assert_called_once_with(chips)
+
+    def test_equalize_discbits_given_invalid_method_raises(self):
+
+        with self.assertRaises(NotImplementedError):
+            self.e._equalise_discbits([], "DACDiscL", "Threshold0", MagicMock(), "Not a Method")
 
 
 class CheckCalibTest(unittest.TestCase):
@@ -1300,7 +1332,7 @@ class CalibrateDiscTest(unittest.TestCase):
 
     @patch(Node_patch_path + '._optimize_dac_disc')
     @patch(Node_patch_path + '.roi')
-    @patch(Node_patch_path + '.equalise_discbits')
+    @patch(Node_patch_path + '._equalise_discbits')
     @patch(Node_patch_path + '.save_discbits')
     @patch(Node_patch_path + '.combine_rois')
     @patch(Node_patch_path + '.load_config')
