@@ -1602,7 +1602,7 @@ class ExcaliburNode(object):
         self._optimize_dac_disc(chips, "DACDiscL", roi_full_mask)
 
     def optimize_disc_h(self, chips, roi_full_mask):
-        """Optimize discriminator L for the given chips.
+        """Optimize discriminator H for the given chips.
 
         Args:
             chips: Chips to optimize
@@ -1807,8 +1807,42 @@ class ExcaliburNode(object):
             print("Chip {chip}: {shift}".format(
                 chip=chip, shift=opt_dac_disc[chip] / 16))
 
-    def equalise_discbits(self, chips, disc_name, roi_full_mask,
-                          method='stripes'):
+    def equalize_disc_l(self, chips, roi_full_mask, method="stripes"):
+        """Equalize discriminator L for the given chips.
+
+        Args:
+            chips: Chips to equalize
+            roi_full_mask: Mask to use during process
+            method: Equalization method to use
+
+        Returns:
+            numpy.array: Equalised discriminator bits
+
+        """
+        self.set_dac(chips, 'Threshold1', 0)
+        self.settings['disccsmspm'] = '0'
+        self._equalise_discbits(chips, "DACDiscL", "Threshold0", roi_full_mask,
+                                method)
+
+    def equalize_disc_h(self, chips, roi_full_mask, method="stripes"):
+        """Equalize discriminator H for the given chips.
+
+        Args:
+            chips: Chips to equalize
+            roi_full_mask: Mask to use during process
+            method: Equalization method to use
+
+        Returns:
+            numpy.array: Equalised discriminator bits
+
+        """
+        self.set_dac(chips, 'Threshold0', 60)
+        self.settings['disccsmspm'] = '1'
+        self._equalise_discbits(chips, "DACDiscH", "Threshold1", roi_full_mask,
+                                method)
+
+    def _equalise_discbits(self, chips, disc_name, threshold, roi_full_mask,
+                           method):
         """Equalize pixel discriminator.
 
         Uses stripes method as default (trimbits distributed across the matrix
@@ -1818,6 +1852,7 @@ class ExcaliburNode(object):
         Args:
             chips: Chips to equalize
             disc_name: Discriminator to equalize ('DiscL' or 'DiscH')
+            threshold: Threshold to scan
             roi_full_mask: Mask to exclude pixels from equalization calculation
             method: Method to use ('dacscan', 'bitscan' or 'stripes')
 
@@ -1828,86 +1863,48 @@ class ExcaliburNode(object):
         self.settings['acqtime'] = '5'
         self.settings['counter'] = '0'
         self.settings['equalization'] = '1'
-        if disc_name == 'discL':
-            threshold = 'Threshold0'
-            self.set_dac(chips, 'Threshold1', 0)
-            self.settings['disccsmspm'] = '0'
-        if disc_name == 'discH':
-            threshold = 'Threshold1'
-            self.set_dac(chips, 'Threshold0', 60)  # Well above noise since
-            # discL bits are loaded
-            self.settings['disccsmspm'] = '1'
 
-        self.dawn.plot_image(roi_full_mask, name='roi')
-
-        if method == 'stripes':
+        inv_mask = 1 - roi_full_mask
+        if method == "Stripes":
             dac_range = (0, 20, 2)
-            discbits_tmp = np.zeros(self.full_array_shape) * \
-                           (1 - roi_full_mask)
+            discbits_tmp = np.zeros(self.full_array_shape) * inv_mask
             for idx in range(self.chip_size):
                 discbits_tmp[idx, :] = idx % 32
             for idx in range(self.chip_size * self.num_chips):
                 discbits_tmp[:, idx] = (idx % 32 + discbits_tmp[:, idx]) % 32
-            discbits_tmp *= (1 - roi_full_mask)
-            discbits = -10*np.ones(self.full_array_shape) * \
-                       (1 - roi_full_mask)
+            discbits_tmp *= inv_mask
+
+            discbits = -10 * np.ones(self.full_array_shape) * inv_mask
             edge_dacs_stack = np.zeros([32] + self.full_array_shape)
             discbits_stack = np.zeros([32] + self.full_array_shape)
             for scan in range(0, 32, 1):
-                discbits_tmp = ((discbits_tmp + 1) % 32) * (1 - roi_full_mask)
+                discbits_tmp = ((discbits_tmp + 1) % 32) * inv_mask
                 discbits_stack[scan, :, :] = discbits_tmp
-                for chip in chips:
-                    if disc_name == 'discH':
-                        discLbits = self.open_discbits_file(chips, 'discLbits')
-                        self.load_config_bits(range(chip, chip + 1),
-                                              discLbits[:,
-                                                  chip*256:chip*256 + 256],
-                                              discbits_tmp[:,
-                                                  chip*256:chip*256 + 256],
-                                              roi_full_mask[:,
-                                                  chip*256:chip*256 + 256])
-                    if disc_name == 'discL':
-                        discHbits = np.zeros(self.full_array_shape)
-                        self.load_config_bits(range(chip, chip + 1),
-                                              discbits_tmp[:,
-                                                  chip*256:chip*256 + 256],
-                                              discHbits[:,
-                                                  chip*256:chip*256 + 256],
-                                              roi_full_mask[:,
-                                                  chip*256:chip*256 + 256])
 
-                # TODO: Use this once have tests
-                # self.load_all_discbits(chips, disc_name,
-                #                        discbits_tmp, roi_full_mask)
+                self.load_all_discbits(chips, disc_name,
+                                       discbits_tmp, roi_full_mask)
 
                 [dacscan_data, _] = self.scan_dac(chips, threshold, dac_range)
                 edge_dacs = self.find_max(chips, dacscan_data, dac_range)
                 edge_dacs_stack[scan, :, :] = edge_dacs
-                scan_nb = np.argmin((abs(edge_dacs_stack - self.dac_target)),
-                                    0)
+
+                # TODO: Check if this can be done after for loop
+                scan_nb = np.argmin(np.abs(edge_dacs_stack - self.dac_target),
+                                    axis=0)
                 for chip in chips:
-                    for x in range(256):
-                        for y in range(chip*256, chip*256 + 256):
+                    for x in range(self.chip_size):
+                        for y in range(chip * self.chip_size,
+                                       (chip + 1) * self.chip_size):
                             discbits[x, y] = \
                                 discbits_stack[scan_nb[x, y], x, y]
 
                 self.dawn.plot_image(discbits, name='discbits')
                 self.dawn.clear_plot('Histogram of Final Discbits')
-
-                for chip in chips:
-                    roi_chip_mask = 1 - roi_full_mask[0:256,
-                                                      chip*256:chip*256 + 256]
-                    discbits_chip = discbits[0:256, chip*256:chip*256 + 256]
-                    self.dawn.plot.addline(np.histogram(discbits_chip[roi_chip_mask.astype(bool)],
-                                                        bins=range(32))[1][0:-1],
-                                           np.histogram(discbits_chip[roi_chip_mask.astype(bool)],
-                                                        bins=range(32))[0],
-                                           name='Histogram of Final Discbits')
-
-                    # TODO: Use this once have tests
-                    # self.dawn.plot_histogram_with_mask(
-                    #     chips, discbits, 1 - roi_full_mask,
-                    #     name='Histogram of Final Discbits')
+                self.dawn.plot_histogram_with_mask(
+                    chips, discbits, 1 - roi_full_mask,
+                    name='Histogram of Final Discbits')
+        else:
+            raise NotImplementedError("Equalization method not implemented.")
 
         self.settings['disccsmspm'] = '0'
         self.settings['equalization'] = '0'
@@ -2041,8 +2038,8 @@ class ExcaliburNode(object):
         # Run threshold_equalization over each roi
         for step in range(steps):
             roi_full_mask = self.roi(chips, step, steps, roi_type)
-            discbits = self.equalise_discbits(chips, disc_name,
-                                              1 - roi_full_mask, 'stripes')
+            discbits = self._equalise_discbits(chips, disc_name,
+                                               1 - roi_full_mask, 'stripes')
             self.save_discbits(chips, discbits,
                                disc_name + 'bits_roi_' + str(step))
         discbits = self.combine_rois(chips, disc_name, steps, roi_type)
