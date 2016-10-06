@@ -8,6 +8,7 @@ from excaliburcalibrationdawn.excaliburnode import ExcaliburNode, np, Range
 Node_patch_path = "excaliburcalibrationdawn.excaliburnode.ExcaliburNode"
 ETAI_patch_path = "excaliburcalibrationdawn.excaliburnode.ExcaliburTestAppInterface"
 DAWN_patch_path = "excaliburcalibrationdawn.excaliburnode.ExcaliburDAWN"
+util_patch_path = "excaliburcalibrationdawn.arrayutil"
 
 
 class InitTest(unittest.TestCase):
@@ -1346,19 +1347,7 @@ class SliceGrabSetTest(unittest.TestCase):
     def setUp(self):
         self.e = ExcaliburNode(0)
 
-    def test_grab_slice(self):
-        array = np.array([[1, 2, 3, 4, 5],
-                          [10, 20, 30, 40, 50],
-                          [100, 200, 300, 400, 500]])
-        expected_subarray = np.array([[2, 3, 4],
-                                      [20, 30, 40],
-                                      [200, 300, 400]])
-
-        value = self.e._grab_slice(array, [0, 1], [2, 3])
-
-        np.testing.assert_array_equal(expected_subarray, value)
-
-    @patch(Node_patch_path + '._grab_slice')
+    @patch(util_patch_path + '.grab_slice')
     @patch(Node_patch_path + '._generate_chip_range')
     def test_grab_chip_slice(self, generate_mock, grab_mock):
         array = MagicMock()
@@ -1370,24 +1359,7 @@ class SliceGrabSetTest(unittest.TestCase):
         grab_mock.assert_called_once_with(array, generate_mock.return_value[0], generate_mock.return_value[1])
         self.assertEqual(grab_mock.return_value, value)
 
-    def test_set_slice(self):
-        array = np.array([[1, 2, 3, 4, 5],
-                          [10, 20, 30, 40, 50],
-                          [100, 200, 300, 400, 500]])
-        array_copy = array.copy()
-        expected_array = np.array([[1, 0, 0, 0, 5],
-                                   [10, 0, 0, 0, 50],
-                                   [100, 0, 0, 0, 500]])
-        subarray = np.array([[2, 3, 4],
-                             [20, 30, 40],
-                             [200, 300, 400]])
-
-        self.e._set_slice(array, [0, 1], [2, 3], 0)
-        np.testing.assert_array_equal(expected_array, array)
-        self.e._set_slice(array, [0, 1], [2, 3], subarray)
-        np.testing.assert_array_equal(array_copy, array)
-
-    @patch(Node_patch_path + '._set_slice')
+    @patch(util_patch_path + '.set_slice')
     @patch(Node_patch_path + '._generate_chip_range')
     def test_set_chip_slice(self, generate_mock, set_mock):
         array = np.array([[1, 2, 3, 4, 5],
