@@ -268,6 +268,7 @@ from excaliburcalibrationdawn.excaliburtestappinterface import \
     ExcaliburTestAppInterface
 from excaliburcalibrationdawn.excaliburdawn import ExcaliburDAWN
 from config import MPX3RX
+from excaliburcalibrationdawn import arrayutil as util
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -284,7 +285,6 @@ class ExcaliburNode(object):
     These calibration scripts will work only inside the Python interpreter of
     DAWN software running on the PC sever node connected to the FEM controlling
     the half-module which you wish to calibrate
-
     """
 
     # Threshold equalization will align pixel noise peaks at this DAC value
@@ -563,8 +563,8 @@ class ExcaliburNode(object):
 
         for chip_idx in chips:
             # Subtract 1 to convert chip_size from number to index
-            self._set_slice(bad_pixels, [start, chip_idx * self.chip_size],
-                            [stop, (chip_idx + 1) * self.chip_size - 1], 1)
+            util.set_slice(bad_pixels, [start, chip_idx * self.chip_size],
+                                [stop, (chip_idx + 1) * self.chip_size - 1], 1)
 
         for chip_idx in chips:
             pixel_mask_file = posixpath.join(self.calib_dir,
@@ -1175,7 +1175,7 @@ class ExcaliburNode(object):
         logo_file = posixpath.join(self.config_dir,
                                    'logo.txt')
         logo_small = np.loadtxt(logo_file)
-        self._set_slice(logo_tp, [7, 225], [249, 1822], logo_small)
+        util.set_slice(logo_tp, [7, 225], [249, 1822], logo_small)
         logo_tp[logo_tp > 0] = 1
         logo_tp = 1 - logo_tp
 
@@ -2282,21 +2282,6 @@ class ExcaliburNode(object):
                     self.rotate_config(pixel_mask_file)
                     print("{file} rotated".format(file=pixel_mask_file))
 
-    @staticmethod
-    def _grab_slice(array, start, stop):
-        """Grab a section of a 2D numpy array.
-
-        Args:
-            array: Array to grab from
-            start: Start coordinate of sub array
-            stop: Stop coordinate of sub array
-
-        Returns:
-            numpy.array: Sub array
-
-        """
-        return array[start[0]:stop[0] + 1, start[1]:stop[1] + 1]
-
     def _grab_chip_slice(self, array, chip_idx):
         """Grab a chip from a full array.
 
@@ -2309,23 +2294,7 @@ class ExcaliburNode(object):
 
         """
         start, stop = self._generate_chip_range(chip_idx)
-        return self._grab_slice(array, start, stop)
-
-    @staticmethod
-    def _set_slice(array, start, stop, value):
-        """Grab a section of a 2D numpy array.
-
-        Args:
-            array: Array to grab from
-            start: Start coordinate of sub array
-            stop: Stop coordinate of sub array
-            value: Value to set slice to (array of same shape or single value)
-
-        Returns:
-            numpy.array: Sub array
-
-        """
-        array[start[0]:stop[0] + 1, start[1]:stop[1] + 1] = value
+        return util.grab_slice(array, start, stop)
 
     def _set_chip_slice(self, array, chip_idx, value):
         """Grab a section of a 2D numpy array.
@@ -2340,7 +2309,7 @@ class ExcaliburNode(object):
 
         """
         start, stop = self._generate_chip_range(chip_idx)
-        self._set_slice(array, start, stop, value)
+        util.set_slice(array, start, stop, value)
 
     def _generate_chip_range(self, chip_idx):
         """Calculate start and stop coordinates of given chip.
