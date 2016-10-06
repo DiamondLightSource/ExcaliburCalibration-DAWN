@@ -184,11 +184,11 @@ Perform a linear fit of the DAC (in DAC units) as a function of energy
 
 Each Threshold calibration file consists of 2 rows of 8 floating point
 numbers:
-# g0     g1   g2   g3   g4   g5   g6   g7
+# g0   g1   g2   g3   g4   g5   g6   g7
 # Off0 Off1 Off2 Off3 Off4 Off5 Off6 Off7
-# and the DAC value to apply to chip x for a requested threshold energy
+and the DAC value to apply to chip x for a requested threshold energy
 value E in keV is given by:
-# DACx= gx * E + Offx
+# DACx = gx * E + Offx
 
 Method 2: Using 1 energy and the noise peak dac
 
@@ -216,7 +216,7 @@ To change the exposure time used during image acquisition:
 
 To change acquisition time before exposure:
 #############################################
-> x.settings['acqtime']=1000 (for 1s exposure)
+> x.settings['acqtime'] = 1000 (for 1s exposure)
 > x.expose()
 #############################################
 where acqtime is in ms
@@ -329,8 +329,8 @@ class ExcaliburNode(object):
 
         """
         self.fem = node
-        self.ipaddress = "192.168.0.10" + str(7 - self.fem)
-        if self.fem == 0:
+        self.ipaddress = "192.168.0.10{suffix}".format(suffix=8 - self.fem)
+        if self.fem == 1:
             self.ipaddress = "192.168.0.106"
 
         # Detector default Settings
