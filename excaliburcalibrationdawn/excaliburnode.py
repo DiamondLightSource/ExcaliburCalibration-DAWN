@@ -2191,21 +2191,21 @@ class ExcaliburNode(object):
         x.read_dac([0], 'GND')
         Once the DAC value correspond to the required analogue value, edit the
         GND_Dacs matrix:
-        GND_Dacs[0, :]=[NEW DAC VALUE, x, x, x, x, x, x, x]
+        GND_Dacs[0, :] = [NEW DAC VALUE, x, x, x, x, x, x, x]
 
         For FBK dac of chip 0:
         x.set_dac([0], 'FBK', 190)
         x.read_dac([0], 'FBK')
         Once the DAC value correspond to the required analogue value, edit the
         FBK_Dacs matrix:
-        FBK_Dacs[0, :]=[NEW DAC VALUE, x, x, x, x, x, x, x]
+        FBK_Dacs[0, :] = [NEW DAC VALUE, x, x, x, x, x, x, x]
 
         For Cas dac of chip 0:
         x.set_dac([0], 'Cas', 180)
         x.read_dac([0], 'Cas')
         Once the DAC value correspond to the required analogue value, edit the
         CAS_Dacs matrix:
-        CAS_Dacs[0, :]=[NEW DAC VALUE, x, x, x, x, x, x, x]
+        CAS_Dacs[0, :] = [NEW DAC VALUE, x, x, x, x, x, x, x]
 
         This process could be automated if many modules have to be calibrated.
 
