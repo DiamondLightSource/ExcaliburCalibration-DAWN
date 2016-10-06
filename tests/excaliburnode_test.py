@@ -5,16 +5,15 @@ require("mock")
 from mock import patch, MagicMock, ANY
 
 from excaliburcalibrationdawn.excaliburnode import ExcaliburNode, np, Range
-ERX_patch_path = "excaliburcalibrationdawn.excaliburnode.ExcaliburNode"
+Node_patch_path = "excaliburcalibrationdawn.excaliburnode.ExcaliburNode"
 ETAI_patch_path = "excaliburcalibrationdawn.excaliburnode.ExcaliburTestAppInterface"
-ED_patch_path = "excaliburcalibrationdawn.excaliburnode.ExcaliburDAWN"
-from config import MPX3RX
+DAWN_patch_path = "excaliburcalibrationdawn.excaliburnode.ExcaliburDAWN"
 
 
 class InitTest(unittest.TestCase):
 
     def setUp(self):
-        self.node = 2
+        self.node = 3
         self.e = ExcaliburNode(self.node)
 
     def test_class_attributes_set(self):
@@ -71,20 +70,20 @@ class InitTest(unittest.TestCase):
         self.assertEqual(self.e.fem, self.node)
         self.assertEqual(self.e.ipaddress, "192.168.0.105")
 
-    def test_given_node_0_then_ip_overidden(self):
-        e = ExcaliburNode(0)
+    def test_given_node_1_then_ip_overidden(self):
+        e = ExcaliburNode(1)
         self.assertEqual(e.ipaddress, "192.168.0.106")
 
     def test_given_node_invalid_node(self):
-        e = ExcaliburNode(8)
+        e = ExcaliburNode(9)
         self.assertEqual(e.ipaddress, "192.168.0.10-1")
 
 
-@patch(ERX_patch_path + '.check_calib_dir')
-@patch(ERX_patch_path + '.log_chip_id')
-@patch(ERX_patch_path + '.set_dacs')
-@patch(ERX_patch_path + '.set_gnd_fbk_cas_excalibur_rx001')
-@patch(ERX_patch_path + '.calibrate_disc')
+@patch(Node_patch_path + '.check_calib_dir')
+@patch(Node_patch_path + '.log_chip_id')
+@patch(Node_patch_path + '.set_dacs')
+@patch(Node_patch_path + '.set_gnd_fbk_cas_excalibur_rx001')
+@patch(Node_patch_path + '.calibrate_disc')
 class ThresholdEqualizationTest(unittest.TestCase):
 
     def test_correct_calls_made(self, cal_disc_mock, set_gnd_mock,
@@ -104,8 +103,8 @@ class ThresholdEqualizationTest(unittest.TestCase):
         cal_disc_mock.assert_called_once_with(chips, 'discL')
 
 
-@patch(ERX_patch_path + '.check_calib_dir')
-@patch(ERX_patch_path + '.save_kev2dac_calib')
+@patch(Node_patch_path + '.check_calib_dir')
+@patch(Node_patch_path + '.save_kev2dac_calib')
 class ThresholdCalibrationTest(unittest.TestCase):
 
     def setUp(self):
@@ -159,7 +158,7 @@ class ThresholdCalibrationTest(unittest.TestCase):
         np.testing.assert_array_almost_equal(expected_slope, save_mock.call_args[0][1][0])
         self.assertTrue((save_mock.call_args[0][2] == expected_offset).all())
 
-    @patch(ERX_patch_path + '.threshold_calibration')
+    @patch(Node_patch_path + '.threshold_calibration')
     def test_threshold_calibration_all_gains(self, calibration_mock, _, _2):
         self.e.threshold_calibration_all_gains()
 
@@ -176,7 +175,7 @@ class ThresholdCalibrationTest(unittest.TestCase):
         np.testing.assert_array_almost_equal(expected_slope, save_mock.call_args[0][1][0])
         self.assertTrue((save_mock.call_args[0][2] == expected_offset).all())
 
-    @patch(ED_patch_path + '.plot_linear_fit', return_value=(10, 2))
+    @patch(DAWN_patch_path + '.plot_linear_fit', return_value=(10, 2))
     def test_multiple_energy_thresh_calib(self, plot_mock, save_mock, _):
         expected_slope = np.array([2.0] + [0.0]*7)
         expected_offset = np.array([10.0] + [0.0]*7)
@@ -216,16 +215,16 @@ class SaveKev2DacCalibTest(unittest.TestCase):
         chmod_mock.assert_called_once_with(self.expected_filename, 0777)
 
 
-@patch(ERX_patch_path + '.load_config')
+@patch(Node_patch_path + '.load_config')
 class FindXrayEnergyDacTest(unittest.TestCase):
 
     mock_scan_data = np.random.randint(250, size=(3, 256, 8*256))
     mock_scan_range = MagicMock()
 
-    @patch(ED_patch_path + '.fit_dac_scan')
-    @patch(ED_patch_path + '.plot_dac_scan',
+    @patch(DAWN_patch_path + '.fit_dac_scan')
+    @patch(DAWN_patch_path + '.plot_dac_scan',
            return_value=[MagicMock(), MagicMock()])
-    @patch(ERX_patch_path + '.scan_dac',
+    @patch(Node_patch_path + '.scan_dac',
            return_value=[mock_scan_data.copy(), mock_scan_range])
     def test_correct_calls_made(self, scan_mock, plot_mock, fit_mock,
                                 load_mock):
@@ -248,9 +247,9 @@ class FindXrayEnergyDacTest(unittest.TestCase):
 
 class MaskRowBlockTest(unittest.TestCase):
 
-    @patch(ERX_patch_path + '.load_config')
+    @patch(Node_patch_path + '.load_config')
     @patch('numpy.savetxt')
-    @patch(ED_patch_path + '.plot_image')
+    @patch(DAWN_patch_path + '.plot_image')
     def test_correct_calls_made(self, plot_mock, save_mock, load_mock):
 
         e = ExcaliburNode(0)
@@ -284,7 +283,7 @@ class MaskRowBlockTest(unittest.TestCase):
         load_mock.assert_called_once_with(chips)
 
 
-@patch(ERX_patch_path + '.set_thresh_energy')
+@patch(Node_patch_path + '.set_thresh_energy')
 class SetThreshold0Test(unittest.TestCase):
 
     def test_correct_calls_made(self, set_thresh_energy_mock):
@@ -303,8 +302,8 @@ class SetThreshold0Test(unittest.TestCase):
         set_thresh_energy_mock.assert_called_once_with('0', 5.0)
 
 
-@patch(ERX_patch_path + '.expose')
-@patch(ERX_patch_path + '.set_dac')
+@patch(Node_patch_path + '.expose')
+@patch(Node_patch_path + '.set_dac')
 class SetThreshold0DacTest(unittest.TestCase):
 
     def test_correct_calls_made(self, set_dac_mock, expose_mock):
@@ -329,8 +328,8 @@ class SetThreshold0DacTest(unittest.TestCase):
 
 @patch('time.sleep')
 @patch('numpy.genfromtxt')
-@patch(ERX_patch_path + '.set_dac')
-@patch(ERX_patch_path + '.expose')
+@patch(Node_patch_path + '.set_dac')
+@patch(Node_patch_path + '.expose')
 class SetThreshEnergyTest(unittest.TestCase):
 
     def test_correct_calls_made(self, expose_mock, set_dac_mock, gen_mock,
@@ -360,7 +359,7 @@ class SetThreshEnergyTest(unittest.TestCase):
 
 class SetDacsTest(unittest.TestCase):
 
-    @patch(ERX_patch_path + '.set_dac')
+    @patch(Node_patch_path + '.set_dac')
     def test_correct_calls_made(self, set_dac_mock):
         e = ExcaliburNode(0)
         chips = [0]
@@ -410,7 +409,7 @@ class SubprocessCallsTest(unittest.TestCase):  # TODO: Rename
         read_mock.assert_called_once_with()
 
     @patch('time.sleep')
-    @patch(ERX_patch_path + '.update_filename_index')
+    @patch(Node_patch_path + '.update_filename_index')
     @patch(ETAI_patch_path + '.acquire')
     def test_burst(self, acquire_mock, update_idx_mock, sleep_mock):
         expected_file = 'image_.hdf5'
@@ -423,11 +422,11 @@ class SubprocessCallsTest(unittest.TestCase):  # TODO: Rename
         sleep_mock.assert_called_once_with(0.5)
 
     @patch('time.asctime', return_value='Tue Sep 27 10:12:27 2016')
-    @patch(ED_patch_path + '.load_image_data')
-    @patch(ED_patch_path + '.plot_image')
+    @patch(DAWN_patch_path + '.load_image_data')
+    @patch(DAWN_patch_path + '.plot_image')
     @patch('time.sleep')
     @patch(ETAI_patch_path + '.acquire')
-    @patch(ERX_patch_path + '.update_filename_index')
+    @patch(Node_patch_path + '.update_filename_index')
     def test_expose(self, update_idx_mock, acquire_mock, sleep_mock, plot_mock,
                     load_mock, _):
         expected_file = 'image_.hdf5'
@@ -442,11 +441,11 @@ class SubprocessCallsTest(unittest.TestCase):  # TODO: Rename
         plot_mock.assert_called_once_with(load_mock.return_value, name='Image_Tue Sep 27 10:12:27 2016')
 
     @patch('time.asctime', return_value='Tue Sep 27 10:12:27 2016')
-    @patch(ED_patch_path + '.load_image_data')
-    @patch(ED_patch_path + '.plot_image')
+    @patch(DAWN_patch_path + '.load_image_data')
+    @patch(DAWN_patch_path + '.plot_image')
     @patch('time.sleep')
     @patch(ETAI_patch_path + '.acquire')
-    @patch(ERX_patch_path + '.update_filename_index')
+    @patch(Node_patch_path + '.update_filename_index')
     def test_shoot(self, update_idx_mock, acquire_mock, sleep_mock, plot_mock,
                    load_mock, _):
         expected_file = 'image_.hdf5'
@@ -461,11 +460,11 @@ class SubprocessCallsTest(unittest.TestCase):  # TODO: Rename
         plot_mock.assert_called_once_with(load_mock.return_value, name='Image_Tue Sep 27 10:12:27 2016')
 
     @patch('time.asctime', return_value='Tue Sep 27 10:12:27 2016')
-    @patch(ED_patch_path + '.load_image_data')
-    @patch(ED_patch_path + '.plot_image')
+    @patch(DAWN_patch_path + '.load_image_data')
+    @patch(DAWN_patch_path + '.plot_image')
     @patch('time.sleep')
     @patch(ETAI_patch_path + '.acquire')
-    @patch(ERX_patch_path + '.update_filename_index')
+    @patch(Node_patch_path + '.update_filename_index')
     def test_cont(self, update_idx_mock, acquire_mock, sleep_mock, plot_mock,
                   load_mock, _):
         expected_file = 'image_.hdf5'
@@ -481,7 +480,7 @@ class SubprocessCallsTest(unittest.TestCase):  # TODO: Rename
         self.assertEqual(5, plot_mock.call_count)
 
     @patch(ETAI_patch_path + '.acquire')
-    @patch(ERX_patch_path + '.update_filename_index')
+    @patch(Node_patch_path + '.update_filename_index')
     def test_cont_burst(self, update_idx_mock, acquire_mock):
         expected_file = 'image_.hdf5'
         chips = range(8)
@@ -549,8 +548,8 @@ class SubprocessCallsTest(unittest.TestCase):  # TODO: Rename
 
 
 @patch(ETAI_patch_path + '.load_config')
-@patch(ERX_patch_path + '.set_dac')
-@patch(ERX_patch_path + '.expose')
+@patch(Node_patch_path + '.set_dac')
+@patch(Node_patch_path + '.expose')
 class LoadConfigTest(unittest.TestCase):
 
     def setUp(self):
@@ -576,9 +575,9 @@ class LoadConfigTest(unittest.TestCase):
 
 
 @patch('time.sleep')
-@patch(ERX_patch_path + '.load_config')
-@patch(ERX_patch_path + '.set_threshold0_dac')
-@patch(ERX_patch_path + '.expose')
+@patch(Node_patch_path + '.load_config')
+@patch(Node_patch_path + '.set_threshold0_dac')
+@patch(Node_patch_path + '.expose')
 class Fe55ImageRX001Test(unittest.TestCase):
 
     def test_correct_calls_made(self, expose_mock, set_threshhold_mock,
@@ -615,8 +614,8 @@ class Fe55ImageRX001Test(unittest.TestCase):
         expose_mock.assert_called_once_with()
 
 
-@patch(ED_patch_path + '.load_image_data')
-@patch(ERX_patch_path + '.update_filename_index')
+@patch(DAWN_patch_path + '.load_image_data')
+@patch(Node_patch_path + '.update_filename_index')
 @patch(ETAI_patch_path + '.perform_dac_scan')
 @patch('time.sleep')
 class ScanDacTest(unittest.TestCase):
@@ -680,9 +679,9 @@ class AcquireFFTest(unittest.TestCase):
     rand = np.random.RandomState(1234)
     mock_array = rand.randint(10, size=(256, 8 * 256))
 
-    @patch(ERX_patch_path + '.expose',
+    @patch(Node_patch_path + '.expose',
            return_value=mock_array)
-    @patch(ED_patch_path + '.plot_image')
+    @patch(DAWN_patch_path + '.plot_image')
     def test_acquire_ff(self, plot_mock, expose_mock):
         e = ExcaliburNode(0)
         mean = self.mock_array[0:256, 3*256:4*256].mean()
@@ -704,8 +703,8 @@ class ApplyFFCorrectionTest(unittest.TestCase):
     # Make sure we always get the same random numbers
     rand = np.random.RandomState(1234)
 
-    @patch(ED_patch_path + '.plot_image')
-    @patch(ED_patch_path + '.load_image_data')
+    @patch(DAWN_patch_path + '.plot_image')
+    @patch(DAWN_patch_path + '.load_image_data')
     @patch('time.sleep')
     def test_apply_ff_correction(self, sleep_mock, load_mock, plot_mock):
         e = ExcaliburNode(0)
@@ -722,11 +721,11 @@ class ApplyFFCorrectionTest(unittest.TestCase):
 @patch('time.sleep')
 @patch('time.asctime', return_value='Mon Sep 26 17:04:31 2016')
 @patch('numpy.savetxt')
-@patch(ED_patch_path + '.plot_image')
-@patch(ED_patch_path + '.load_image_data')
+@patch(DAWN_patch_path + '.plot_image')
+@patch(DAWN_patch_path + '.load_image_data')
 @patch(ETAI_patch_path + '.acquire')
-@patch(ERX_patch_path + '.set_dac')
-@patch(ERX_patch_path + '.shoot')
+@patch(Node_patch_path + '.set_dac')
+@patch(Node_patch_path + '.shoot')
 class LogoTestTest(unittest.TestCase):
 
     rand = np.random.RandomState(123)
@@ -809,8 +808,8 @@ class TestPulseTest(unittest.TestCase):
         self.e = ExcaliburNode(0)
 
     @patch('time.asctime', return_value='Tue Sep 27 10:43:52 2016')
-    @patch(ED_patch_path + '.plot_image')
-    @patch(ED_patch_path + '.load_image_data')
+    @patch(DAWN_patch_path + '.plot_image')
+    @patch(DAWN_patch_path + '.load_image_data')
     @patch(ETAI_patch_path + '.acquire')
     @patch(ETAI_patch_path + '.configure_test_pulse')
     @patch('numpy.savetxt')
@@ -847,7 +846,7 @@ class SaveDiscbitsTest(unittest.TestCase):
         self.assertEqual(dict(fmt='%.18g', delimiter=' '), call_kwargs)
 
 
-@patch(ED_patch_path + '.plot_image')
+@patch(DAWN_patch_path + '.plot_image')
 @patch('numpy.savetxt')
 @patch(ETAI_patch_path + '.load_config')
 class MaskUnmaskTest(unittest.TestCase):
@@ -910,7 +909,7 @@ class MaskUnmaskTest(unittest.TestCase):
 
     mock_scan_data = np.random.randint(3, size=(3, 256, 8*256))
 
-    @patch(ERX_patch_path + '.scan_dac',
+    @patch(Node_patch_path + '.scan_dac',
            return_value=[mock_scan_data, None])
     def test_mask_pixels_using_dac_scan(self, scan_mock, load_mock, save_mock,
                                         plot_mock):
@@ -1057,11 +1056,11 @@ class CombineROIsTest(unittest.TestCase):
     # Make sure we always get the same random numbers
     rand = np.random.RandomState(123)
 
-    @patch(ED_patch_path + '.plot_image')
-    @patch(ERX_patch_path + '.roi',
+    @patch(DAWN_patch_path + '.plot_image')
+    @patch(Node_patch_path + '.roi',
            return_value=np.ones([256, 256]))
-    @patch(ERX_patch_path + '.save_discbits')
-    @patch(ERX_patch_path + '.open_discbits_file',
+    @patch(Node_patch_path + '.save_discbits')
+    @patch(Node_patch_path + '.open_discbits_file',
            side_effect=[rand.randint(2, size=[256, 256]),
                         rand.randint(2, size=[256, 256])])
     def test_correct_calls_made(self, open_mock, save_mock, roi_mock,
@@ -1079,8 +1078,8 @@ class CombineROIsTest(unittest.TestCase):
         # TODO: Finish once sure what function should do
 
 
-@patch(ED_patch_path + '.plot_histogram')
-@patch(ED_patch_path + '.plot_image')
+@patch(DAWN_patch_path + '.plot_histogram')
+@patch(DAWN_patch_path + '.plot_image')
 class FindTest(unittest.TestCase):  # TODO: Improve
 
     def setUp(self):
@@ -1122,19 +1121,19 @@ class OptimizeDacDiscTest(unittest.TestCase):
 
     rand = np.random.RandomState(1234)
 
-    @patch(ED_patch_path + '.clear_plot')
-    @patch(ED_patch_path + '.plot_image')
+    @patch(DAWN_patch_path + '.clear_plot')
+    @patch(DAWN_patch_path + '.plot_image')
     @patch('numpy.histogram')
     @patch('numpy.asarray')
     @patch('excaliburcalibrationdawn.excaliburdawn.curve_fit',
            return_value=[[1, 2, 3], None])
-    @patch(ED_patch_path + '.gauss_function')
-    @patch(ERX_patch_path + '.set_dac')
-    @patch(ERX_patch_path + '.scan_dac',
+    @patch(DAWN_patch_path + '.gauss_function')
+    @patch(Node_patch_path + '.set_dac')
+    @patch(Node_patch_path + '.scan_dac',
            return_value=[rand.randint(10, size=(3, 256, 8*256)), None])
-    @patch(ERX_patch_path + '.open_discbits_file')
-    @patch(ERX_patch_path + '.load_config_bits')
-    @patch(ERX_patch_path + '.find_max')
+    @patch(Node_patch_path + '.open_discbits_file')
+    @patch(Node_patch_path + '.load_config_bits')
+    @patch(Node_patch_path + '.find_max')
     def test_(self, find_mock, load_mock, open_mock, scan_mock, set_mock, gauss_mock,
               fit_mock, asarray_mock, histo_mock, plot_mock, clear_mock):
         # TODO: Write proper tests once function is split up
@@ -1149,15 +1148,15 @@ class EqualizeDiscbitsTest(unittest.TestCase):
 
     rand = np.random.RandomState(1234)
 
-    @patch(ED_patch_path + '.plot_image')
-    @patch(ED_patch_path + '.clear_plot')
-    @patch(ERX_patch_path + '.set_dac')
-    @patch(ERX_patch_path + '.open_discbits_file')
-    @patch(ERX_patch_path + '.load_config_bits')
-    @patch(ERX_patch_path + '.load_config')
-    @patch(ERX_patch_path + '.find_max',
+    @patch(DAWN_patch_path + '.plot_image')
+    @patch(DAWN_patch_path + '.clear_plot')
+    @patch(Node_patch_path + '.set_dac')
+    @patch(Node_patch_path + '.open_discbits_file')
+    @patch(Node_patch_path + '.load_config_bits')
+    @patch(Node_patch_path + '.load_config')
+    @patch(Node_patch_path + '.find_max',
            return_value=rand.randint(2, size=(256, 8*256)))
-    @patch(ERX_patch_path + '.scan_dac',
+    @patch(Node_patch_path + '.scan_dac',
            return_value=[rand.randint(10, size=(3, 256, 8*256)), None])
     # @unittest.skip("Takes too long")
     def test_correct_calls_made(self, scan_mock, find_mock, load_mock,
@@ -1184,9 +1183,9 @@ class CheckCalibTest(unittest.TestCase):
 
     rand = np.random.RandomState(1234)
 
-    @patch(ERX_patch_path + '.find_max',
+    @patch(Node_patch_path + '.find_max',
            return_value=rand.randint(2, size=(256, 8*256)))
-    @patch(ERX_patch_path + '.load_config')
+    @patch(Node_patch_path + '.load_config')
     def test_correct_call_made(self, load_mock, find_mock):
         pass  # TODO: Function doesn't work
         e = ExcaliburNode(0)
@@ -1197,7 +1196,7 @@ class CheckCalibTest(unittest.TestCase):
         # load_mock.assert_called_once_with(chips)
 
 
-@patch(ED_patch_path + '.plot_image')
+@patch(DAWN_patch_path + '.plot_image')
 class ROITest(unittest.TestCase):
 
     def setUp(self):
@@ -1230,13 +1229,13 @@ class ROITest(unittest.TestCase):
 
 class CalibrateDiscTest(unittest.TestCase):
 
-    @patch(ERX_patch_path + '.optimize_dac_disc')
-    @patch(ERX_patch_path + '.roi')
-    @patch(ERX_patch_path + '.equalise_discbits')
-    @patch(ERX_patch_path + '.save_discbits')
-    @patch(ERX_patch_path + '.combine_rois')
-    @patch(ERX_patch_path + '.load_config')
-    @patch(ERX_patch_path + '.copy_slgm_into_other_gain_modes')
+    @patch(Node_patch_path + '.optimize_dac_disc')
+    @patch(Node_patch_path + '.roi')
+    @patch(Node_patch_path + '.equalise_discbits')
+    @patch(Node_patch_path + '.save_discbits')
+    @patch(Node_patch_path + '.combine_rois')
+    @patch(Node_patch_path + '.load_config')
+    @patch(Node_patch_path + '.copy_slgm_into_other_gain_modes')
     def test_correct_calls_made(self, copy_mock, load_mock, combine_rois,
                                 save_mock, equalize_mock, roi_mock, opt_mock):
         e = ExcaliburNode(0)
@@ -1255,8 +1254,8 @@ class CalibrateDiscTest(unittest.TestCase):
 
 class LoopTest(unittest.TestCase):
 
-    @patch(ED_patch_path + '.plot_image')
-    @patch(ERX_patch_path + '.expose')
+    @patch(DAWN_patch_path + '.plot_image')
+    @patch(Node_patch_path + '.expose')
     def test_correct_calls_made(self, expose_mock, plot_mock):
         e = ExcaliburNode(0)
 
@@ -1268,9 +1267,9 @@ class LoopTest(unittest.TestCase):
 
 class CSMTest(unittest.TestCase):
 
-    @patch(ERX_patch_path + '.expose')
-    @patch(ERX_patch_path + '.load_config')
-    @patch(ERX_patch_path + '.set_dac')
+    @patch(Node_patch_path + '.expose')
+    @patch(Node_patch_path + '.load_config')
+    @patch(Node_patch_path + '.set_dac')
     def test_correct_calls_made(self, set_mock, load_mock, expose_mock):
         e = ExcaliburNode(0)
         chips = range(8)
@@ -1291,7 +1290,7 @@ class CSMTest(unittest.TestCase):
 
 class SetGNDFBKCasExcaliburRX001Test(unittest.TestCase):
 
-    @patch(ERX_patch_path + '.set_dac')
+    @patch(Node_patch_path + '.set_dac')
     def test_correct_calls_made(self, set_mock):
         e = ExcaliburNode(0)
         chips = [0]
@@ -1322,7 +1321,7 @@ class RotateTest(unittest.TestCase):
                                           fmt='%.18g', delimiter=' ')
 
     @patch('shutil.copytree')
-    @patch(ERX_patch_path + '.rotate_config')
+    @patch(Node_patch_path + '.rotate_config')
     @patch('os.path.isfile', return_value=True)
     def test_rotate_config_files_exist(self, _, rotate_mock, copy_mock):
         self.e.num_chips = 1  # Make test easier
@@ -1359,8 +1358,8 @@ class SliceGrabSetTest(unittest.TestCase):
 
         np.testing.assert_array_equal(expected_subarray, value)
 
-    @patch(ERX_patch_path + '._grab_slice')
-    @patch(ERX_patch_path + '._generate_chip_range')
+    @patch(Node_patch_path + '._grab_slice')
+    @patch(Node_patch_path + '._generate_chip_range')
     def test_grab_chip_slice(self, generate_mock, grab_mock):
         array = MagicMock()
         generate_mock.return_value = MagicMock(), MagicMock
@@ -1388,8 +1387,8 @@ class SliceGrabSetTest(unittest.TestCase):
         self.e._set_slice(array, [0, 1], [2, 3], subarray)
         np.testing.assert_array_equal(array_copy, array)
 
-    @patch(ERX_patch_path + '._set_slice')
-    @patch(ERX_patch_path + '._generate_chip_range')
+    @patch(Node_patch_path + '._set_slice')
+    @patch(Node_patch_path + '._generate_chip_range')
     def test_set_chip_slice(self, generate_mock, set_mock):
         array = np.array([[1, 2, 3, 4, 5],
                           [10, 20, 30, 40, 50],

@@ -3,7 +3,7 @@ import unittest
 from pkg_resources import require
 require("mock")
 from mock import patch, MagicMock, ANY
-ED_patch_path = "excaliburcalibrationdawn.excaliburdawn.ExcaliburDAWN"
+DAWN_patch_path = "excaliburcalibrationdawn.excaliburdawn.ExcaliburDAWN"
 
 import numpy as np
 
@@ -62,7 +62,7 @@ class SimpleMethodsTest(unittest.TestCase):
 
         self.assertEqual(load_mock.return_value.image[...], value)
 
-    @patch(ED_patch_path + '.load_image')
+    @patch(DAWN_patch_path + '.load_image')
     @patch('scisoftpy.squeeze')
     def test_load_image_data(self, squeeze_mock, load_mock):
 
@@ -104,7 +104,7 @@ class ShowPixelTest(unittest.TestCase):
         self.assertEqual(diff_mock.return_value.__neg__(), addline_mock.call_args_list[1][0][1])
 
 
-@patch(ED_patch_path + '.myerf')
+@patch(DAWN_patch_path + '.myerf')
 @patch('excaliburcalibrationdawn.excaliburdawn.curve_fit',
        return_value=[[1, 2, 3], None])
 @patch('scisoftpy.plot')
@@ -125,11 +125,11 @@ class FitDacScanTest(unittest.TestCase):
         self.assertEqual(tuple([self.mock_dac_scan, self.mock_dac_axis]), values)
 
 
-@patch(ED_patch_path + '.lin_function')
+@patch(DAWN_patch_path + '.lin_function')
 @patch('excaliburcalibrationdawn.excaliburdawn.curve_fit',
        return_value=[[1, 2, 3], None])
 @patch('scisoftpy.plot.addline')
-@patch(ED_patch_path + '.clear_plot')
+@patch(DAWN_patch_path + '.clear_plot')
 class PlotLinearFitTest(unittest.TestCase):
 
     def test_correct_calls_made(self, clear_mock, addline_mock, curve_fit,
@@ -157,7 +157,7 @@ class PlotLinearFitTest(unittest.TestCase):
 @patch('numpy.diff')
 @patch('numpy.squeeze')
 @patch('scisoftpy.plot.addline')
-@patch(ED_patch_path + '.clear_plot')
+@patch(DAWN_patch_path + '.clear_plot')
 class PlotDacScanTest(unittest.TestCase):
 
     def test_given_start_lower_than_stop(self, clear_mock, addline_mock,
