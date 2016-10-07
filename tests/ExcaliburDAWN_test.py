@@ -45,11 +45,11 @@ class SimpleMethodsTest(unittest.TestCase):
     @patch('scisoftpy.plot.addline')
     @patch('numpy.histogram')
     def test_plot_histogram(self, histo_mock, addline_mock):
-        mock_data = np.random.randint(10, size=[256, 8*256])
+        mock_data = [np.random.randint(10, size=[256, 256])]
 
-        self.e.plot_histogram(self.chips, mock_data, name="Test Histogram")
+        self.e.plot_histogram(mock_data, name="Test Histogram")
 
-        np.testing.assert_array_equal(mock_data[0:256, 0:256],
+        np.testing.assert_array_equal(mock_data[0],
                                       histo_mock.call_args[0][0])
         addline_mock.assert_called_once_with(histo_mock.return_value[1][0:-1],
                                              histo_mock.return_value[0],
