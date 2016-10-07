@@ -328,10 +328,12 @@ class ExcaliburNode(object):
             node: PC node number of 1/2 module (Between 1 and 6 for 3M)
 
         """
+        if node not in [1, 2, 3, 4, 5, 6]:
+            raise ValueError("Node {node} is invalid. Should be 1-6.".format(
+                node=node))
+
         self.fem = node
-        self.ipaddress = "192.168.0.10{suffix}".format(suffix=8 - self.fem)
-        if self.fem == 1:
-            self.ipaddress = "192.168.0.106"
+        self.ipaddress = "192.168.0.10{suffix}".format(suffix=7 - self.fem)
 
         # Detector default Settings
         self.settings = {'mode': 'spm',  # 'spm' or 'csm'
