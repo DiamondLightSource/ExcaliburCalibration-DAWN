@@ -1592,8 +1592,7 @@ class ExcaliburNode(object):
             edge_dacs = dac_range[0] - dac_range[2] * np.argmax(
                 (dac_scan_data[:, :, :] > edge_val), 0)
 
-        self.dawn.plot_image(edge_dacs, name="noise edges")
-        self.dawn.plot_histogram(chips, edge_dacs)
+        self._display_histogram(chips, edge_dacs)
 
         return edge_dacs
 
@@ -1608,10 +1607,24 @@ class ExcaliburNode(object):
             (dac_scan_data[::-1, :, :]), 0)
         # TODO: Assumes low to high scan? Does it matter?
 
-        self.dawn.plot_image(edge_dacs, name="noise edges")
-        self.dawn.plot_histogram(chips, edge_dacs)
+        self._display_histogram(chips, edge_dacs)
 
         return edge_dacs
+
+    def _display_histogram(self, chips, edge_dacs):
+        """Plot an image and a histogram of edge_dacs data.
+
+        Args:
+            chips: Chips to plot for
+            edge_dacs: Data to analyse
+
+        """
+        self.dawn.plot_image(edge_dacs, name="noise edges")
+
+        image_data = []
+        for chip_idx in chips:
+            image_data.append(self._grab_chip_slice(edge_dacs, chip_idx))
+        self.dawn.plot_histogram(image_data)
 
     def optimize_dac_disc(self, chips, disc_name, roi_full_mask):
         """Calculate optimum DAC disc values for given chips.

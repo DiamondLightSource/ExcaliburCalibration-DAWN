@@ -92,17 +92,15 @@ class ExcaliburDAWN(object):
 
         return offset, gain
 
-    def plot_histogram(self, chips, image_data, name="Histogram"):
+    def plot_histogram(self, image_data, name="Histogram"):
         """Plot a histogram for each of the given chips.
 
         Args:
-            chips: Chips to plot for
             image_data: Data for full array
             name: Name of plot
 
         """
-        for chip_idx in chips:
-            chip_data = image_data[0:256, chip_idx*256:(chip_idx + 1)*256]
+        for chip_data in image_data:
             self._add_histogram(chip_data, name=name)
 
     def plot_histogram_with_mask(self, chips, image_data, mask,

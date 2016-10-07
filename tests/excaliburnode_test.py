@@ -1079,8 +1079,6 @@ class CombineROIsTest(unittest.TestCase):
         # TODO: Finish once sure what function should do
 
 
-@patch(DAWN_patch_path + '.plot_histogram')
-@patch(DAWN_patch_path + '.plot_image')
 class FindTest(unittest.TestCase):  # TODO: Improve
 
     def setUp(self):
@@ -1091,31 +1089,41 @@ class FindTest(unittest.TestCase):  # TODO: Improve
 
     # TODO: Why do these get the same expected array?
 
-    def test_find_edge(self, plot_mock, plot_histo_mock):
+    @patch(Node_patch_path + '._display_histogram')
+    def test_find_edge(self, display_mock):
         dac_scan_data = self.rand.randint(10, size=(3, 3, 3))
         dac_range = [1, 10, 1]
         expected_array = [[10, 9, 10], [10, 9, 8], [10, 10, 10]]
 
         value = self.e.find_edge([0], dac_scan_data, dac_range, 7)
 
-        np.testing.assert_array_equal(expected_array, plot_mock.call_args[0][0])
-        self.assertEqual(dict(name="noise edges"), plot_mock.call_args[1])
-        self.assertEqual([0], plot_histo_mock.call_args[0][0])
-        np.testing.assert_array_equal(expected_array, plot_histo_mock.call_args[0][1])
+        display_mock.assert_called_once_with([0], ANY)
+        np.testing.assert_array_equal(expected_array, display_mock.call_args[0][1])
         np.testing.assert_array_equal(expected_array, value)
 
-    def test_find_max(self, plot_mock, plot_histo_mock):
+    @patch(Node_patch_path + '._display_histogram')
+    def test_find_max(self, display_mock):
         dac_scan_data = self.rand.randint(10, size=(3, 3, 3))
         dac_range = [1, 10, 1]
         expected_array = [[10, 9, 10], [10, 9, 8], [10, 10, 10]]
 
         value = self.e.find_max([0], dac_scan_data, dac_range)
 
-        np.testing.assert_array_equal(expected_array, plot_mock.call_args[0][0])
-        self.assertEqual(dict(name="noise edges"), plot_mock.call_args[1])
-        self.assertEqual([0], plot_histo_mock.call_args[0][0])
-        np.testing.assert_array_equal(expected_array, plot_histo_mock.call_args[0][1])
+        display_mock.assert_called_once_with([0], ANY)
+        np.testing.assert_array_equal(expected_array, display_mock.call_args[0][1])
         np.testing.assert_array_equal(expected_array, value)
+
+    @patch(Node_patch_path + '._grab_chip_slice')
+    @patch(DAWN_patch_path + '.plot_histogram')
+    @patch(DAWN_patch_path + '.plot_image')
+    def test_display_histogram(self, plot_mock, plot_histo_mock, grab_mock):
+        mock_array = MagicMock()
+
+        self.e._display_histogram([0], mock_array)
+
+        np.testing.assert_array_equal(mock_array, plot_mock.call_args[0][0])
+        self.assertEqual(dict(name="noise edges"), plot_mock.call_args[1])
+        self.assertEqual([grab_mock.return_value], plot_histo_mock.call_args[0][0])
 
 
 class OptimizeDacDiscTest(unittest.TestCase):
