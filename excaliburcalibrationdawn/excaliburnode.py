@@ -549,7 +549,10 @@ class ExcaliburNode(object):
         [chip_dac_scan, dac_axis] = self.dawn.plot_dac_scan(chips,
                                                             dac_scan_data,
                                                             scan_range)
-        self.dawn.fit_dac_scan(chips, chip_dac_scan, dac_axis)
+        scan_data = []
+        for chip_idx in chips:
+            scan_data.append(chip_dac_scan[chip_idx, :])
+        self.dawn.fit_dac_scan(scan_data, dac_axis)
 
         # edge_dacs = self.find_edge(chips, dac_scan_data, dac_range, 2)
         # chip_edge_dacs = np.zeros(range(8))
@@ -1699,8 +1702,8 @@ class ExcaliburNode(object):
                                         dac_range, discbit, threshold, p0)
 
         opt_dac_disc = np.zeros(self.num_chips)
-        for chip in chips:
-            opt_value = int(self.num_sigma * sigma[chip] / gain[chip])
+        for idx, chip in enumerate(chips):
+            opt_value = int(self.num_sigma * sigma[idx] / gain[idx])
             self.set_dac([chip], dac_disc_name, opt_value)
             opt_dac_disc[chip] = opt_value
 
@@ -1732,8 +1735,11 @@ class ExcaliburNode(object):
         # Find noise edges
         edge_dacs = self.find_max(chips, dac_scan_data, dac_range)
 
-        x0, sigma = self.dawn.plot_gaussian_fit(chips, plot_name, p0,
-                                                edge_dacs, bins)
+        scan_data = []
+        for chip_idx in chips:
+            scan_data.append(self._grab_chip_slice(edge_dacs, chip_idx))
+        x0, sigma = self.dawn.plot_gaussian_fit(scan_data, plot_name, p0, bins)
+
         return x0, sigma
 
     def _display_optimization_results(self, chips, x0, sigma, gain,
@@ -1900,9 +1906,9 @@ class ExcaliburNode(object):
 
                 self.dawn.plot_image(discbits, name='discbits')
                 self.dawn.clear_plot('Histogram of Final Discbits')
-                self.dawn.plot_histogram_with_mask(
-                    chips, discbits, 1 - roi_full_mask,
-                    name='Histogram of Final Discbits')
+
+                masked_data = discbits[inv_mask.astype(bool)]
+                self._display_histogram(chips, masked_data)
         else:
             raise NotImplementedError("Equalization method not implemented.")
 

@@ -110,19 +110,18 @@ class ShowPixelTest(unittest.TestCase):
 @patch('scisoftpy.plot')
 class FitDacScanTest(unittest.TestCase):
 
-    mock_dac_scan = np.random.randint(10, size=(8, 20))
+    mock_dac_scan = np.random.randint(10, size=(1, 20))
     mock_dac_axis = MagicMock()
 
     def test_correct_calls_made(self, plot_mock, fit_mock, myerf_mock):
         e = ExcaliburDAWN()
-        chips = [0]
 
-        values = e.fit_dac_scan(chips, self.mock_dac_scan, self.mock_dac_axis)
+        values = e.fit_dac_scan(self.mock_dac_scan, self.mock_dac_axis)
 
         fit_mock.assert_called_once_with(myerf_mock, self.mock_dac_axis, ANY, p0=[100, 0.8, 3])
         np.testing.assert_array_equal(self.mock_dac_scan[0, :], fit_mock.call_args[0][2])
         plot_mock.addline.assert_called_once_with(self.mock_dac_axis, myerf_mock.return_value)
-        self.assertEqual(tuple([self.mock_dac_scan, self.mock_dac_axis]), values)
+        self.assertEqual(self.mock_dac_axis, values)
 
 
 @patch(DAWN_patch_path + '.lin_function')
