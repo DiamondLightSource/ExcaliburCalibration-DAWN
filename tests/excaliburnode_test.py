@@ -266,11 +266,11 @@ class FindXrayEnergyDacTest(unittest.TestCase):
     def test_correct_calls_made(self, scan_mock, plot_mock, fit_mock,
                                 load_mock):
         e = ExcaliburNode()
-        chips = range(8)
+        chips = [0]
         expected_array = self.mock_scan_data
         expected_array[expected_array > 200] = 0
 
-        values = e.find_xray_energy_dac()
+        values = e.find_xray_energy_dac(chips)
 
         load_mock.assert_called_once_with(chips)
         scan_mock.assert_called_once_with(chips, "Threshold0", (110, 30, 2))
@@ -278,7 +278,7 @@ class FindXrayEnergyDacTest(unittest.TestCase):
         plot_mock.assert_called_once_with(chips, ANY, self.mock_scan_range)
         np.testing.assert_array_equal(expected_array, plot_mock.call_args[0][1])
 
-        fit_mock.assert_called_once_with(chips, plot_mock.return_value[0], plot_mock.return_value[1])
+        fit_mock.assert_called_once_with([plot_mock.return_value[0].__getitem__.return_value], plot_mock.return_value[1])
         self.assertEqual(tuple(plot_mock.return_value), values)
 
 
@@ -1205,7 +1205,7 @@ class OptimizeDacDiscTest(unittest.TestCase):
         set_mock.assert_called_once_with(chips, "DACDiscL", 1)
         scan_mock.assert_called_once_with(chips, "DACDiscL", (0, 150, 50))
         find_mock.assert_called_once_with(chips, scan_mock.return_value[0], (0, 150, 50))
-        plot_mock.assert_called_once_with(chips, expected_message, [5000, 0, 30], find_mock.return_value, 3)
+        plot_mock.assert_called_once_with([find_mock.return_value.__getitem__.return_value], expected_message, [5000, 0, 30], 3)
 
     def test_display_optimization_results(self):
         chips = [0]
@@ -1244,7 +1244,7 @@ class EqualizeDiscbitsTest(unittest.TestCase):
         self.assertEqual("1", self.e.settings['disccsmspm'])
 
     @patch(Node_patch_path + '.load_config')
-    @patch(DAWN_patch_path + '.plot_histogram_with_mask')
+    @patch(Node_patch_path + '._display_histogram')
     @patch(DAWN_patch_path + '.clear_plot')
     @patch(DAWN_patch_path + '.plot_image')
     @patch(Node_patch_path + '.find_max',
@@ -1253,8 +1253,8 @@ class EqualizeDiscbitsTest(unittest.TestCase):
            return_value=[rand.randint(10, size=(3, 4, 16)), None])
     @patch(Node_patch_path + '.load_all_discbits')
     def test_equalize_discbits(self, load_mock, scan_mock, find_mock,
-                                plot_mock, clear_mock, histo_mock,
-                                load_config_mock):
+                               plot_mock, clear_mock, histo_mock,
+                               load_config_mock):
         chips = [0]
         roi = np.zeros([4, 16])
 
@@ -1269,9 +1269,7 @@ class EqualizeDiscbitsTest(unittest.TestCase):
         self.assertEqual(dict(name="discbits"), plot_mock.call_args_list[0][1])
         self.assertEqual(("Histogram of Final Discbits",), clear_mock.call_args_list[0][0])
         self.assertEqual(("Histogram of Final Discbits",), clear_mock.call_args_list[0][0])
-        self.assertEqual((chips, ANY, ANY), histo_mock.call_args_list[0][0])
-        np.testing.assert_array_equal(1 - roi, histo_mock.call_args_list[0][0][2])
-        self.assertEqual(dict(name="Histogram of Final Discbits"), histo_mock.call_args_list[0][1])
+        self.assertEqual((chips, ANY), histo_mock.call_args_list[0][0])
         load_config_mock.assert_called_once_with(chips)
 
     def test_equalize_discbits_given_invalid_method_raises(self):

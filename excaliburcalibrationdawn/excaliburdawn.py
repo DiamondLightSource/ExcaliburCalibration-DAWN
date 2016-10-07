@@ -95,7 +95,7 @@ class ExcaliburDAWN(object):
     def add_plot_line(self, x, y, name):
         self.plot.addline(x, y, name=name)
 
-    def plot_gaussian_fit(self, chips, plot_name, p0, edge_dacs, bins):
+    def plot_gaussian_fit(self, scan_data, plot_name, p0, bins):
 
         fit_plot_name = plot_name + " (fitted)"
         a = np.zeros([8])
@@ -104,21 +104,19 @@ class ExcaliburDAWN(object):
         self.clear_plot(plot_name)
         self.clear_plot(fit_plot_name)
 
-        for chip in chips:
-            edge_histo = np.histogram(edge_dacs[0:256,
-                                      chip*256:chip*256 + 256],
-                                      bins=bins)
+        for idx, chip_data in enumerate(scan_data):
+            edge_histo = np.histogram(chip_data, bins=bins)
             self.plot.addline(edge_histo[1][0:-1], edge_histo[0],
                               name=plot_name)
             popt, _ = curve_fit(self.gauss_function, edge_histo[1][0:-2],
                                 edge_histo[0][0:-1], p0)
 
             x = edge_histo[1][0:-1]
-            a[chip] = popt[0]
-            x0[chip] = popt[1]
-            sigma[chip] = popt[2]
-            self.plot.addline(x, self.gauss_function(x, a[chip], x0[chip],
-                                                     sigma[chip]),
+            a[idx] = popt[0]
+            x0[idx] = popt[1]
+            sigma[idx] = popt[2]
+            self.plot.addline(x, self.gauss_function(x, a[idx], x0[idx],
+                                                     sigma[idx]),
                               name=fit_plot_name)
 
         return x0, sigma
@@ -133,23 +131,6 @@ class ExcaliburDAWN(object):
         """
         for chip_data in image_data:
             self._add_histogram(chip_data, name=name)
-
-    def plot_histogram_with_mask(self, chips, image_data, mask,
-                                 name="Histogram"):
-        """Plot a histogram for each of the given chips, after applying a mask.
-
-        Args:
-            chips: Chips to plot for
-            image_data: Data for full array
-            mask: Mask to apply before plotting data
-            name: Name of plot
-
-        """
-        for chip_idx in chips:
-            chip_mask = mask[0:256, chip_idx*256:(chip_idx + 1)*256]
-            chip_data = image_data[0:256, chip_idx*256:(chip_idx + 1)*256]
-            masked_data = chip_data[chip_mask.astype(bool)]
-            self._add_histogram(masked_data, name=name)
 
     def _add_histogram(self, data, name, bins=None):
         """Add a histogram of data to the given plot name
@@ -167,19 +148,19 @@ class ExcaliburDAWN(object):
             histogram = np.histogram(data)
         self.plot.addline(histogram[1][0:-1], histogram[0], name=name)
 
-    def fit_dac_scan(self, chips, chip_dac_scan, dac_axis):
+    def fit_dac_scan(self, scan_data, dac_axis):
         """############## NOT TESTED"""
         parameters_estimate = [100, 0.8, 3]
-        for chip in chips:
+        for chip_data in scan_data:
             # dnp.plot.addline(dacAxis, chipDacScan[chip,:])
-            popt, _ = curve_fit(self.myerf, dac_axis, chip_dac_scan[chip, :],
+            popt, _ = curve_fit(self.myerf, dac_axis, chip_data,
                                 p0=parameters_estimate)
             # popt, pcov = curve_fit(s_curve_function, dacAxis,
             #                        chipDacScan[chip, :], p0)
             self.plot.addline(dac_axis, self.myerf(dac_axis,
                                                    popt[0], popt[1], popt[2]))
 
-        return chip_dac_scan, dac_axis
+        return dac_axis
 
     def plot_dac_scan(self, chips, dac_scan_data, dac_range):
         """Plot the results of threshold dac scan.
