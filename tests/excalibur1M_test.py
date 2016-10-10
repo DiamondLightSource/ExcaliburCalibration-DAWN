@@ -53,12 +53,14 @@ class FunctionsTest(unittest.TestCase):
 
     @patch(DAWN_patch_path + '.plot_image')
     def test_expose(self, plot_mock):
-        mock_array = np.array([[0, 1],
-                               [1, 0]])
+        mock_array = np.array([[0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+                               [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0]])
         self.node1_mock.expose.return_value = mock_array
         self.node2_mock.expose.return_value = mock_array
-        expected_array = np.array([[0, 1, 0, 1],
-                                   [1, 0, 1, 0]])
+        expected_array = np.array([[0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+                                   [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
+                                   [0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+                                   [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0]])
 
         self.e.expose(100)
 
