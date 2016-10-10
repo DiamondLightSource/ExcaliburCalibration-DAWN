@@ -1,4 +1,4 @@
-"""Configuration data for MPX3RX Excalibur detector."""
+"""Example configuration data for MPX3RX 3M Excalibur detector."""
 from collections import OrderedDict
 
 import numpy as np
