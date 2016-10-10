@@ -48,7 +48,7 @@ class Excalibur1M(object):
             node.optimize_dac_disc(chips[node_idx], "DACDiscH", node_roi)
 
     def expose(self, exposure_time):
-        """Acquire single image using.
+        """Acquire single image.
 
         Args:
             exposure_time: Acquire time for image
@@ -62,7 +62,7 @@ class Excalibur1M(object):
 
         image = self.nodes[0].expose()
         for node_idx, node in enumerate(self.nodes[1:]):
-            image = np.concatenate((image, node.expose()), axis=1)
+            image = np.concatenate((image, node.expose()), axis=0)
 
         self.dawn.plot_image(image, "Excalibur1M Image")
 
