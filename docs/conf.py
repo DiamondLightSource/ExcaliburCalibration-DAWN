@@ -16,10 +16,18 @@ import sys
 import os
 import shlex
 
+from pkg_resources import require
+require('mock')
+from mock import MagicMock
+
+# Mock out failing imports
+MOCK_MODULES = ["scisoftpy", "scipy", "scipy.optimize"]
+sys.modules.update((mod_name, MagicMock()) for mod_name in MOCK_MODULES)
+
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-#sys.path.insert(0, os.path.abspath('.'))
+sys.path.insert(0, os.path.abspath(os.path.join(__file__, "..", "..")))
 
 # -- General configuration ------------------------------------------------
 
