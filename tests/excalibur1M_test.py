@@ -15,7 +15,7 @@ util_patch_path = "excaliburcalibrationdawn.arrayutil"
 class InitTest(unittest.TestCase):
 
     def setUp(self):
-        self.e = Excalibur1M()
+        self.e = Excalibur1M(1, 2)
 
     def test_class_attributes_set(self):
         self.assertIsInstance(self.e.nodes[0], ExcaliburNode)
@@ -28,7 +28,7 @@ class InitTest(unittest.TestCase):
 class FunctionsTest(unittest.TestCase):
 
     def setUp(self):
-        self.e = Excalibur1M()
+        self.e = Excalibur1M(1, 2)
         self.node1_mock = MagicMock()
         self.node2_mock = MagicMock()
         self.e.nodes = [self.node1_mock, self.node2_mock]
@@ -71,7 +71,7 @@ class FunctionsTest(unittest.TestCase):
 class UtilTest(unittest.TestCase):
 
     def setUp(self):
-        self.e = Excalibur1M()
+        self.e = Excalibur1M(1, 2)
 
     @patch(util_patch_path + '.grab_slice')
     @patch(E1M_patch_path + '._generate_node_range', return_value=["start", "stop"])

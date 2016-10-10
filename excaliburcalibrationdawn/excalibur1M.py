@@ -12,9 +12,15 @@ class Excalibur1M(object):
 
     node_shape = [256, 8*256]
 
-    def __init__(self):
-        """Initialise two ExcaliburNode instances as a 1M detector."""
-        self.nodes = [ExcaliburNode(1), ExcaliburNode(2)]
+    def __init__(self, node1, node2):
+        """Initialise two ExcaliburNode instances as a 1M detector.
+
+        Args:
+            node1: Identifier for first node of detector
+            node2: Identifier for second node of detector
+
+        """
+        self.nodes = [ExcaliburNode(node1), ExcaliburNode(node2)]
 
         self.dawn = ExcaliburDAWN()
 
