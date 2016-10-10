@@ -283,8 +283,8 @@ class ExcaliburNode(object):
     ExcaliburNode is a class defining methods required to calibrate each 1/2
     module (8 MPX3-RX chips) of an EXCALIBUR-RX detector.
     These calibration scripts will work only inside the Python interpreter of
-    DAWN software running on the PC sever node connected to the FEM controlling
-    the half-module which you wish to calibrate
+    DAWN software running on the PC server node connected to the FEM
+    controlling the half-module which you wish to calibrate
     """
 
     # Threshold equalization will align pixel noise peaks at this DAC value
@@ -596,8 +596,9 @@ class ExcaliburNode(object):
 
         This method will use 2 points for calculating Energy to DAC conversion
         coefficients:
-            # The energy used in the dac scan
-            # The noise peak at dacTarget (10 DAC units by default)
+
+        * The energy used in the dac scan
+        * The noise peak at dacTarget (10 DAC units by default)
 
         Possible improvement: Fit dacs scans to populate automatically
         oneE_DAC array (cf fit dac scan)
