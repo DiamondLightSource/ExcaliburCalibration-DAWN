@@ -12,6 +12,11 @@ Contents:
    :maxdepth: 2
 
    includeme
+   excalibur1M
+   excaliburnode
+   excaliburdawn
+   excaliburtestappinterface
+   arrayutil
 
 
 Indices and tables
