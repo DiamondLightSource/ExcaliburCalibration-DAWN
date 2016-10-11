@@ -4,7 +4,7 @@ ExcaliburCalibration-DAWN
 A script used from DAWN to calibrate and test Excalibur-RX detectors.
 
 
-    |Build Status|  |Coverage Status|  |Code Health|
+    |Build Status|  |Coverage Status|  |Code Health|  |Docs|
 
 .. |Build Status| image:: https://api.travis-ci.org/dls-controls/ExcaliburCalibration-DAWN.svg
     :target: https://travis-ci.org/dls-controls/ExcaliburCalibration-DAWN
@@ -12,3 +12,5 @@ A script used from DAWN to calibrate and test Excalibur-RX detectors.
     :target: https://coveralls.io/github/dls-controls/ExcaliburCalibration-DAWN?branch=master
 .. |Code Health| image:: https://landscape.io/github/dls-controls/ExcaliburCalibration-DAWN/master/landscape.svg?style=flat
     :target: https://landscape.io/github/dls-controls/ExcaliburCalibration-DAWN/master
+.. |Docs| image:: docs.svg
+    :target: https://dls-controls.github.io/ExcaliburCalibration-DAWN/
