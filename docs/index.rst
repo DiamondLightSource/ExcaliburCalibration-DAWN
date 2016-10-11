@@ -32,19 +32,25 @@ Or to run for all chips::
 
    >>> x.threshold_equilization([0, 1, 2, 3, 4, 5, 6, 7)
 
+User Guide
+~~~~~~~~~~
+
+.. toctree::
+   :maxdepth: 2
+
+   userguide
+
 Code Documentation:
 -------------------
 
 .. toctree::
    :maxdepth: 2
 
-   includeme
-   excalibur1M
-   excaliburnode
-   excaliburdawn
-   excaliburtestappinterface
-   arrayutil
-
+   arch/excalibur1M
+   arch/excaliburnode
+   arch/excaliburdawn
+   arch/excaliburtestappinterface
+   arch/arrayutil
 
 Indices and tables
 ------------------
