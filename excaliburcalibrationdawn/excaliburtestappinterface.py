@@ -73,6 +73,9 @@ class ExcaliburTestAppInterface(object):
     PORT = "-p"  # Set port of FEM - ... -p "6969" ...
     MASK = "-m"  # Set mask of chips to be included in cmd - ... -m "0xff" ...
 
+    LV = "--lvenable"  # Set power card LV on (1) of off (0 default)
+    HV = "--hvenable"  # Set power card HV on (1) of off (0 default)
+    HV_BIAS = "--hvbias"  # Set power card HV bias
     RESET = "-r"  # Issue front-end reset/init
     READ_EFUSE = "-e"  # Read and display MPX3 eFuse IDs
     READ_SLOW_PARAMS = "-s"  # Display front-end slow control parameters
@@ -186,6 +189,34 @@ class ExcaliburTestAppInterface(object):
             logging.debug(error.output)
         else:
             logging.debug(output)
+
+    def set_lv_state(self, lv_state):
+        """Construct and send command to enable low voltage on power card."""
+        if lv_state not in [0, 1]:
+            raise ValueError("LV can only be on (0) or off (1), got " +
+                             lv_state)
+
+        chips = range(8)
+        command = self._construct_command(chips, self.LV, str(lv_state))
+        self._send_command(command)
+
+    def set_hv_state(self, hv_state):
+        """Construct and send command to enable high voltage on power card."""
+        if hv_state not in [0, 1]:
+            raise ValueError("HV can only be on (0) or off (1), got " +
+                             hv_state)
+        chips = range(8)
+        command = self._construct_command(chips, self.HV, str(hv_state))
+        self._send_command(command)
+
+    def set_hv_bias(self, hv_bias):
+        """Construct and send command to set the high voltage bias voltage."""
+        if hv_bias < 0 or hv_bias > 120:
+            raise ValueError("HV bias must be between 0 and 120 volts, got " +
+                             hv_bias)
+        chips = range(8)
+        command = self._construct_command(chips, self.HV_BIAS, str(hv_bias))
+        self._send_command(command)
 
     def acquire(self, chips, frames, acqtime, burst=None, pixel_mode=None,
                 disc_mode=None, depth=None, counter=None, equalization=None,

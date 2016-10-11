@@ -367,6 +367,26 @@ class ExcaliburNode(object):
 
         # self.read_chip_ids()
 
+    def enable_lv(self):
+        """Enable LV."""
+        self.app.set_lv_state(1)
+
+    def disable_lv(self):
+        """Disable LV."""
+        self.app.set_lv_state(0)
+
+    def enable_hv(self):
+        """Enable HV."""
+        self.app.set_hv_state(1)
+
+    def disable_hv(self):
+        """Disable HV."""
+        self.app.set_hv_state(0)
+
+    def set_hv_bias(self, hv_bias):
+        """Enable HV."""
+        self.app.set_hv_bias(hv_bias)
+
     def threshold_equalization(self, chips=range(8)):
         """Calibrate discriminator equalization.
 
