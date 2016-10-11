@@ -90,6 +90,11 @@ E3_DAC = dict(shgm=np.array([[250, 110, 100, 90, 80, 70, 60, 50],
                              [64, 64, 64, 64, 64, 64, 64, 64]]
                             ).astype('float'))
 
+# IMPORTANT NOTE: These values of GND, FBK and CAS Dacs were adjusted
+# for the modules present in RX001 on 20 June 2015. If modules are
+# replaced, these DACs need to be re-adjusted and the FBK_DAC, GND_DAC
+# and Cas_DAC arrays in GND_FBK_CAS_ExcaliburRX001 have to be edited
+
 GND_DAC = np.array([[141, 144, 154, 143, 161, 158, 144, 136],
                     [154, 155, 147, 147, 147, 155, 158, 151],
                     [143, 156, 139, 150, 144, 150, 149, 158],

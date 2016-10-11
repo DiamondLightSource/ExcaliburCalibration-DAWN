@@ -381,22 +381,12 @@ class ExcaliburNode(object):
         self.settings['mode'] = 'spm'
         self.settings['gain'] = 'slgm'
 
-        # Checks whether a threshold_equalization directory exists, if not it
-        # creates one with default dacs
         self.check_calib_dir()
-        self.log_chip_id()  # Log chip IDs in threshold_equalization folder
-        self.set_dacs(chips)  # Set DACs recommended by Rafa in May 2015
-        self.set_gnd_fbk_cas_excalibur_rx001(chips, self.fem)  # This will load
-        # the DAC values specific to each chip to have FBK, CAS and GND reading
-        # back the recommended analogue value
+        self.log_chip_id()
+        self.set_dacs(chips)
+        self.set_gnd_fbk_cas_excalibur_rx001(chips, self.fem)
 
-        # IMPORTANT NOTE: These values of GND, FBK and CAS Dacs were adjusted
-        # for the modules present in RX001 on 20 June 2015. If modules are
-        # replaced, these DACs need to be re-adjusted and the FBK_DAC, GND_DAC
-        # and Cas_DAC arrays in GND_FBK_CAS_ExcaliburRX001 have to be edited
-
-        self.calibrate_disc(chips, 'discL')  # Calibrates DiscL Discriminator
-        # connected to Threshold 0 using a rectangular ROI in 1
+        self.calibrate_disc(chips, 'discL')
 
         # NOTE: Always equalize DiscL before DiscH since Threshold1 is set at 0
         # when equalizing DiscL. So if DiscH was equalized first, this would
@@ -505,7 +495,6 @@ class ExcaliburNode(object):
         logging.debug("Saving calibration to: " + thresh_filename)
         np.savetxt(thresh_filename, thresh_coeff, fmt='%.2f')
         os.chmod(thresh_filename, 0777)  # Allow anyone to overwrite
-        # calibration data
 
     def find_xray_energy_dac(self, chips=range(8), threshold="0", energy=5.9):
         """############## NOT TESTED
@@ -566,7 +555,7 @@ class ExcaliburNode(object):
         for chip_idx in chips:
             # Subtract 1 to convert chip_size from number to index
             util.set_slice(bad_pixels, [start, chip_idx * self.chip_size],
-                                [stop, (chip_idx + 1) * self.chip_size - 1], 1)
+                           [stop, (chip_idx + 1) * self.chip_size - 1], 1)
 
         for chip_idx in chips:
             pixel_mask_file = posixpath.join(self.calib_dir,
@@ -858,8 +847,10 @@ class ExcaliburNode(object):
 
         self.app.sense(chips, dac_name, dac_file)
 
-    def scan_dac(self, chips, dac_name, dac_range):  # ONLY FOR THRESHOLD DACS
+    def scan_dac(self, chips, dac_name, dac_range):
         """Perform a dac scan and plot the result (mean counts vs DAC values).
+
+        Only use on ThresholdX DACs.
 
         Args:
             chips: Chips to scan
@@ -938,7 +929,7 @@ class ExcaliburNode(object):
 
         self.set_dac(range(8), "Threshold1", 100)
         self.set_dac(range(8), "Threshold0", 40)
-        self.expose()
+        self.expose()  # TODO: This builds up a lot of images, is it useful?
 
     def update_filename_index(self):
         """Increment filename index in filename.idx file in image path.
