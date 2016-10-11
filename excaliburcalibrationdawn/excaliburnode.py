@@ -395,9 +395,10 @@ class ExcaliburNode(object):
         sequence
 
         Args:
-            chips: Chips to calibrate
+            chips: Chip or list of chips to calibrate
 
         """
+        chips = self._to_list(chips)
         self.settings['mode'] = 'spm'
         self.settings['gain'] = 'slgm'
 
@@ -2348,3 +2349,10 @@ class ExcaliburNode(object):
         start = [0, chip_idx * self.chip_size]
         stop = [self.chip_size - 1, (chip_idx + 1) * self.chip_size - 1]
         return start, stop
+
+    @staticmethod
+    def _to_list(value):
+        if isinstance(value, list):
+            return value
+        else:
+            return [value]
