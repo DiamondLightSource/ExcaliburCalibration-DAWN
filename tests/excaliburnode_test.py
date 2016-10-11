@@ -78,6 +78,44 @@ class InitTest(unittest.TestCase):
             ExcaliburNode(7)
 
 
+class SetVoltageTest(unittest.TestCase):
+
+    def setUp(self):
+        self.e = ExcaliburNode(1)
+        self.app_mock = MagicMock()
+        self.e.app = self.app_mock
+
+    def test_enable_lv(self):
+
+        self.e.enable_lv()
+
+        self.app_mock.set_lv_state.assert_called_once_with(1)
+
+    def test_disable_lv(self):
+
+        self.e.disable_lv()
+
+        self.app_mock.set_lv_state.assert_called_once_with(0)
+
+    def test_enable_hv(self):
+
+        self.e.enable_hv()
+
+        self.app_mock.set_hv_state.assert_called_once_with(1)
+
+    def test_disable_hv(self):
+
+        self.e.disable_hv()
+
+        self.app_mock.set_hv_state.assert_called_once_with(0)
+
+    def test_set_hv_bias(self):
+
+        self.e.set_hv_bias(120)
+
+        self.app_mock.set_hv_bias.assert_called_once_with(120)
+
+
 @patch(Node_patch_path + '.check_calib_dir')
 @patch(Node_patch_path + '.log_chip_id')
 @patch(Node_patch_path + '.set_dacs')

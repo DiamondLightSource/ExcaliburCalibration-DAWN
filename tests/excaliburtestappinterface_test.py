@@ -92,6 +92,30 @@ class TestAPICalls(unittest.TestCase):
         self.e = ExcaliburTestAppInterface("test_ip", "test_port")
         self.chips = range(8)
 
+    def test_set_lv_state(self, send_mock, construct_mock):
+        expected_params = ['--lvenable', '0']
+
+        self.e.set_lv_state(0)
+
+        construct_mock.assert_called_once_with(self.chips, *expected_params)
+        send_mock.assert_called_once_with(construct_mock.return_value)
+
+    def test_set_hv_state(self, send_mock, construct_mock):
+        expected_params = ['--hvenable', '1']
+
+        self.e.set_hv_state(1)
+
+        construct_mock.assert_called_once_with(self.chips, *expected_params)
+        send_mock.assert_called_once_with(construct_mock.return_value)
+
+    def test_set_hv_bias(self, send_mock, construct_mock):
+        expected_params = ['--hvbias', '120']
+
+        self.e.set_hv_bias(120)
+
+        construct_mock.assert_called_once_with(self.chips, *expected_params)
+        send_mock.assert_called_once_with(construct_mock.return_value)
+
     def test_acquire(self, send_mock, construct_mock):
         expected_params = ['-n', '100', '-t', '10', '--burst', '--readmode', '1', '--hdffile', 'test.hdf5']
         frames = 100
