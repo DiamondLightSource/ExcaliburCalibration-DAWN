@@ -53,10 +53,11 @@ Command Line Options:
      --path <path>            Specify path to write data files to, default is
                               /tmp.
      --hdffile <filename>     Write HDF file with optional filename, default is
-                               <path>/excalibur-YYMMDD-HHMMSS.hdf5import os
+                               <path>/excalibur-YYMMDD-HHMMSS.hdf5
 
 """
 import os
+import posixpath
 import time
 import subprocess
 import logging
@@ -68,44 +69,39 @@ class ExcaliburTestAppInterface(object):
 
     """A class to make subprocess calls to the excaliburTestApp tool."""
 
-    # ExcaliburTestApp flags
-    IP_ADDRESS = "-i"  # Set ip address of FEM - ... -i "192.168.0.10" ...
-    PORT = "-p"  # Set port of FEM - ... -p "6969" ...
-    MASK = "-m"  # Set mask of chips to be included in cmd - ... -m "0xff" ...
-
-    LV = "--lvenable"  # Set power card LV on (1) of off (0 default)
-    HV = "--hvenable"  # Set power card HV on (1) of off (0 default)
-    HV_BIAS = "--hvbias"  # Set power card HV bias
-    RESET = "-r"  # Issue front-end reset/init
-    READ_EFUSE = "-e"  # Read and display MPX3 eFuse IDs
-    READ_SLOW_PARAMS = "-s"  # Display front-end slow control parameters
-    SENSE = "--sensedac"  # Set MPX3 sense DAC field.
-    # NB Requires DAC load to take effect
-    SCAN = "--dacscan"  # Execute DAC scan
-
-    ACQUIRE = "-a"  # Execute image acquisition loop
-    BURST = "--burst"  # Select burst mode for image acquisition
-    DEPTH = "--depth"  # Select MPX3 counter depth: 1, 6, 12 (default) or 24
-    PIXEL_MODE = "--csmspm"  # Select MPX3 pixel mode:
-    # 0 = single pixel mode (default), 1 = charge summing mode
-    DISC_MODE = "--disccsmspm"  # Select MPX3 discriminator output mode:
-    # 0 = DiscL (default), 1 = DiscH
-    COUNTER = "--counter"  # Select MPX3 counter to read: 0 (default) or 1
-    READ_MODE = "--readmode"  # Readout mode:
-    # 0 = sequential (default), 1 = continuous
-    GAIN_MODE = "--gainmode"  # Select MPX3 gain mode:
-    # 0 = SHGM, 1 = HGM, 2 = LGM, 3 = SLGM (default)
-    NUM_FRAMES = "-n"  # Number of frames to acquire
-    ACQ_TIME = "-t"  # Acquisition time (shutter duration) in milliseconds
-    HDF_FILE = "--hdffile"  # Write HDF file with optional filename.
-    # Default is excalibur-YYMMDD-HHMMSS.hdf5
-    DAC_FILE = "--dacs"  # Load MPX3 DAC values from filename
-    TP_MASK = "--tpmask"  # Specify test pulse mask filename to load
-
-    CONFIG = "--config"  # Load MPX3 pixel configuration
-    PIXEL_MASK = "--pixelmask"  # Specify pixel enable mask filename to load
-    DISC_L = "--discl"  # Specify pixel DiscL mask filename to load
-    DISC_H = "--disch"  # Specify pixel DiscH mask filename to load
+    # ExcaliburTestApp flags & example usage
+    IP_ADDRESS = "-i"  # -i 192.168.0.10
+    PORT = "-p"  # -p 6969
+    MASK = "-m"  # -m 0xff
+    RESET = "-r"
+    LV = "--lvenable"  # --lvenable 1
+    HV = "--hvenable"  # --hvenable 1
+    HV_BIAS = "--hvbias"  # --hvbias 120
+    READ_EFUSE = "-e"
+    DAC_FILE = "--dacs"  # --dacs default_dac_values.txt
+    READ_SLOW_PARAMS = "-s"
+    SENSE = "--sensedac"  # --sensedac 5
+    SCAN = "--dacscan"  # --dacscan 0,10,1,5
+    ACQUIRE = "-a"
+    NUM_FRAMES = "-n"  # -n 10
+    ACQ_TIME = "-t"  # -t 100
+    TRIG_MODE = "--trigmode"  # --trigmode 1
+    BURST = "--burst"
+    DEPTH = "--depth"  # --depth 1
+    PIXEL_MODE = "--csmspm"  # --csmspm 1
+    DISC_MODE = "--disccsmspm"  # --disccsmspm 1
+    COUNTER = "--counter"  # --counter 1
+    EQUALIZATION = "--equalization"  # --equalization 1
+    READ_MODE = "--readmode"  # --readmode 1
+    GAIN_MODE = "--gainmode"  # --gainmode 3
+    PATH = "--path"  # --path /scratch/excalibur_images
+    HDF_FILE = "--hdffile"  # --hdffile image_1
+    TP_COUNT = "--tpcount"  # --tpcount 2
+    CONFIG = "--config"
+    PIXEL_MASK = "--pixelmask"  # --pixelmask mask.txt
+    DISC_L = "--discl"  # --discl default_disc_L.txt
+    DISC_H = "--disch"  # --disch default_disc_H.txt
+    TP_MASK = "--tpmask"  # --tpmask logo_mask.txt
 
     # Parameters representing detector specification
     num_chips = 8
@@ -156,7 +152,7 @@ class ExcaliburTestAppInterface(object):
         if len(chips) != len(set(chips)):
             raise ValueError("Given list must not contain duplicate values")
 
-        valid_index_range = range(self.num_chips)
+        valid_index_range = self.chip_range
         max_chip_index = valid_index_range[-1]
 
         mask_hex = 0
@@ -220,8 +216,8 @@ class ExcaliburTestAppInterface(object):
 
     def acquire(self, chips, frames, acqtime, burst=None, pixel_mode=None,
                 disc_mode=None, depth=None, counter=None, equalization=None,
-                gainmode=None, readmode=None, trigmode=None, path=None,
-                tpcount=None, hdffile=None):
+                gainmode=None, readmode=None, trigmode=None, tpcount=None,
+                path=None, hdffile=None):
         """Construct and send an acquire command.
 
         excaliburTestApp default values are marked with *
@@ -230,55 +226,79 @@ class ExcaliburTestAppInterface(object):
             chips(list(int)): Chips to enable for command process
             frames: Number of frames to acquire
             acqtime: Exposure time for each frame
-
+            burst: Enable burst mode capture
             pixel_mode: Pixel mode (SPM*, CSM = 0*, 1)
-            disc_mode: Disc mode (DiscL*, DiscH = 0*, 1)
+            disc_mode: Discriminator mode (DiscL*, DiscH = 0*, 1)
             depth: Counter depth (1, 6, 12*, 24)
             counter: Counter to read (0* or 1)
             equalization: Enable equalization (0*, 1 = off*, on)
             gainmode: Gain mode (SHGM*, HGM, LGM, SLGM = 0*, 1, 2, 3)
             readmode: Readout mode (0*, 1 = sequential, continuous)
-            trigmode: Trigger mode
-                (internal*, external shutter, external sync = 0*, 1, 2)
-            path: Path to image folder ('/tmp'*)
-            hdffile: Name of file to save (excalibur-YYMMDD-HHMMSS.hdf5*)
+            trigmode: Trigger mode (internal*, shutter, sync = 0*, 1, 2
+            tpcount: Set test pulse count (0*)
+            path: Path to image folder (/tmp*)
+            hdffile: Name of file to save (excalibur-YYMMDD-HHMMSS*)
 
         Returns:
             list(str): Full acquire command to send to subprocess call
 
         """
-        extra_params = [self.NUM_FRAMES, str(frames),
+        extra_params = [self.ACQUIRE,
+                        self.NUM_FRAMES, str(frames),
                         self.ACQ_TIME, str(acqtime)]
+
+        # TODO: Are any combinations invalid?
 
         # Add any optional parameters if they are provided
         if burst is not None and burst:
-            extra_params.append(self.BURST)
-        # if pixel_mode is not None:
-        #     extra_params.extend([self.PIXEL_MODE, str(pixel_mode)])
-        # if disc_mode is not None:
-        #     extra_params.extend([self.DISC_MODE, str(disc_mode)])
-        # if depth is not None:
-        #     extra_params.extend([self.DEPTH, str(depth)])
-        # if counter is not None:
-        #     if counter in [0, 1]:
-        #         extra_params.extend([self.PIXEL_MODE, str(pixel_mode)])
-        #     else:
-        #         raise ValueError("Counter can only be 0 or 1, got " + counter)
-        # if equalization is not None:
-        #     extra_params.extend([self.PIXEL_MODE, str(pixel_mode)])
-        # if gainmode is not None:
-        #     extra_params.extend([self.PIXEL_MODE, str(gainmode)])
-        if readmode is not None:
+            extra_params.append(self.BURST)  # TODO: Need to remove -a?
+
+        if self._check_argument_valid("Pixel mode", pixel_mode, [0, 1]):
+            extra_params.extend([self.PIXEL_MODE, str(pixel_mode)])
+        if self._check_argument_valid("Discriminator mode", disc_mode, [0, 1]):
+            extra_params.extend([self.DISC_MODE, str(disc_mode)])
+        if self._check_argument_valid("Depth", depth, [1, 6, 12, 24]):
+            extra_params.extend([self.DEPTH, str(depth)])
+        if self._check_argument_valid("Counter", counter, [0, 1]):
+            extra_params.extend([self.COUNTER, str(counter)])
+        if self._check_argument_valid("Equalization", equalization, [0, 1]):
+            extra_params.extend([self.EQUALIZATION, str(equalization)])
+        if self._check_argument_valid("Gain Mode", gainmode, [0, 1, 2, 3]):
+            extra_params.extend([self.GAIN_MODE, str(gainmode)])
+        if self._check_argument_valid("Readout mode", readmode, [0, 1]):
             extra_params.extend([self.READ_MODE, str(readmode)])
-        # if trigmode is not None:
-        #     extra_params.extend([self.PIXEL_MODE, str(trigmode)])
-        # if path is not None:
-        #     extra_params.extend([self.PIXEL_MODE, str(path)])
+        if self._check_argument_valid("Trigger mode", trigmode, [0, 1, 2]):
+            extra_params.extend([self.TRIG_MODE, str(trigmode)])
+
+        if tpcount is not None:
+            # TODO: What are the valid values for this?
+            extra_params.extend([self.TP_COUNT, str(tpcount)])
+        if path is not None:
+            extra_params.extend([self.PATH, str(path)])
         if hdffile is not None:
-            extra_params.extend([self.HDF_FILE, str(hdffile)])
+            if path is None:
+                path = "/tmp"
+            # TODO: Using join() assumes ETA is smart also?
+            full_path = posixpath.join(path, hdffile)
+            if os.path.isfile(full_path):
+                raise IOError("File already exists")
+            else:
+                extra_params.extend([self.HDF_FILE, str(hdffile)])
 
         command = self._construct_command(chips, *extra_params)
         self._send_command(command)
+
+    @staticmethod
+    def _check_argument_valid(name, value, valid_values):
+        if value is None:
+            return False
+        elif value not in valid_values:
+            raise ValueError("{argument} can only be {valid_values}, "
+                             "got {value}".format(argument=name,
+                                                  valid_values=valid_values,
+                                                  value=value))
+        else:
+            return True
 
     def sense(self, chips, dac, dac_file):
         """Read the given DAC analogue voltage.

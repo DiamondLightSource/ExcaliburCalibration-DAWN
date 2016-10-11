@@ -116,15 +116,32 @@ class TestAPICalls(unittest.TestCase):
         construct_mock.assert_called_once_with(self.chips, *expected_params)
         send_mock.assert_called_once_with(construct_mock.return_value)
 
-    def test_acquire(self, send_mock, construct_mock):
-        expected_params = ['-n', '100', '-t', '10', '--burst', '--readmode', '1', '--hdffile', 'test.hdf5']
+    @patch('os.path.isfile', return_value=False)
+    def test_acquire(self, _, send_mock, construct_mock):
+        expected_params = ['-a', '-n', '100', '-t', '10', '--burst',
+                           '--csmspm', '1', '--disccsmspm', '1',
+                           '--depth', '1', '--counter', '1',
+                           '--equalization', '1', '--gainmode', '3',
+                           '--readmode', '1', '--trigmode', '2',
+                           '--tpcount', '10', '--path', '/scratch/RX_Images',
+                           '--hdffile', 'test.hdf5']
         frames = 100
         acquire_time = 10
 
-        self.e.acquire(self.chips, frames, acquire_time, burst=True, readmode=1, hdffile="test.hdf5")
+        self.e.acquire(self.chips, frames, acquire_time, burst=True,
+                       pixel_mode=1, disc_mode=1, depth=1, counter=1,
+                       equalization=1, gainmode=3, readmode=1, trigmode=2,
+                       tpcount=10, path="/scratch/RX_Images",
+                       hdffile="test.hdf5")
 
         construct_mock.assert_called_once_with(self.chips, *expected_params)
         send_mock.assert_called_once_with(construct_mock.return_value)
+
+    @patch('os.path.isfile', return_value=True)
+    def test_acquire_given_existing_file_then_raises(self, _, _2, _3):
+
+        with self.assertRaises(IOError):
+            self.e.acquire(self.chips, 1, 100, hdffile="test.hdf5")
 
     @patch('time.sleep')
     def test_sense(self, sleep_mock, send_mock, construct_mock):
@@ -203,6 +220,26 @@ class TestAPICalls(unittest.TestCase):
 
         construct_mock.assert_called_once_with(self.chips, *expected_params)
         send_cmd_mock.assert_called_once_with(construct_mock.return_value)
+
+
+class CheckArgumentValidTest(unittest.TestCase):
+
+    def test_given_None_then_False(self):
+
+        response = ExcaliburTestAppInterface._check_argument_valid("Test", None, [])
+
+        self.assertFalse(response)
+
+    def test_given_invalid_then_raise(self):
+
+        with self.assertRaises(ValueError):
+            ExcaliburTestAppInterface._check_argument_valid("Test", 10, [1, 2, 3, 4, 5])
+
+    def test_given_valid_then_True(self):
+
+        response = ExcaliburTestAppInterface._check_argument_valid("Test", 5, [1, 2, 3, 4, 5])
+
+        self.assertTrue(response)
 
 
 class MaskTest(unittest.TestCase):
