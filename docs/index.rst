@@ -1,7 +1,7 @@
 .. include:: ../README.rst
 
-Quick Start Guide:
-------------------
+Quick Start Guide
+-----------------
 
 From the command line run the following to start up DAWN::
 
@@ -30,7 +30,7 @@ on chip 1 (index 0)::
 
 Or to run for all chips::
 
-   >>> x.threshold_equilization([0, 1, 2, 3, 4, 5, 6, 7)
+   >>> x.threshold_equilization([0, 1, 2, 3, 4, 5, 6, 7])
 
 User Guide
 ~~~~~~~~~~
@@ -40,8 +40,8 @@ User Guide
 
    userguide
 
-Code Documentation:
--------------------
+Code Documentation
+------------------
 
 .. toctree::
    :maxdepth: 2
