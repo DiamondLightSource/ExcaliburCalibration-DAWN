@@ -191,7 +191,7 @@ class ExcaliburTestAppInterface(object):
             logging.debug(output)
 
     def set_lv_state(self, lv_state):
-        """Construct and send command to enable low voltage on power card."""
+        """Set LV to given state; 0 - Off, 1 - On."""
         if lv_state not in [0, 1]:
             raise ValueError("LV can only be on (0) or off (1), got " +
                              lv_state)
@@ -201,7 +201,7 @@ class ExcaliburTestAppInterface(object):
         self._send_command(command)
 
     def set_hv_state(self, hv_state):
-        """Construct and send command to enable high voltage on power card."""
+        """Set HV to given state; 0 - Off, 1 - On."""
         if hv_state not in [0, 1]:
             raise ValueError("HV can only be on (0) or off (1), got " +
                              hv_state)
@@ -210,7 +210,7 @@ class ExcaliburTestAppInterface(object):
         self._send_command(command)
 
     def set_hv_bias(self, hv_bias):
-        """Construct and send command to set the high voltage bias voltage."""
+        """Set HV bias to given value."""
         if hv_bias < 0 or hv_bias > 120:
             raise ValueError("HV bias must be between 0 and 120 volts, got " +
                              hv_bias)
