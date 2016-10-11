@@ -196,7 +196,7 @@ class ExcaliburTestAppInterface(object):
         excaliburTestApp default values are marked with *
 
         Args:
-            chips(list(int): Chips to enable for command process
+            chips(list(int)): Chips to enable for command process
             frames: Number of frames to acquire
             acqtime: Exposure time for each frame
 
@@ -213,7 +213,7 @@ class ExcaliburTestAppInterface(object):
             hdffile: Name of file to save (excalibur-YYMMDD-HHMMSS.hdf5*)
 
         Returns:
-            list(str)): Full acquire command to send to subprocess call
+            list(str): Full acquire command to send to subprocess call
 
         """
         extra_params = [self.NUM_FRAMES, str(frames),
