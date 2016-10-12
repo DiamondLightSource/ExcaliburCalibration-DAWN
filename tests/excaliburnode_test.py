@@ -25,14 +25,14 @@ class InitTest(unittest.TestCase):
         self.assertEqual(self.e.config_dir, "/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/config")
         self.assertEqual(self.e.settings, {'mode': 'spm',
                                            'gain': 'shgm',
-                                           'bitdepth': '12',
-                                           'readmode': '0',
-                                           'counter': '0',
-                                           'disccsmspm': '0',
-                                           'equalization': '0',
-                                           'trigmode': '0',
-                                           'acqtime': '100',
-                                           'frames': '1',
+                                           'bitdepth': 12,
+                                           'readmode': 'sequential',
+                                           'counter': 0,
+                                           'disccsmspm': 'discL',
+                                           'equalization': 0,
+                                           'trigmode': 0,
+                                           'acqtime': 100,
+                                           'frames': 1,
                                            'imagepath': '/tmp/',
                                            'filename': 'image',
                                            'Threshold': 'Not set',
@@ -445,87 +445,60 @@ class SubprocessCallsTest(unittest.TestCase):  # TODO: Rename
 
         read_mock.assert_called_once_with()
 
+    @patch(DAWN_patch_path + '.load_image_data')
+    @patch(ETAI_patch_path + '.acquire')
     @patch('time.sleep')
     @patch(Node_patch_path + '.update_filename_index')
-    @patch(ETAI_patch_path + '.acquire')
-    def test_burst(self, acquire_mock, update_idx_mock, sleep_mock):
-        expected_file = 'image_.hdf5'
-        chips = range(8)
+    def test_acquire(self, update_idx_mock, sleep_mock, acquire_mock,
+                     load_mock):
+
+        self.e._acquire(10, 100, burst=True)
+
+        update_idx_mock.assert_called_once_with()
+        acquire_mock.assert_called_once_with(
+            [0, 1, 2, 3, 4, 5, 6, 7], 10, 100, trig_mode=0, gain_mode='shgm',
+            burst=True, pixel_mode='spm', counter=0, equalization=0,
+            disc_mode='discL', hdf_file='image_.hdf5', depth=12,
+            read_mode='sequential')
+        sleep_mock.assert_called_once_with(0.5)
+        load_mock.assert_called_once_with('/tmp/image_.hdf5')
+
+    @patch('time.asctime', return_value='Tue Sep 27 10:12:27 2016')
+    @patch(DAWN_patch_path + '.plot_image')
+    @patch(Node_patch_path + '._acquire')
+    def test_expose(self, acquire_mock, plot_mock, _):
+
+        self.e.expose(100)
+
+        acquire_mock.assert_called_once_with(1, 100)
+        plot_mock.assert_called_once_with(acquire_mock.return_value, name='Image_Tue Sep 27 10:12:27 2016')
+
+    @patch(Node_patch_path + '._acquire')
+    def test_burst(self, acquire_mock):
 
         self.e.burst(10, 0.1)
 
-        update_idx_mock.assert_called_once_with()
-        acquire_mock.assert_called_once_with(chips, 10, 0.1, burst=True, hdffile=expected_file)
-        sleep_mock.assert_called_once_with(0.5)
+        acquire_mock.assert_called_once_with(10, 0.1, burst=True)
 
     @patch('time.asctime', return_value='Tue Sep 27 10:12:27 2016')
-    @patch(DAWN_patch_path + '.load_image_data')
     @patch(DAWN_patch_path + '.plot_image')
-    @patch('time.sleep')
-    @patch(ETAI_patch_path + '.acquire')
-    @patch(Node_patch_path + '.update_filename_index')
-    def test_expose(self, update_idx_mock, acquire_mock, sleep_mock, plot_mock,
-                    load_mock, _):
-        expected_file = 'image_.hdf5'
-        chips = range(8)
-
-        self.e.expose()
-
-        update_idx_mock.assert_called_once_with()
-        acquire_mock.assert_called_once_with(chips, '1', '100', hdffile=expected_file)
-        sleep_mock.assert_called_once_with(0.5)
-        load_mock.assert_called_once_with('/tmp/image_.hdf5')
-        plot_mock.assert_called_once_with(load_mock.return_value, name='Image_Tue Sep 27 10:12:27 2016')
-
-    @patch('time.asctime', return_value='Tue Sep 27 10:12:27 2016')
-    @patch(DAWN_patch_path + '.load_image_data')
-    @patch(DAWN_patch_path + '.plot_image')
-    @patch('time.sleep')
-    @patch(ETAI_patch_path + '.acquire')
-    @patch(Node_patch_path + '.update_filename_index')
-    def test_shoot(self, update_idx_mock, acquire_mock, sleep_mock, plot_mock,
-                   load_mock, _):
-        expected_file = 'image_.hdf5'
-        chips = range(8)
-
-        self.e.shoot(10)
-
-        update_idx_mock.assert_called_once_with()
-        acquire_mock.assert_called_once_with(chips, '1', '10', hdffile=expected_file)
-        sleep_mock.assert_called_once_with(0.2)
-        load_mock.assert_called_once_with('/tmp/image_.hdf5')
-        plot_mock.assert_called_once_with(load_mock.return_value, name='Image_Tue Sep 27 10:12:27 2016')
-
-    @patch('time.asctime', return_value='Tue Sep 27 10:12:27 2016')
-    @patch(DAWN_patch_path + '.load_image_data')
-    @patch(DAWN_patch_path + '.plot_image')
-    @patch('time.sleep')
-    @patch(ETAI_patch_path + '.acquire')
-    @patch(Node_patch_path + '.update_filename_index')
-    def test_cont(self, update_idx_mock, acquire_mock, sleep_mock, plot_mock,
-                  load_mock, _):
-        expected_file = 'image_.hdf5'
-        chips = range(8)
+    @patch(Node_patch_path + '._acquire')
+    def test_cont(self, acquire_mock, plot_mock, _):
 
         self.e.cont(100, 10)
 
-        update_idx_mock.assert_called_once_with()
-        acquire_mock.assert_called_once_with(chips, '100', '10', readmode='1', hdffile=expected_file)
-        sleep_mock.assert_called_once_with(0.2)
-        load_mock.assert_called_once_with('/tmp/image_.hdf5')
-        plot_mock.assert_called_with(load_mock.return_value.__getitem__(), name=ANY)
+        self.assertEqual("continuous", self.e.settings['readmode'])
+        acquire_mock.assert_called_once_with(100, 10)
+        plot_mock.assert_called_with(acquire_mock.return_value.__getitem__(), name=ANY)
         self.assertEqual(5, plot_mock.call_count)
 
-    @patch(ETAI_patch_path + '.acquire')
-    @patch(Node_patch_path + '.update_filename_index')
-    def test_cont_burst(self, update_idx_mock, acquire_mock):
-        expected_file = 'image_.hdf5'
-        chips = range(8)
+    @patch(Node_patch_path + '._acquire')
+    def test_cont_burst(self, acquire_mock):
 
         self.e.cont_burst(100, 10)
 
-        update_idx_mock.assert_called_once_with()
-        acquire_mock.assert_called_once_with(chips, 100, 10, burst=True, readmode='1', hdffile=expected_file)
+        self.assertEqual("continuous", self.e.settings['readmode'])
+        acquire_mock.assert_called_once_with(100, 10, burst=True)
 
     @patch(ETAI_patch_path + '.load_dacs')
     @patch('__builtin__.open', return_value=file_mock)
@@ -631,7 +604,7 @@ class Fe55ImageRX001Test(unittest.TestCase):
         load_mock.assert_called_once_with(chips)
         set_threshhold_mock.assert_called_once_with(chips, 40)
         sleep_mock.assert_called_once_with(0.5)
-        expose_mock.assert_called_once_with()
+        expose_mock.assert_called_once_with(exposure_time)
 
     def test_correct_calls_made_with_default_params(self, expose_mock,
                                                     set_threshhold_mock,
@@ -648,7 +621,7 @@ class Fe55ImageRX001Test(unittest.TestCase):
         load_mock.assert_called_once_with(chips)
         set_threshhold_mock.assert_called_once_with(chips, 40)
         sleep_mock.assert_called_once_with(0.5)
-        expose_mock.assert_called_once_with()
+        expose_mock.assert_called_once_with(exposure_time)
 
 
 @patch(DAWN_patch_path + '.load_image_data')
@@ -762,7 +735,7 @@ class ApplyFFCorrectionTest(unittest.TestCase):
 @patch(DAWN_patch_path + '.load_image_data')
 @patch(ETAI_patch_path + '.acquire')
 @patch(Node_patch_path + '.set_dac')
-@patch(Node_patch_path + '.shoot')
+@patch(Node_patch_path + '.expose')
 class LogoTestTest(unittest.TestCase):
 
     rand = np.random.RandomState(123)

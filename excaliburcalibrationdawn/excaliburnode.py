@@ -338,15 +338,15 @@ class ExcaliburNode(object):
         # Detector default Settings
         self.settings = {'mode': 'spm',  # 'spm' or 'csm'
                          'gain': 'shgm',  # 'slgm', 'lgm', 'hgm' or 'shgm'
-                         'bitdepth': '12',  # '1', '8', '12' or '24'; 24 bits
+                         'bitdepth': 12,  # '1', '8', '12' or '24'; 24 bits
                          # needs disccsmspm set at 1 to use discL
-                         'readmode': '0',  # '0' or '1'
-                         'counter': '0',  # '0' or '1'
-                         'disccsmspm': '0',  # '0' or '1'
-                         'equalization': '0',  # '0' or '1'
-                         'trigmode': '0',
-                         'acqtime': '100',  # in ms
-                         'frames': '1',  # Number of frames to acquire
+                         'readmode': 'sequential',  # '0' or '1'
+                         'counter': 0,  # '0' or '1'
+                         'disccsmspm': 'discL',  # '0' or '1'
+                         'equalization': 0,  # '0' or '1'
+                         'trigmode': 0,
+                         'acqtime': 100,  # in ms
+                         'frames': 1,  # Number of frames to acquire
                          'imagepath': '/tmp/',  # Image path
                          'filename': 'image',  # Image filename
                          'Threshold': 'Not set',  # Threshold in keV
@@ -807,18 +807,18 @@ class ExcaliburNode(object):
 
         """
         img_path = self.settings['imagepath']
+
         self.settings['gain'] = 'shgm'
         self.load_config(chips)
         self.set_threshold0_dac(chips, 40)
-        self.settings['acqtime'] = str(acquire_time)
         self.settings['filename'] = 'Fe55_image_node_{fem}_{acqtime}s'.format(
             fem=self.fem, acqtime=self.settings['acqtime'])
         self.settings['imagepath'] = posixpath.join(self.root_path,
                                                     'Fe55_images')
-
-        self.settings['acqtime'] = str(acquire_time)
         time.sleep(0.5)
-        self.expose()
+
+        self.expose(acquire_time)
+
         self.settings['imagepath'] = img_path
         self.settings['filename'] = 'image'
         self.settings['acqtime'] = '100'
@@ -977,6 +977,21 @@ class ExcaliburNode(object):
         if new_file:
             os.chmod(idx_filename, 0777)
 
+    def expose(self, exposure=None):
+        """Acquire single frame using current detector settings.
+
+        Returns:
+            numpy.array: Image data
+
+        """
+        if exposure is None:
+            exposure = self.settings['acqtime']
+
+        image = self._acquire(1, exposure)
+
+        self.dawn.plot_image(image, name="Image_{}".format(time.asctime()))
+        return image
+
     def burst(self, frames, acquire_time):
         """Acquire images in burst mode.
 
@@ -985,103 +1000,19 @@ class ExcaliburNode(object):
             acquire_time: Exposure time for images
 
         """
-        self.settings['frames'] = frames
-        self.settings['acqtime'] = acquire_time
-
-        self.update_filename_index()
-        self.settings['fullFilename'] = '{name}_{index}.hdf5'.format(
-            name=self.settings['filename'],
-            index=self.settings['filenameIndex'])
-
-        self.app.acquire(self.chip_range,
-                         frames,
-                         acquire_time,
-                         burst=True,
-                         hdffile=self.settings['fullFilename'])
-
-        time.sleep(0.5)
-
-    def expose(self):
-        """Acquire single image using current detector settings.
-
-        Returns:
-            numpy.array: Image data
-
-        """
-        # TODO: This is the same as shoot if the user doesn't edit the settings
-        # TODO: manually from the console
-
-        self.update_filename_index()
-        self.settings['frames'] = '1'
-        self.settings['fullFilename'] = '{name}_{index}.hdf5'.format(
-            name=self.settings['filename'],
-            index=self.settings['filenameIndex'])
-
-        self.app.acquire(self.chip_range,
-                         str(self.settings['frames']),
-                         str(self.settings['acqtime']),
-                         hdffile=self.settings['fullFilename'])
-
-        time.sleep(0.5)
-
-        image = self.dawn.load_image_data(self.settings['imagepath'] +
-                                          self.settings['fullFilename'])
-        self.dawn.plot_image(image, name="Image_{}".format(time.asctime()))
-
-        return image
-
-    def shoot(self, acquire_time):
-        """Acquire an image with a given exposure time.
-
-        Args:
-            acquire_time: Exposure time for images
-
-        """
-        self.settings['acqtime'] = acquire_time
-        self.settings['frames'] = '1'
-        self.update_filename_index()
-        self.settings['fullFilename'] = '{name}_{index}.hdf5'.format(
-            name=self.settings['filename'],
-            index=self.settings['filenameIndex'])
-
-        self.app.acquire(self.chip_range,
-                         str(self.settings['frames']),
-                         str(acquire_time),
-                         hdffile=self.settings['fullFilename'])
-
-        time.sleep(0.2)
-
-        image = self.dawn.load_image_data(self.settings['imagepath'] +
-                                          self.settings['fullFilename'])
-        self.dawn.plot_image(image, name="Image_{}".format(time.asctime()))
+        self._acquire(frames, acquire_time, burst=True)
 
     def cont(self, frames, acquire_time):
-        """Acquire image in continuous mode.
+        """Acquire images in continuous mode.
 
         Args:
             frames: Number of images to capture
             acquire_time: Exposure time for images
 
         """
-        self.settings['acqtime'] = acquire_time
-        self.settings['frames'] = frames
-        self.settings['readmode'] = '1'
+        self.settings['readmode'] = "continuous"
 
-        self.update_filename_index()
-        self.settings['fullFilename'] = '{name}_{index}.hdf5'.format(
-            name=self.settings['filename'],
-            index=self.settings['filenameIndex'])
-
-        self.app.acquire(self.chip_range,
-                         str(frames),
-                         str(acquire_time),
-                         readmode='1',
-                         hdffile=self.settings['fullFilename'])
-
-        time.sleep(0.2)
-
-        image = self.dawn.load_image_data(self.settings['imagepath'] +
-                                          self.settings['fullFilename'])
+        image = self._acquire(frames, acquire_time)
 
         plots = min(frames, 5)  # Limit to 5 frames
         plot_tag = time.asctime()
@@ -1098,21 +1029,39 @@ class ExcaliburNode(object):
             acquire_time: Exposure time for images
 
         """
-        # TODO: Readmode used but not changed to 1 before?
+        self.settings['readmode'] = "continuous"
+        self._acquire(frames, acquire_time, burst=True)
 
-        self.settings['acqtime'] = acquire_time
+    def _acquire(self, frames, exposure, burst=False):
+        """Acquire image(s) with given exposure and current settings.
+
+        Args:
+            frames: Number of frames to acquire
+            exposure: Exposure time of each image
+            burst: Set burst mode for acquisition
+
+        """
         self.update_filename_index()
-        self.settings['frames'] = frames
         self.settings['fullFilename'] = '{name}_{index}.hdf5'.format(
             name=self.settings['filename'],
             index=self.settings['filenameIndex'])
 
-        self.app.acquire(self.chip_range,
-                         frames,
-                         acquire_time,
-                         burst=True,
-                         readmode='1',
-                         hdffile=self.settings['fullFilename'])
+        self.app.acquire(self.chip_range, frames, exposure,
+                         burst=burst,
+                         pixel_mode=self.settings['mode'],
+                         disc_mode=self.settings['disccsmspm'],
+                         depth=self.settings['bitdepth'],
+                         counter=self.settings['counter'],
+                         equalization=self.settings['equalization'],
+                         gain_mode=self.settings['gain'],
+                         read_mode=self.settings['readmode'],
+                         trig_mode=self.settings['trigmode'],
+                         hdf_file=self.settings['fullFilename'])
+
+        time.sleep(0.5)
+        image = self.dawn.load_image_data(self.settings['imagepath'] +
+                                          self.settings['fullFilename'])
+        return image
 
     def acquire_ff(self, num, acquire_time):
         """Acquire and sum flat-field images.
@@ -1185,7 +1134,7 @@ class ExcaliburNode(object):
         """Test the detector using test pulses representing excalibur logo."""
         chips = range(self.num_chips)
         self.set_dac(chips, "Threshold0", 40)
-        self.shoot(10)
+        self.expose(10)
         logo_tp = np.ones([256, 8*256])
         logo_file = posixpath.join(self.config_dir,
                                    'logo.txt')
