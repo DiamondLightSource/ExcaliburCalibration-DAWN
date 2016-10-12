@@ -305,14 +305,14 @@ class ExcaliburNode(object):
     config_dir = posixpath.join(root_path, 'TestApplication_15012015/config')
 
     # Line number used when editing dac file with new dac values
-    dac_number = dict(Threshold0='1', Threshold1='2', Threshold2='3',
-                      Threshold3='4', Threshold4='5', Threshold5='6',
-                      Threshold6='7', Threshold7='8',
-                      Preamp='9', Ikrum='10', Shaper='11', Disc='12',
-                      DiscLS='13', ShaperTest='14', DACDiscL='15',
-                      DACTest='16', DACDiscH='17', Delay='18', TPBuffIn='19',
-                      TPBuffOut='20', RPZ='21', GND='22', TPREF='23', FBK='24',
-                      Cas='25', TPREFA='26', TPREFB='27')
+    dac_number = dict(Threshold0=1, Threshold1=2, Threshold2=3,
+                      Threshold3=4, Threshold4=5, Threshold5=6,
+                      Threshold6=7, Threshold7=8,
+                      Preamp=9, Ikrum=10, Shaper=11, Disc=12,
+                      DiscLS=13, ShaperTest=14, DACDiscL=15,
+                      DACTest=16, DACDiscH=17, Delay=18, TPBuffIn=19,
+                      TPBuffOut=20, RPZ=21, GND=22, TPREF=23, FBK=24,
+                      Cas=25, TPREFA=26, TPREFB=27)
 
     chip_range = range(num_chips)
     plot_name = ''
