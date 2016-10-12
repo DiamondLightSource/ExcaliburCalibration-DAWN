@@ -1551,15 +1551,20 @@ class ExcaliburNode(object):
             numpy.array(?): Noise edge data
 
         """
-        if dac_range[1] > dac_range[0]:
-            edge_dacs = dac_range[1] - dac_range[2] * np.argmax(
-                (dac_scan_data[::-1, :, :] > edge_val), 0)
+        if dac_range[1] > dac_range[0]:  # Reverse data for high to low scan
+            is_reverse_scan = True
+            dac_scan_data = dac_scan_data[::-1, :, :]
         else:
-            edge_dacs = dac_range[0] - dac_range[2] * np.argmax(
-                (dac_scan_data[:, :, :] > edge_val), 0)
+            is_reverse_scan = False
+
+        over_threshold = dac_scan_data > edge_val
+        threshold_edge = np.argmax(over_threshold, 0)
+        if is_reverse_scan:
+            edge_dacs = dac_range[1] - dac_range[2] * threshold_edge
+        else:
+            edge_dacs = dac_range[0] - dac_range[2] * threshold_edge
 
         self._display_histogram(chips, edge_dacs)
-
         return edge_dacs
 
     def find_max(self, chips, dac_scan_data, dac_range):
@@ -1569,13 +1574,12 @@ class ExcaliburNode(object):
             numpy.array(?): Max noise data
 
         """
-        edge_dacs = dac_range[1] - dac_range[2] * np.argmax(
+        max_dacs = dac_range[1] - dac_range[2] * np.argmax(
             (dac_scan_data[::-1, :, :]), 0)
         # TODO: Assumes low to high scan? Does it matter?
 
-        self._display_histogram(chips, edge_dacs)
-
-        return edge_dacs
+        self._display_histogram(chips, max_dacs)
+        return max_dacs
 
     def _display_histogram(self, chips, edge_dacs):
         """Plot an image and a histogram of edge_dacs data.
@@ -1943,6 +1947,7 @@ class ExcaliburNode(object):
                 raise ValueError("Discriminator must be L or H, got {bad_disc}"
                                  .format(bad_disc=disc_name))
 
+            # TODO: Can we just call once with all chips?
             self.load_config_bits([chip],
                                   self._grab_chip_slice(discLbits, chip),
                                   self._grab_chip_slice(discHbits, chip),

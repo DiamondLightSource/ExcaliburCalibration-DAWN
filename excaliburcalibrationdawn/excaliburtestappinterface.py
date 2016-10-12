@@ -193,8 +193,8 @@ class ExcaliburTestAppInterface(object):
     def set_lv_state(self, lv_state):
         """Set LV to given state; 0 - Off, 1 - On."""
         if lv_state not in [0, 1]:
-            raise ValueError("LV can only be on (0) or off (1), got " +
-                             lv_state)
+            raise ValueError("LV can only be on (0) or off (1), got "
+                             "{value}".format(value=lv_state))
 
         chips = range(8)
         command = self._construct_command(chips, self.LV, str(lv_state))
@@ -203,8 +203,8 @@ class ExcaliburTestAppInterface(object):
     def set_hv_state(self, hv_state):
         """Set HV to given state; 0 - Off, 1 - On."""
         if hv_state not in [0, 1]:
-            raise ValueError("HV can only be on (0) or off (1), got " +
-                             hv_state)
+            raise ValueError("HV can only be on (0) or off (1), got "
+                             "{value}".format(value=hv_state))
         chips = range(8)
         command = self._construct_command(chips, self.HV, str(hv_state))
         self._send_command(command)
@@ -212,8 +212,8 @@ class ExcaliburTestAppInterface(object):
     def set_hv_bias(self, hv_bias):
         """Set HV bias to given value."""
         if hv_bias < 0 or hv_bias > 120:
-            raise ValueError("HV bias must be between 0 and 120 volts, got " +
-                             hv_bias)
+            raise ValueError("HV bias must be between 0 and 120 volts, got "
+                             "{value}".format(value=hv_bias))
         chips = range(8)
         command = self._construct_command(chips, self.HV_BIAS, str(hv_bias))
         self._send_command(command)

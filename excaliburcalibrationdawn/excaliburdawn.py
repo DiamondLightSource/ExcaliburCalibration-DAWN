@@ -93,10 +93,26 @@ class ExcaliburDAWN(object):
         return offset, gain
 
     def add_plot_line(self, x, y, name):
+        """Add a plot of x vs y to the given plot
+
+        Args:
+            x: X axis data
+            y: Y axis data
+            name: Name of plot to add to
+
+        """
         self.plot.addline(x, y, name=name)
 
     def plot_gaussian_fit(self, scan_data, plot_name, p0, bins):
+        """Calculate the Gaussian least squares fit and plot the result.
 
+        Args:
+            scan_data: Data to fit
+            plot_name: Name of resulting plot
+            p0: Initial guess for gaussian curve parameters
+            bins: Bins to plot in histogram
+
+        """
         fit_plot_name = plot_name + " (fitted)"
         a = np.zeros([8])
         x0 = np.zeros([8])
@@ -104,6 +120,7 @@ class ExcaliburDAWN(object):
         self.clear_plot(plot_name)
         self.clear_plot(fit_plot_name)
 
+        # TODO: Get rid of horrible indexing; x, bins = np.histogram...
         for idx, chip_data in enumerate(scan_data):
             edge_histo = np.histogram(chip_data, bins=bins)
             self.plot.addline(edge_histo[1][0:-1], edge_histo[0],
@@ -132,7 +149,7 @@ class ExcaliburDAWN(object):
         for chip_data in image_data:
             self._add_histogram(chip_data, name=name)
 
-    def _add_histogram(self, data, name, bins=None):
+    def _add_histogram(self, data, name, bins=10):
         """Add a histogram of data to the given plot name
 
         Args:
@@ -141,11 +158,7 @@ class ExcaliburDAWN(object):
             bins: Bins to plot over
 
         """
-        # TODO: Pass function default bins=10 instead if else block
-        if bins is not None:
-            histogram = np.histogram(data, bins=bins)
-        else:
-            histogram = np.histogram(data)
+        histogram = np.histogram(data, bins=bins)
         self.plot.addline(histogram[1][0:-1], histogram[0], name=name)
 
     def fit_dac_scan(self, scan_data, dac_axis):
@@ -179,7 +192,7 @@ class ExcaliburDAWN(object):
         self.clear_plot("DAC Scan")
         self.clear_plot("Spectrum")
 
-        # TODO: Refactor to use Range()
+        # TODO: Refactor to use Range() and grab*()
         if dac_range[0] > dac_range[1]:
             # TODO: Remove brackets if unnecessary
             dac_axis = (np.array(range(dac_range[0],
