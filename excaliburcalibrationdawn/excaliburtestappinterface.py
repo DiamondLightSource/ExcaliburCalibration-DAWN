@@ -107,6 +107,10 @@ class ExcaliburTestAppInterface(object):
     num_chips = 8
     chip_range = range(num_chips)
 
+    mode_code = dict(spm='0', csm='1')
+    disc_code = dict(discL='0', discH='1')
+    read_code = dict(sequential='0', continuous='1')
+    gain_code = dict(shgm='0', hgm='1', lgm='2', slgm='3')
     dac_code = dict(Threshold0='1', Threshold1='2', Threshold2='3',
                     Threshold3='4', Threshold4='5', Threshold5='6',
                     Threshold6='7', Threshold7='8',
@@ -214,10 +218,10 @@ class ExcaliburTestAppInterface(object):
         command = self._construct_command(chips, self.HV_BIAS, str(hv_bias))
         self._send_command(command)
 
-    def acquire(self, chips, frames, acqtime, burst=None, pixel_mode=None,
+    def acquire(self, chips, frames, acq_time, burst=None, pixel_mode=None,
                 disc_mode=None, depth=None, counter=None, equalization=None,
-                gainmode=None, readmode=None, trigmode=None, tpcount=None,
-                path=None, hdffile=None):
+                gain_mode=None, read_mode=None, trig_mode=None, tp_count=None,
+                path=None, hdf_file=None):
         """Construct and send an acquire command.
 
         excaliburTestApp default values are marked with *
@@ -225,65 +229,68 @@ class ExcaliburTestAppInterface(object):
         Args:
             chips(list(int)): Chips to enable for command process
             frames: Number of frames to acquire
-            acqtime: Exposure time for each frame
+            acq_time: Exposure time for each frame
             burst: Enable burst mode capture
             pixel_mode: Pixel mode (SPM*, CSM = 0*, 1)
             disc_mode: Discriminator mode (DiscL*, DiscH = 0*, 1)
             depth: Counter depth (1, 6, 12*, 24)
             counter: Counter to read (0* or 1)
             equalization: Enable equalization (0*, 1 = off*, on)
-            gainmode: Gain mode (SHGM*, HGM, LGM, SLGM = 0*, 1, 2, 3)
-            readmode: Readout mode (0*, 1 = sequential, continuous)
-            trigmode: Trigger mode (internal*, shutter, sync = 0*, 1, 2
-            tpcount: Set test pulse count (0*)
+            gain_mode: Gain mode (SHGM*, HGM, LGM, SLGM = 0*, 1, 2, 3)
+            read_mode: Readout mode (0*, 1 = sequential, continuous)
+            trig_mode: Trigger mode (internal*, shutter, sync = 0*, 1, 2
+            tp_count: Set test pulse count (0*)
             path: Path to image folder (/tmp*)
-            hdffile: Name of file to save (excalibur-YYMMDD-HHMMSS*)
+            hdf_file: Name of file to save (excalibur-YYMMDD-HHMMSS*)
 
         Returns:
             list(str): Full acquire command to send to subprocess call
 
         """
-        extra_params = [self.ACQUIRE,
-                        self.NUM_FRAMES, str(frames),
-                        self.ACQ_TIME, str(acqtime)]
-
-        # TODO: Are any combinations invalid?
+        if burst is not None and burst:
+            extra_params = [self.BURST]
+        else:
+            extra_params = [self.ACQUIRE]
+        extra_params.extend([self.NUM_FRAMES, str(frames),
+                             self.ACQ_TIME, str(acq_time)])
 
         # Add any optional parameters if they are provided
-        if burst is not None and burst:
-            extra_params.append(self.BURST)  # TODO: Need to remove -a?
-
-        if self._check_argument_valid("Pixel mode", pixel_mode, [0, 1]):
-            extra_params.extend([self.PIXEL_MODE, str(pixel_mode)])
-        if self._check_argument_valid("Discriminator mode", disc_mode, [0, 1]):
-            extra_params.extend([self.DISC_MODE, str(disc_mode)])
+        # TODO: Are any combinations invalid?
+        if self._check_argument_valid("Pixel mode", pixel_mode,
+                                      self.mode_code.keys()):
+            extra_params.extend([self.PIXEL_MODE, self.mode_code[pixel_mode]])
+        if self._check_argument_valid("Discriminator mode", disc_mode,
+                                      self.disc_code.keys()):
+            extra_params.extend([self.DISC_MODE, self.disc_code[disc_mode]])
         if self._check_argument_valid("Depth", depth, [1, 6, 12, 24]):
             extra_params.extend([self.DEPTH, str(depth)])
         if self._check_argument_valid("Counter", counter, [0, 1]):
             extra_params.extend([self.COUNTER, str(counter)])
         if self._check_argument_valid("Equalization", equalization, [0, 1]):
             extra_params.extend([self.EQUALIZATION, str(equalization)])
-        if self._check_argument_valid("Gain Mode", gainmode, [0, 1, 2, 3]):
-            extra_params.extend([self.GAIN_MODE, str(gainmode)])
-        if self._check_argument_valid("Readout mode", readmode, [0, 1]):
-            extra_params.extend([self.READ_MODE, str(readmode)])
-        if self._check_argument_valid("Trigger mode", trigmode, [0, 1, 2]):
-            extra_params.extend([self.TRIG_MODE, str(trigmode)])
+        if self._check_argument_valid("Gain Mode", gain_mode,
+                                      self.gain_code.keys()):
+            extra_params.extend([self.GAIN_MODE, self.gain_code[gain_mode]])
+        if self._check_argument_valid("Readout mode", read_mode,
+                                      self.read_code.keys()):
+            extra_params.extend([self.READ_MODE, self.read_code[read_mode]])
+        if self._check_argument_valid("Trigger mode", trig_mode, [0, 1, 2]):
+            extra_params.extend([self.TRIG_MODE, str(trig_mode)])
 
-        if tpcount is not None:
+        if tp_count is not None:
             # TODO: What are the valid values for this?
-            extra_params.extend([self.TP_COUNT, str(tpcount)])
+            extra_params.extend([self.TP_COUNT, str(tp_count)])
         if path is not None:
             extra_params.extend([self.PATH, str(path)])
-        if hdffile is not None:
+        if hdf_file is not None:
             if path is None:
                 path = "/tmp"
             # TODO: Using join() assumes ETA is smart also?
-            full_path = posixpath.join(path, hdffile)
+            full_path = posixpath.join(path, hdf_file)
             if os.path.isfile(full_path):
                 raise IOError("File already exists")
             else:
-                extra_params.extend([self.HDF_FILE, str(hdffile)])
+                extra_params.extend([self.HDF_FILE, str(hdf_file)])
 
         command = self._construct_command(chips, *extra_params)
         self._send_command(command)

@@ -118,7 +118,18 @@ class TestAPICalls(unittest.TestCase):
 
     @patch('os.path.isfile', return_value=False)
     def test_acquire(self, _, send_mock, construct_mock):
-        expected_params = ['-a', '-n', '100', '-t', '10', '--burst',
+        expected_params = ['-a', '-n', '100', '-t', '10']
+        frames = 100
+        acquire_time = 10
+
+        self.e.acquire(self.chips, frames, acquire_time)
+
+        construct_mock.assert_called_once_with(self.chips, *expected_params)
+        send_mock.assert_called_once_with(construct_mock.return_value)
+
+    @patch('os.path.isfile', return_value=False)
+    def test_acquire_all_args(self, _, send_mock, construct_mock):
+        expected_params = ['--burst', '-n', '100', '-t', '10',
                            '--csmspm', '1', '--disccsmspm', '1',
                            '--depth', '1', '--counter', '1',
                            '--equalization', '1', '--gainmode', '3',
@@ -129,10 +140,10 @@ class TestAPICalls(unittest.TestCase):
         acquire_time = 10
 
         self.e.acquire(self.chips, frames, acquire_time, burst=True,
-                       pixel_mode=1, disc_mode=1, depth=1, counter=1,
-                       equalization=1, gainmode=3, readmode=1, trigmode=2,
-                       tpcount=10, path="/scratch/RX_Images",
-                       hdffile="test.hdf5")
+                       pixel_mode="csm", disc_mode="discH", depth=1, counter=1,
+                       equalization=1, gain_mode="slgm", read_mode="continuous",
+                       trig_mode=2, tp_count=10, path="/scratch/RX_Images",
+                       hdf_file="test.hdf5")
 
         construct_mock.assert_called_once_with(self.chips, *expected_params)
         send_mock.assert_called_once_with(construct_mock.return_value)
@@ -141,7 +152,7 @@ class TestAPICalls(unittest.TestCase):
     def test_acquire_given_existing_file_then_raises(self, _, _2, _3):
 
         with self.assertRaises(IOError):
-            self.e.acquire(self.chips, 1, 100, hdffile="test.hdf5")
+            self.e.acquire(self.chips, 1, 100, hdf_file="test.hdf5")
 
     @patch('time.sleep')
     def test_sense(self, sleep_mock, send_mock, construct_mock):
