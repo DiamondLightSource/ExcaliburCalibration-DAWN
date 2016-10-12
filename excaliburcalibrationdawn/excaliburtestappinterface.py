@@ -388,40 +388,27 @@ class ExcaliburTestAppInterface(object):
                                           self.DAC_FILE, dac_file)
         self._send_command(command)
 
-    def configure_test_pulse(self, chips, dac_file, tp_mask):
+    def configure_test_pulse(self, chips, dac_file, tp_mask,
+                             config_files=None):
         """Load DAC file and test mask ready acquire test.
 
         Args:
             chips: List of chips to configure
             dac_file: Path to file containing DAC values
             tp_mask: Test pulse mask to load for test pulses
+            config_files(dict): Config files for discL, discH and pixel mask
 
         """
         # TODO: Check if this really needs to be coupled to loading DACs
-        command = self._construct_command(chips,
-                                          self.DAC_FILE, dac_file,
-                                          self.TP_MASK, tp_mask)
-        self._send_command(command)
-
-    def configure_test_pulse_with_disc(self, chips, dac_file, tp_mask,
-                                       disc_files):
-        """Load DAC file and test mask for acquire test.
-
-        Args:
-            chips: List of chips to configure
-            dac_file: Path to file containing DAC values
-            tp_mask: Test pulse mask to load for test pulses
-            disc_files(dict): Config files for discL, discH and pixel mask
-
-        """
-        # TODO: Check if this needs to be coupled to loading DACs
-        d = disc_files
+        extra_params = []
+        if config_files is not None:
+            extra_params.extend([self.DISC_L, config_files['discl'],
+                                 self.DISC_H, config_files['disch'],
+                                 self.PIXEL_MASK, config_files['pixelmask']])
         command = self._construct_command(chips,
                                           self.DAC_FILE, dac_file,
                                           self.TP_MASK, tp_mask,
-                                          self.DISC_L, d['discl'],
-                                          self.DISC_H, d['disch'],
-                                          self.PIXEL_MASK, d['pixelmask'])
+                                          *extra_params)
         self._send_command(command)
 
     def load_config(self, chips, discl, disch=None, pixelmask=None):
