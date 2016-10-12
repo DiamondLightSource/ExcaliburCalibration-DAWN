@@ -1132,9 +1132,10 @@ class ExcaliburNode(object):
 
     def logo_test(self):
         """Test the detector using test pulses representing excalibur logo."""
-        chips = range(self.num_chips)
-        self.set_dac(chips, "Threshold0", 40)
-        self.expose(10)
+        # TODO: Make this call through test_pulse
+        self.set_dac(self.chip_range, "Threshold0", 40)
+        self.expose(10)  # TODO: Why does it need to set* and expose here?
+
         logo_tp = np.ones([256, 8*256])
         logo_file = posixpath.join(self.config_dir,
                                    'logo.txt')
@@ -1143,7 +1144,9 @@ class ExcaliburNode(object):
         logo_tp[logo_tp > 0] = 1
         logo_tp = 1 - logo_tp
 
-        for chip in chips:
+        for chip in self.chip_range:
+            dac_file = posixpath.join(self.calib_dir, 'dacs')
+
             test_bits_file = posixpath.join(self.calib_dir,
                                             'Logo_chip{chip}_mask').format(
                                             chip=chip)
@@ -1152,12 +1155,9 @@ class ExcaliburNode(object):
 
             template_path = posixpath.join(self.template_path,
                                            '{disc}.chip{chip}')
-
             discHbits_file = template_path.format(disc='discHbits', chip=chip)
             discLbits_file = template_path.format(disc='discLbits', chip=chip)
             pixel_mask_file = template_path.format(disc='pixelmask', chip=chip)
-
-            dac_file = posixpath.join(self.calib_dir, 'dacs')
 
             if os.path.isfile(discLbits_file) \
                 and os.path.isfile(discHbits_file)  \
@@ -1165,12 +1165,11 @@ class ExcaliburNode(object):
                 disc_files = dict(discl=discLbits_file,
                                   disch=discHbits_file,
                                   pixelmask=pixel_mask_file)
-
-                self.app.configure_test_pulse_with_disc([chip], dac_file,
-                                                        test_bits_file,
-                                                        disc_files)
             else:
-                self.app.configure_test_pulse([chip], dac_file, test_bits_file)
+                disc_files = None
+
+            self.app.configure_test_pulse([chip], dac_file, test_bits_file,
+                                          disc_files)
 
         time.sleep(0.2)
 
@@ -1178,11 +1177,11 @@ class ExcaliburNode(object):
                                         name=self.settings['filename'],
                                         index=self.settings['filenameIndex'])
 
-        self.app.acquire(chips,
+        self.app.acquire(self.chip_range,
                          str(self.settings['frames']),
                          str(self.settings['acqtime']),
-                         tpcount='100',
-                         hdffile=self.settings['fullFilename'])
+                         tp_count='100',
+                         hdf_file=self.settings['fullFilename'])
 
         image = self.dawn.load_image_data(self.settings['imagepath'] +
                                           self.settings['fullFilename'])
@@ -1198,7 +1197,7 @@ class ExcaliburNode(object):
                 '/' + self.settings['gain'] + '/' + 'testbits.tmp'
             np.savetxt(test_bits_file, test_bits, fmt='%.18g', delimiter=' ')
 
-        # self.update_filename_index()
+        self.update_filename_index()
         self.settings['fullFilename'] = "{name}_{index}.hdf5".format(
                                         name=self.settings['filename'],
                                         index=self.settings['filenameIndex'])
@@ -1210,8 +1209,8 @@ class ExcaliburNode(object):
         self.app.acquire(chips,
                          str(self.settings['frames']),
                          str(self.settings['acqtime']),
-                         tpcount=str(pulses),
-                         hdffile=self.settings['fullFilename'])
+                         tp_count=str(pulses),
+                         hdf_file=self.settings['fullFilename'])
 
         image = self.dawn.load_image_data(self.settings['imagepath'] +
                                           self.settings['fullFilename'])
