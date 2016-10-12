@@ -416,7 +416,7 @@ class SetDacsTest(unittest.TestCase):
             self.assertEqual((chips,) + expected_calls[index], call_args[0])
 
 
-class SubprocessCallsTest(unittest.TestCase):  # TODO: Rename
+class TestAppCallsTest(unittest.TestCase):
 
     file_mock = MagicMock()
 
@@ -468,9 +468,19 @@ class SubprocessCallsTest(unittest.TestCase):  # TODO: Rename
     @patch(Node_patch_path + '._acquire')
     def test_expose(self, acquire_mock, plot_mock, _):
 
-        self.e.expose(100)
+        self.e.expose()
 
         acquire_mock.assert_called_once_with(1, 100)
+        plot_mock.assert_called_once_with(acquire_mock.return_value, name='Image_Tue Sep 27 10:12:27 2016')
+
+    @patch('time.asctime', return_value='Tue Sep 27 10:12:27 2016')
+    @patch(DAWN_patch_path + '.plot_image')
+    @patch(Node_patch_path + '._acquire')
+    def test_expose_with_exposure(self, acquire_mock, plot_mock, _):
+
+        self.e.expose(200)
+
+        acquire_mock.assert_called_once_with(1, 200)
         plot_mock.assert_called_once_with(acquire_mock.return_value, name='Image_Tue Sep 27 10:12:27 2016')
 
     @patch(Node_patch_path + '._acquire')
@@ -555,6 +565,58 @@ class SubprocessCallsTest(unittest.TestCase):  # TODO: Rename
         self.assertEqual(expected_kwargs, call_args[1])
 
         load_mock.assert_called_once_with([0], expected_file_1, expected_file_2, expected_file_3)
+
+    # Make sure we always get the same random numbers
+    rand = np.random.RandomState(123)
+
+    @patch(Node_patch_path + '.load_config_bits')
+    @patch(Node_patch_path + '._grab_chip_slice')
+    @patch(Node_patch_path + '.open_discbits_file',
+           side_effect=[rand.randint(2, size=[256, 256]),
+                        rand.randint(2, size=[256, 256])])
+    def test_load_all_discbits_L(self, open_mock, grab_mock, load_mock):
+        chips = [0]
+        temp_bits_mock = MagicMock()
+        mask_mock = MagicMock()
+
+        self.e.load_all_discbits(chips, "discL", temp_bits_mock, mask_mock)
+
+        self.assertFalse(open_mock.call_count)
+        self.assertEqual((temp_bits_mock, 0), grab_mock.call_args_list[0][0])
+        self.assertEqual((ANY, 0), grab_mock.call_args_list[1][0])
+        self.assertEqual((mask_mock, 0), grab_mock.call_args_list[2][0])
+        load_mock.assert_called_once_with([0], grab_mock.return_value,
+                                          grab_mock.return_value,
+                                          grab_mock.return_value)
+
+    @patch(Node_patch_path + '.load_config_bits')
+    @patch(Node_patch_path + '._grab_chip_slice')
+    @patch(Node_patch_path + '.open_discbits_file')
+    def test_load_all_discbits_H(self, open_mock, grab_mock, load_mock):
+        chips = [0]
+        temp_bits_mock = MagicMock()
+        mask_mock = MagicMock()
+
+        self.e.load_all_discbits(chips, "discH", temp_bits_mock, mask_mock)
+
+        open_mock.assert_called_once_with(chips, "discLbits")
+        self.assertEqual((open_mock.return_value, 0), grab_mock.call_args_list[0][0])
+        self.assertEqual((ANY, 0), grab_mock.call_args_list[1][0])
+        self.assertEqual((mask_mock, 0), grab_mock.call_args_list[2][0])
+        load_mock.assert_called_once_with([0], grab_mock.return_value,
+                                          grab_mock.return_value,
+                                          grab_mock.return_value)
+
+    @patch(Node_patch_path + '.load_config_bits')
+    @patch(Node_patch_path + '._grab_chip_slice')
+    @patch(Node_patch_path + '.open_discbits_file')
+    def test_load_all_discbits_error(self, _, _1, _2):
+        chips = [0]
+        temp_bits_mock = MagicMock()
+        mask_mock = MagicMock()
+
+        with self.assertRaises(ValueError):
+            self.e.load_all_discbits(chips, "discX", temp_bits_mock, mask_mock)
 
 
 @patch(ETAI_patch_path + '.load_config')
@@ -1102,10 +1164,22 @@ class FindTest(unittest.TestCase):  # TODO: Improve
     # TODO: Why do these get the same expected array?
 
     @patch(Node_patch_path + '._display_histogram')
-    def test_find_edge(self, display_mock):
+    def test_find_edge_low_to_high(self, display_mock):
         dac_scan_data = self.rand.randint(10, size=(3, 3, 3))
         dac_range = [1, 10, 1]
         expected_array = [[10, 9, 10], [10, 9, 8], [10, 10, 10]]
+
+        value = self.e.find_edge([0], dac_scan_data, dac_range, 7)
+
+        display_mock.assert_called_once_with([0], ANY)
+        np.testing.assert_array_equal(expected_array, display_mock.call_args[0][1])
+        np.testing.assert_array_equal(expected_array, value)
+
+    @patch(Node_patch_path + '._display_histogram')
+    def test_find_edge_high_to_low(self, display_mock):
+        dac_scan_data = self.rand.randint(10, size=(3, 3, 3))
+        dac_range = [10, 1, 1]
+        expected_array = [[10, 9, 10], [10, 9, 10], [10, 10, 10]]
 
         value = self.e.find_edge([0], dac_scan_data, dac_range, 7)
 
@@ -1478,3 +1552,16 @@ class SliceGrabSetTest(unittest.TestCase):
 
         np.testing.assert_array_equal(expected_start, start)
         np.testing.assert_array_equal(expected_stop, stop)
+
+
+class ToListTest(unittest.TestCase):
+
+    def test_to_list_given_value_then_return_list(self):
+        response = ExcaliburNode._to_list(1)
+
+        self.assertEqual([1], response)
+
+    def test_to_list_given_list_then_return(self):
+        response = ExcaliburNode._to_list([1])
+
+        self.assertEqual([1], response)

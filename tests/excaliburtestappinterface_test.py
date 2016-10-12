@@ -100,6 +100,11 @@ class TestAPICalls(unittest.TestCase):
         construct_mock.assert_called_once_with(self.chips, *expected_params)
         send_mock.assert_called_once_with(construct_mock.return_value)
 
+    def test_set_lv_state_raises(self, _, _2):
+
+        with self.assertRaises(ValueError):
+            self.e.set_lv_state(2)
+
     def test_set_hv_state(self, send_mock, construct_mock):
         expected_params = ['--hvenable', '1']
 
@@ -108,6 +113,11 @@ class TestAPICalls(unittest.TestCase):
         construct_mock.assert_called_once_with(self.chips, *expected_params)
         send_mock.assert_called_once_with(construct_mock.return_value)
 
+    def test_set_hv_state_raises(self, _, _2):
+
+        with self.assertRaises(ValueError):
+            self.e.set_hv_state(2)
+
     def test_set_hv_bias(self, send_mock, construct_mock):
         expected_params = ['--hvbias', '120']
 
@@ -115,6 +125,11 @@ class TestAPICalls(unittest.TestCase):
 
         construct_mock.assert_called_once_with(self.chips, *expected_params)
         send_mock.assert_called_once_with(construct_mock.return_value)
+
+    def test_set_hv_bias_raises(self, _, _2):
+
+        with self.assertRaises(ValueError):
+            self.e.set_hv_bias(200)
 
     @patch('os.path.isfile', return_value=False)
     def test_acquire(self, _, send_mock, construct_mock):
