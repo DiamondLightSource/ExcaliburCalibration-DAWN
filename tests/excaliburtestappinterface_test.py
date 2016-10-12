@@ -237,6 +237,22 @@ class TestAPICalls(unittest.TestCase):
         construct_mock.assert_called_once_with(self.chips, *expected_params)
         send_cmd_mock.assert_called_once_with(construct_mock.return_value)
 
+    def test_configure_test_pulse_with_disc(self, send_cmd_mock, construct_mock):
+        tp_mask = MagicMock()
+        disc_l_mock = MagicMock()
+        disc_h_mock = MagicMock()
+        mask_mock = MagicMock()
+        disc_files = dict(discl=disc_l_mock, disch=disc_h_mock,
+                          pixelmask=mask_mock)
+        expected_params = ['--dacs', 'test_file', '--tpmask', tp_mask,
+                           '--discl', disc_l_mock, '--disch', disc_h_mock,
+                           '--pixelmask', mask_mock]
+
+        self.e.configure_test_pulse(self.chips, "test_file", tp_mask, disc_files)
+
+        construct_mock.assert_called_once_with(self.chips, *expected_params)
+        send_cmd_mock.assert_called_once_with(construct_mock.return_value)
+
 
 class CheckArgumentValidTest(unittest.TestCase):
 
