@@ -35,7 +35,6 @@ class InitTest(unittest.TestCase):
                                            'frames': 1,
                                            'imagepath': '/tmp/',
                                            'filename': 'image',
-                                           'Threshold': 'Not set',
                                            'filenameIndex': ''})
         self.assertEqual(self.e.dac_number, {'Threshold0': 1,
                                              'Threshold1': 2,
@@ -70,6 +69,11 @@ class InitTest(unittest.TestCase):
     def test_instance_attributes_set(self):
         self.assertEqual(self.e.fem, self.node)
         self.assertEqual(self.e.ipaddress, "192.168.0.104")
+
+    def test_server_used(self):
+        e = ExcaliburNode(1, "test-server")
+        self.assertEqual("test-server1", e.server_name)
+        self.assertEqual("test-server1", e.app.server_name)
 
     def test_given_node_invalid_node_raises(self):
         with self.assertRaises(ValueError):

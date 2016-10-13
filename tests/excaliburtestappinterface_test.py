@@ -23,6 +23,16 @@ class TestInit(unittest.TestCase):
                                       'Threshold7': '8', 'Preamp': '9', 'Ikrum': '10', 'Shaper': '11', 'Disc': '12', 'DiscLS': '13', 'ShaperTest': '14', 'DACDiscL': '15',
                                       'DACTest': '30', 'DACDiscH': '31', 'Delay': '16', 'TPBuffIn': '17', 'TPBuffOut': '18', 'RPZ': '19', 'GND': '20', 'TPREF': '21',
                                       'FBK': '22', 'Cas': '23', 'TPREFA': '24', 'TPREFB': '25'})
+        self.assertEqual(['/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
+                          '-i', 'test_ip',
+                          '-p', 'test_port'], e.base_cmd)
+
+    def test_base_cmd_with_server_given(self):
+        e = ExcaliburTestAppInterface("test_ip", "test_port", "test_server")
+        self.assertEqual(['ssh test_server',
+                          '/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
+                          '-i', 'test_ip',
+                          '-p', 'test_port'], e.base_cmd)
 
 
 @patch(ETAI_patch_path + '._mask')

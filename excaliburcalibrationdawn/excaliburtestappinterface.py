@@ -120,15 +120,21 @@ class ExcaliburTestAppInterface(object):
                     RPZ='19', GND='20', TPREF='21', FBK='22', Cas='23',
                     TPREFA='24', TPREFB='25')
 
-    def __init__(self, ip_address, port):
-        self.path = "/dls/detectors/support/silicon_pixels/excaliburRX/" \
-                    "TestApplication_15012015/excaliburTestApp"
+    def __init__(self, ip_address, port, server_name=None):
+        self.server_name = server_name
         self.ip_address = ip_address
         self.port = str(port)
 
-        self.base_cmd = [self.path,
-                         self.IP_ADDRESS, self.ip_address,
-                         self.PORT, self.port]
+        self.path = "/dls/detectors/support/silicon_pixels/excaliburRX/" \
+                    "TestApplication_15012015/excaliburTestApp"
+
+        self.base_cmd = []
+        if server_name is not None:  # TODO: Default localhost and always add?
+            self.base_cmd.append("ssh {server}".format(
+                server=self.server_name))
+        self.base_cmd.extend([self.path,
+                              self.IP_ADDRESS, self.ip_address,
+                              self.PORT, self.port])
 
     def _construct_command(self, chips, *cmd_args):
         """Construct a command from the base_cmd, given chips and any cmd_args.
