@@ -260,13 +260,13 @@ class SaveKev2DacCalibTest(unittest.TestCase):
 class FindXrayEnergyDacTest(unittest.TestCase):
 
     mock_scan_data = np.random.randint(250, size=(3, 256, 8*256))
-    mock_scan_range = MagicMock()
+    mock_scan_range = Range(110, 30, 2)
 
     @patch(DAWN_patch_path + '.fit_dac_scan')
     @patch(DAWN_patch_path + '.plot_dac_scan',
            return_value=[MagicMock(), MagicMock()])
     @patch(Node_patch_path + '.scan_dac',
-           return_value=[mock_scan_data.copy(), mock_scan_range])
+           return_value=mock_scan_data.copy())
     def test_correct_calls_made(self, scan_mock, plot_mock, fit_mock,
                                 load_mock):
         e = ExcaliburNode()
@@ -280,9 +280,12 @@ class FindXrayEnergyDacTest(unittest.TestCase):
         scan_mock.assert_called_once_with(chips, "Threshold0", (110, 30, 2))
 
         plot_mock.assert_called_once_with(chips, ANY, self.mock_scan_range)
-        np.testing.assert_array_equal(expected_array, plot_mock.call_args[0][1])
+        np.testing.assert_array_equal(expected_array,
+                                      plot_mock.call_args[0][1])
 
-        fit_mock.assert_called_once_with([plot_mock.return_value[0].__getitem__.return_value], plot_mock.return_value[1])
+        fit_mock.assert_called_once_with(
+            [plot_mock.return_value[0].__getitem__.return_value],
+            plot_mock.return_value[1])
         self.assertEqual(tuple(plot_mock.return_value), values)
 
 
@@ -702,12 +705,13 @@ class ScanDacTest(unittest.TestCase):
         save_file = 'image_dacscan.hdf5'
         e = ExcaliburNode(1)
         chips = [0]
-        dac_range = [1, 10, 1]
+        dac_range = Range(1, 10, 1)
 
         e.scan_dac(chips, 'Threshold0', dac_range)
 
         update_mock.assert_called_once_with()
-        scan_mock.assert_called_once_with(chips, 'Threshold0', Range(1, 10, 1), dac_file, save_file)
+        scan_mock.assert_called_once_with(chips, 'Threshold0', Range(1, 10, 1),
+                                          dac_file, save_file)
         sleep_mock.assert_called_once_with(1)
         load_mock.assert_called_once_with('/tmp/' + save_file)
 
@@ -989,7 +993,7 @@ class MaskUnmaskTest(unittest.TestCase):
     mock_scan_data = np.random.randint(3, size=(3, 256, 8*256))
 
     @patch(Node_patch_path + '.scan_dac',
-           return_value=[mock_scan_data, None])
+           return_value=mock_scan_data)
     def test_mask_pixels_using_dac_scan(self, scan_mock, load_mock, save_mock,
                                         plot_mock):
         mask = self.mock_scan_data.sum(0) > 1
@@ -1170,7 +1174,7 @@ class FindTest(unittest.TestCase):  # TODO: Improve
     @patch(Node_patch_path + '._display_histogram')
     def test_find_edge_low_to_high(self, display_mock):
         dac_scan_data = self.rand.randint(10, size=(3, 3, 3))
-        dac_range = [1, 10, 1]
+        dac_range = MagicMock(start=1, stop=10, step=1)
         expected_array = [[10, 9, 10], [10, 9, 8], [10, 10, 10]]
 
         value = self.e.find_edge([0], dac_scan_data, dac_range, 7)
@@ -1182,7 +1186,7 @@ class FindTest(unittest.TestCase):  # TODO: Improve
     @patch(Node_patch_path + '._display_histogram')
     def test_find_edge_high_to_low(self, display_mock):
         dac_scan_data = self.rand.randint(10, size=(3, 3, 3))
-        dac_range = [10, 1, 1]
+        dac_range = MagicMock(start=10, stop=1, step=1)
         expected_array = [[10, 9, 10], [10, 9, 10], [10, 10, 10]]
 
         value = self.e.find_edge([0], dac_scan_data, dac_range, 7)
@@ -1194,7 +1198,7 @@ class FindTest(unittest.TestCase):  # TODO: Improve
     @patch(Node_patch_path + '._display_histogram')
     def test_find_max(self, display_mock):
         dac_scan_data = self.rand.randint(10, size=(3, 3, 3))
-        dac_range = [1, 10, 1]
+        dac_range = MagicMock(start=1, stop=10, step=1)
         expected_array = [[10, 9, 10], [10, 9, 8], [10, 10, 10]]
 
         value = self.e.find_max([0], dac_scan_data, dac_range)
@@ -1272,23 +1276,26 @@ class OptimizeDacDiscTest(unittest.TestCase):
     @patch(DAWN_patch_path + '.plot_gaussian_fit', return_value=(0, 0))
     @patch(Node_patch_path + '.set_dac')
     @patch(Node_patch_path + '.scan_dac',
-           return_value=[rand.randint(10, size=(3, 256, 8*256)), None])
+           return_value=rand.randint(10, size=(3, 256, 8*256)))
     @patch(Node_patch_path + '.find_max')
     def test_chip_dac_scan(self, find_mock, scan_mock, set_mock, plot_mock):
         chips = [0]
         expected_message = "Histogram of edges when scanning DAC_disc for discbit = 0"
+        range = MagicMock(start=0, stop=150, step=50)
 
-        self.e._chip_dac_scan(chips, "DACDiscL", 1, (0, 150, 50), 0, [5000, 0, 30])
+        self.e._chip_dac_scan(chips, "DACDiscL", 1, range, 0, [5000, 0, 30])
 
         set_mock.assert_called_once_with(chips, "DACDiscL", 1)
-        scan_mock.assert_called_once_with(chips, "DACDiscL", (0, 150, 50))
-        find_mock.assert_called_once_with(chips, scan_mock.return_value[0], (0, 150, 50))
+        scan_mock.assert_called_once_with(chips, "DACDiscL", range)
+        find_mock.assert_called_once_with(chips, scan_mock.return_value,
+                                          range)
         plot_mock.assert_called_once_with([find_mock.return_value.__getitem__.return_value], expected_message, [5000, 0, 30], 3)
 
     def test_display_optimization_results(self):
         chips = [0]
 
-        self.e._display_optimization_results(chips, MagicMock(), MagicMock(), MagicMock(), [1]*8)
+        self.e._display_optimization_results(chips, MagicMock(), MagicMock(),
+                                             MagicMock(), [1]*8)
 
 
 class EqualizeDiscbitsTest(unittest.TestCase):
@@ -1328,7 +1335,7 @@ class EqualizeDiscbitsTest(unittest.TestCase):
     @patch(Node_patch_path + '.find_max',
            return_value=rand.randint(2, size=(4, 16)))
     @patch(Node_patch_path + '.scan_dac',
-           return_value=[rand.randint(10, size=(3, 4, 16)), None])
+           return_value=rand.randint(10, size=(3, 4, 16)))
     @patch(Node_patch_path + '.load_all_discbits')
     def test_equalize_discbits(self, load_mock, scan_mock, find_mock,
                                plot_mock, clear_mock, histo_mock,
@@ -1342,7 +1349,7 @@ class EqualizeDiscbitsTest(unittest.TestCase):
         self.assertEqual(([0], "DACDiscL", ANY, ANY), load_mock.call_args_list[0][0])
         np.testing.assert_array_equal(roi, load_mock.call_args_list[0][0][3])
         self.assertEqual(([0], "Threshold0", (0, 20, 2)), scan_mock.call_args_list[0][0])
-        self.assertEqual(([0], scan_mock.return_value[0], (0, 20, 2)), find_mock.call_args_list[0][0])
+        self.assertEqual(([0], scan_mock.return_value, Range(0, 20, 2)), find_mock.call_args_list[0][0])
         self.assertEqual((ANY,), plot_mock.call_args_list[0][0])
         self.assertEqual(dict(name="discbits"), plot_mock.call_args_list[0][1])
         self.assertEqual(("Histogram of Final Discbits",), clear_mock.call_args_list[0][0])
