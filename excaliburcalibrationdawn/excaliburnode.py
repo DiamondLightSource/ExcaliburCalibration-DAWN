@@ -541,7 +541,7 @@ class ExcaliburNode(object):
         """
         self.settings['acqtime'] = 100
         if self.settings['gain'] == 'shgm':
-            dac_range = (self.dac_target + 100, self.dac_target + 20, 2)
+            dac_range = Range(self.dac_target + 100, self.dac_target + 20, 2)
         else:
             raise NotImplementedError()
 
@@ -550,12 +550,12 @@ class ExcaliburNode(object):
             threshold=threshold, energy=energy)
         self.settings['filename'] = filename
 
-        [dac_scan_data, scan_range] = self.scan_dac(chips, "Threshold" +
-                                                    str(threshold), dac_range)
+        dac_scan_data = self.scan_dac(chips, "Threshold" + str(threshold),
+                                      dac_range)
         dac_scan_data[dac_scan_data > 200] = 0  # Set elements > 200 to 0
         [chip_dac_scan, dac_axis] = self.dawn.plot_dac_scan(chips,
                                                             dac_scan_data,
-                                                            scan_range)
+                                                            dac_range)
         scan_data = []
         for chip_idx in chips:
             scan_data.append(chip_dac_scan[chip_idx, :])
@@ -901,9 +901,8 @@ class ExcaliburNode(object):
                                   self.settings['mode'],
                                   self.settings['gain'],
                                   'dacs')
-        scan_range = Range(dac_range[0], dac_range[1], dac_range[2])
 
-        self.app.perform_dac_scan(chips, dac_name, scan_range, dac_file,
+        self.app.perform_dac_scan(chips, dac_name, dac_range, dac_file,
                                   dac_scan_file)
 
         time.sleep(1)
@@ -1337,7 +1336,7 @@ class ExcaliburNode(object):
 
     def mask_pixels_using_dac_scan(self, chips=range(8),
                                    threshold="Threshold0",
-                                   dac_range=(20, 120, 2)):
+                                   dac_range=Range(20, 120, 2)):
         """Perform threshold dac scan and mask pixels with counts > max_counts.
 
         Also updates the corresponding maskfile in the calibration directory
@@ -1351,7 +1350,7 @@ class ExcaliburNode(object):
         max_counts = 1
         bad_pix_tot = np.zeros(8)
         self.settings['acqtime'] = 100
-        [dac_scan_data, _] = self.scan_dac(chips, threshold, dac_range)
+        dac_scan_data = self.scan_dac(chips, threshold, dac_range)
         bad_pixels = dac_scan_data.sum(0) > max_counts
         self.dawn.plot_image(bad_pixels, name='Bad Pixels')
 
@@ -1550,14 +1549,15 @@ class ExcaliburNode(object):
         Args:
             chips: Chips search
             dac_scan_data: Data from DAC scan
-            dac_range: Range DAC scan performed over
+            dac_range(Range): Range DAC scan performed over
             edge_val: Threshold for edge
 
         Returns:
             numpy.array(?): Noise edge data
 
         """
-        if dac_range[1] > dac_range[0]:  # Reverse data for high to low scan
+        # Reverse data for high to low scan
+        if dac_range.stop > dac_range.start:
             is_reverse_scan = True
             dac_scan_data = dac_scan_data[::-1, :, :]
         else:
@@ -1566,9 +1566,9 @@ class ExcaliburNode(object):
         over_threshold = dac_scan_data > edge_val
         threshold_edge = np.argmax(over_threshold, 0)
         if is_reverse_scan:
-            edge_dacs = dac_range[1] - dac_range[2] * threshold_edge
+            edge_dacs = dac_range.stop - dac_range.step * threshold_edge
         else:
-            edge_dacs = dac_range[0] - dac_range[2] * threshold_edge
+            edge_dacs = dac_range.start - dac_range.step * threshold_edge
 
         self._display_histogram(chips, edge_dacs)
         return edge_dacs
@@ -1580,7 +1580,7 @@ class ExcaliburNode(object):
             numpy.array(?): Max noise data
 
         """
-        max_dacs = dac_range[1] - dac_range[2] * np.argmax(
+        max_dacs = dac_range.stop - dac_range.step * np.argmax(
             (dac_scan_data[::-1, :, :]), 0)
         # TODO: Assumes low to high scan? Does it matter?
 
@@ -1647,7 +1647,7 @@ class ExcaliburNode(object):
         self.settings['counter'] = '0'
         self.settings['equalization'] = '1'  # Might not be necessary when
         # optimizing DAC Disc
-        dac_range = (0, 150, 5)
+        dac_range = Range(0, 150, 50)
 
         ######################################################################
         # STEP 1
@@ -1735,13 +1735,13 @@ class ExcaliburNode(object):
         Returns:
             np.array, np.array: x0 and sigma values for fit
         """
-        bins = (dac_range[1] - dac_range[0]) / dac_range[2]
+        bins = (dac_range.stop - dac_range.start) / dac_range.step
         plot_name = "Histogram of edges when scanning DAC_disc for " \
                     "discbit = {discbit}".format(discbit=discbit)
 
         self.set_dac(chips, dac_name, dac_value)  # TODO: Why set this first?
         # Scan threshold
-        [dac_scan_data, _] = self.scan_dac(chips, dac_name, dac_range)
+        dac_scan_data = self.scan_dac(chips, dac_name, dac_range)
         # Find noise edges
         edge_dacs = self.find_max(chips, dac_scan_data, dac_range)
 
@@ -1882,7 +1882,7 @@ class ExcaliburNode(object):
 
         inv_mask = 1 - roi_full_mask
         if method == "Stripes":
-            dac_range = (0, 20, 2)
+            dac_range = Range(0, 20, 2)
             discbits_tmp = np.zeros(self.full_array_shape) * inv_mask
             for idx in range(self.chip_size):
                 discbits_tmp[idx, :] = idx % 32
@@ -1900,7 +1900,7 @@ class ExcaliburNode(object):
                 self.load_all_discbits(chips, disc_name,
                                        discbits_tmp, roi_full_mask)
 
-                [dacscan_data, _] = self.scan_dac(chips, threshold, dac_range)
+                dacscan_data = self.scan_dac(chips, threshold, dac_range)
                 edge_dacs = self.find_max(chips, dacscan_data, dac_range)
                 edge_dacs_stack[scan, :, :] = edge_dacs
 
@@ -1928,7 +1928,7 @@ class ExcaliburNode(object):
         print("Pixel threshold equalization complete")
 
         self.load_config(chips)
-        self.scan_dac(chips, threshold, (40, 10, 2))
+        self.scan_dac(chips, threshold, Range(40, 10, 2))
 
         return discbits
 
@@ -1974,10 +1974,9 @@ class ExcaliburNode(object):
         self.load_config(chips)
         equ_pix_tot = np.zeros(self.num_chips)
         self.settings['filename'] = 'dacscan'
-        [dacscan_data, scan_range] = self.scan_dac(chips, "Threshold0",
-                                                   dac_range)
+        dac_scan_data = self.scan_dac(chips, "Threshold0", dac_range)
         self.plot_name = self.settings['filename']
-        edge_dacs = self.find_max(chips, dacscan_data, dac_range)
+        edge_dacs = self.find_max(chips, dac_scan_data, dac_range)
 
         # Display statistics on equalization and save discLbit files for each
         # chip
