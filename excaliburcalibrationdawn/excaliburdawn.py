@@ -93,7 +93,7 @@ class ExcaliburDAWN(object):
         return offset, gain
 
     def add_plot_line(self, x, y, name):
-        """Add a plot of x vs y to the given plot
+        """Add a plot of x vs y to the given plot.
 
         Args:
             x: X axis data
@@ -150,7 +150,7 @@ class ExcaliburDAWN(object):
             self._add_histogram(chip_data, name=name)
 
     def _add_histogram(self, data, name, bins=10):
-        """Add a histogram of data to the given plot name
+        """Add a histogram of data to the given plot name.
 
         Args:
             data: Data to plot
