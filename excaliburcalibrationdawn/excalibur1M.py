@@ -12,17 +12,27 @@ class Excalibur1M(object):
 
     node_shape = [256, 8*256]
 
-    def __init__(self, node1, node2):
+    def __init__(self, detector, node1, node2):
         """Initialise two ExcaliburNode instances as a 1M detector.
 
         Args:
+            detector: Name of detector; string that gives the server name for
+                each node if the node is added - e.g. i13-1-excalibur0 where
+                i13-1-excalibur01 is the server for node 1.
             node1: Identifier for first node of detector
             node2: Identifier for second node of detector
 
         """
-        self.nodes = [ExcaliburNode(node1), ExcaliburNode(node2)]
+        self.server_root = detector
+        self.nodes = [ExcaliburNode(node1, self.server_root),
+                      ExcaliburNode(node2, self.server_root)]
 
         self.dawn = ExcaliburDAWN()
+
+    def read_chip_ids(self):
+        """Read chip IDs for all chips in all nodes."""
+        for node in self.nodes:
+            node.read_chip_ids()
 
     def threshold_equalization(self, chips):
         """Calibrate discriminator equalization for given chips in detector.
@@ -44,8 +54,8 @@ class Excalibur1M(object):
         """
         for node_idx, node in enumerate(self.nodes):
             node_roi = self._grab_node_slice(roi, node_idx)
-            node.optimize_dac_disc(chips[node_idx], "DACDiscL", node_roi)
-            node.optimize_dac_disc(chips[node_idx], "DACDiscH", node_roi)
+            node.optimize_disc_l(chips[node_idx], node_roi)
+            node.optimize_disc_h(chips[node_idx], node_roi)
 
     def expose(self, exposure_time):
         """Acquire single image.

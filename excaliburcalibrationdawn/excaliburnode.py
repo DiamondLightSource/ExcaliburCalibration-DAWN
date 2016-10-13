@@ -317,7 +317,7 @@ class ExcaliburNode(object):
     chip_range = range(num_chips)
     plot_name = ''
 
-    def __init__(self, node=1):
+    def __init__(self, node=1, server_root=None):
         """Initialize Excalibur node object.
 
         For example: On I13 the top FEM of EXCALIBUR-3M-RX001 is connected to
@@ -325,6 +325,7 @@ class ExcaliburNode(object):
         (i13-1-excalibur06).
 
         Args:
+            server_root: Server name root; add node number to get real server
             node: PC node number of 1/2 module (Between 1 and 6 for 3M)
 
         """
@@ -333,7 +334,13 @@ class ExcaliburNode(object):
                 node=node))
 
         self.fem = node
-        self.ipaddress = "192.168.0.10{suffix}".format(suffix=7 - self.fem)
+        self.ipaddress = "192.168.0.10{}".format(7 - self.fem)
+
+        if server_root is not None:
+            self.server_name = "{root}{fem}".format(root=server_root,
+                                                    fem=self.fem)
+        else:
+            self.server_name = None
 
         # Detector default Settings
         self.settings = {'mode': 'spm',  # 'spm' or 'csm'
@@ -349,7 +356,6 @@ class ExcaliburNode(object):
                          'frames': 1,  # Number of frames to acquire
                          'imagepath': '/tmp/',  # Image path
                          'filename': 'image',  # Image filename
-                         'Threshold': 'Not set',  # Threshold in keV
                          'filenameIndex': ''}  # Image file index (used to
         # avoid overwriting files)
 
@@ -359,7 +365,8 @@ class ExcaliburNode(object):
                                             self.settings['mode'],
                                             self.settings['gain'])
 
-        self.app = ExcaliburTestAppInterface(self.ipaddress, port='6969')
+        self.app = ExcaliburTestAppInterface(self.ipaddress, 6969,
+                                             self.server_name)
         self.dawn = ExcaliburDAWN()
 
         self.full_array_shape = [self.chip_size,
@@ -717,8 +724,7 @@ class ExcaliburNode(object):
             thresh_energy: Energy to set
 
         """
-        self.settings['Threshold'] = thresh_energy
-        self.set_thresh_energy('0', float(self.settings['Threshold']))
+        self.set_thresh_energy('0', float(thresh_energy))
 
     def set_thresh_energy(self, threshold="0", thresh_energy=5.0):
         """Set given threshold in keV.

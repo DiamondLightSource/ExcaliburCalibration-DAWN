@@ -2,4 +2,3 @@ from excaliburnode import ExcaliburNode
 from excalibur1M import Excalibur1M
 from excaliburdawn import ExcaliburDAWN
 from excaliburtestappinterface import ExcaliburTestAppInterface
-import arrayutil

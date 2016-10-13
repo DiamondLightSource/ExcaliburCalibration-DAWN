@@ -15,7 +15,7 @@ util_patch_path = "excaliburcalibrationdawn.arrayutil"
 class InitTest(unittest.TestCase):
 
     def setUp(self):
-        self.e = Excalibur1M(1, 2)
+        self.e = Excalibur1M("test-server", 1, 2)
 
     def test_class_attributes_set(self):
         self.assertIsInstance(self.e.nodes[0], ExcaliburNode)
@@ -28,10 +28,16 @@ class InitTest(unittest.TestCase):
 class FunctionsTest(unittest.TestCase):
 
     def setUp(self):
-        self.e = Excalibur1M(1, 2)
+        self.e = Excalibur1M("test-server", 1, 2)
         self.node1_mock = MagicMock()
         self.node2_mock = MagicMock()
         self.e.nodes = [self.node1_mock, self.node2_mock]
+
+    def test_read_chip_ids(self):
+        self.e.read_chip_ids()
+
+        self.node1_mock.read_chip_ids.assert_called_once_with()
+        self.node2_mock.read_chip_ids.assert_called_once_with()
 
     def test_threshold_equalization(self):
         self.e.threshold_equalization([[0], [0]])
@@ -46,10 +52,14 @@ class FunctionsTest(unittest.TestCase):
 
         self.assertEqual((roi_mock, 0), grab_mock.call_args_list[0][0])
         self.assertEqual((roi_mock, 1), grab_mock.call_args_list[1][0])
-        self.assertEqual(([0], "DACDiscL", grab_mock.return_value), self.node1_mock.optimize_dac_disc.call_args_list[0][0])
-        self.assertEqual(([0], "DACDiscH", grab_mock.return_value), self.node1_mock.optimize_dac_disc.call_args_list[1][0])
-        self.assertEqual(([0], "DACDiscL", grab_mock.return_value), self.node2_mock.optimize_dac_disc.call_args_list[0][0])
-        self.assertEqual(([0], "DACDiscH", grab_mock.return_value), self.node2_mock.optimize_dac_disc.call_args_list[1][0])
+        self.assertEqual(([0], grab_mock.return_value),
+                         self.node1_mock.optimize_disc_l.call_args_list[0][0])
+        self.assertEqual(([0], grab_mock.return_value),
+                         self.node1_mock.optimize_disc_h.call_args_list[0][0])
+        self.assertEqual(([0], grab_mock.return_value),
+                         self.node2_mock.optimize_disc_l.call_args_list[0][0])
+        self.assertEqual(([0], grab_mock.return_value),
+                         self.node2_mock.optimize_disc_h.call_args_list[0][0])
 
     @patch(DAWN_patch_path + '.plot_image')
     def test_expose(self, plot_mock):
@@ -73,7 +83,7 @@ class FunctionsTest(unittest.TestCase):
 class UtilTest(unittest.TestCase):
 
     def setUp(self):
-        self.e = Excalibur1M(1, 2)
+        self.e = Excalibur1M("test-server", 1, 2)
 
     @patch(util_patch_path + '.grab_slice')
     @patch(E1M_patch_path + '._generate_node_range', return_value=["start", "stop"])
