@@ -317,7 +317,7 @@ class ExcaliburNode(object):
     chip_range = range(num_chips)
     plot_name = ''
 
-    def __init__(self, node=1, server_root=None):
+    def __init__(self, node, server_root=None):
         """Initialize Excalibur node object.
 
         For example: On I13 the top FEM of EXCALIBUR-3M-RX001 is connected to

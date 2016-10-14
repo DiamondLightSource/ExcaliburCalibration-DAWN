@@ -129,7 +129,7 @@ class ThresholdEqualizationTest(unittest.TestCase):
 
     def test_correct_calls_made(self, cal_disc_mock, set_gnd_mock,
                                 set_dacs_mock, log_mock, check_mock):
-        e = ExcaliburNode()
+        e = ExcaliburNode(1)
         chips = [1, 4, 6, 7]
 
         e.threshold_equalization(chips)
@@ -149,7 +149,7 @@ class ThresholdEqualizationTest(unittest.TestCase):
 class ThresholdCalibrationTest(unittest.TestCase):
 
     def setUp(self):
-        self.e = ExcaliburNode()
+        self.e = ExcaliburNode(1)
 
     def test_threshold_calibration_shgm(self, save_mock, check_mock):
         expected_slope = np.array([8.81355932203]*8)
@@ -237,7 +237,7 @@ class ThresholdCalibrationTest(unittest.TestCase):
 class SaveKev2DacCalibTest(unittest.TestCase):
 
     def setUp(self):
-        self.e = ExcaliburNode()
+        self.e = ExcaliburNode(1)
         self.threshold = '0'
         self.gain = [1.1, 0.7, 1.1, 1.3, 1.0, 0.9, 1.2, 0.9]
         self.offset = [0.2, -0.7, 0.1, 0.0, 0.3, -0.1, 0.2, 0.5]
@@ -269,7 +269,7 @@ class FindXrayEnergyDacTest(unittest.TestCase):
            return_value=mock_scan_data.copy())
     def test_correct_calls_made(self, scan_mock, plot_mock, fit_mock,
                                 load_mock):
-        e = ExcaliburNode()
+        e = ExcaliburNode(1)
         chips = [0]
         expected_array = self.mock_scan_data
         expected_array[expected_array > 200] = 0
@@ -1225,7 +1225,7 @@ class OptimizeDacDiscTest(unittest.TestCase):
     rand = np.random.RandomState(1234)
 
     def setUp(self):
-        self.e = ExcaliburNode()
+        self.e = ExcaliburNode(1)
 
     @patch(Node_patch_path + '.set_dac')
     @patch(Node_patch_path + '._optimize_dac_disc')
