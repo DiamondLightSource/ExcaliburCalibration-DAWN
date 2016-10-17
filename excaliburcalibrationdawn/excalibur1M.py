@@ -5,6 +5,9 @@ from excaliburcalibrationdawn import arrayutil as util
 
 import numpy as np
 
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
 
 class Excalibur1M(object):
 
@@ -23,6 +26,8 @@ class Excalibur1M(object):
             node2: Identifier for second node of detector
 
         """
+        logging.debug("Creating Excalibur1M with server %s and nodes %s, %s",
+                      detector, node1, node2)
         self.server_root = detector
         self.nodes = [ExcaliburNode(node1, self.server_root),
                       ExcaliburNode(node2, self.server_root)]

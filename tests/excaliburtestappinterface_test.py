@@ -73,25 +73,29 @@ class TestSendCommand(unittest.TestCase):
 
     def test_subp_called_and_logged(self, subp_mock, logging_mock):
         e = ExcaliburTestAppInterface("test_ip", "test_port")
-        expected_message = "Sending command: 'test_command' with kwargs {'test': True}"
+        expected_message = "Sending command: '%s' with kwargs %s"
         subp_mock.return_value = "Success"
 
         e._send_command(["test_command"], test=True)
 
-        self.assertEqual(expected_message, logging_mock.call_args_list[0][0][0])
+        self.assertEqual((expected_message, "test_command", "{'test': True}"),
+                         logging_mock.call_args_list[0][0])
         subp_mock.assert_called_once_with(["test_command"], test=True)
-        self.assertEqual("Success", logging_mock.call_args_list[1][0][0])
+        self.assertEqual("Output: %s", logging_mock.call_args_list[1][0][0])
 
     def test_error_raised_then_catch_and_log(self, subp_mock, logging_mock):
         e = ExcaliburTestAppInterface("test_ip", "test_port")
-        expected_message = "Sending command: 'test_command' with kwargs {'test': True}"
-        subp_mock.side_effect = CalledProcessError(1, "test_command", output="Invalid command")
+        expected_message = "Sending command: '%s' with kwargs %s"
+        subp_mock.side_effect = CalledProcessError(1, "test_command",
+                                                   output="Invalid command")
 
         e._send_command(["test_command"], test=True)
 
-        self.assertEqual(expected_message, logging_mock.call_args_list[0][0][0])
+        self.assertEqual((expected_message, "test_command", "{'test': True}"),
+                         logging_mock.call_args_list[0][0])
         subp_mock.assert_called_once_with(["test_command"], test=True)
-        self.assertEqual("Invalid command", logging_mock.call_args_list[1][0][0])
+        self.assertEqual(("Error output: %s", "Invalid command"),
+                         logging_mock.call_args_list[1][0])
 
 
 @patch(ETAI_patch_path + '._construct_command')
