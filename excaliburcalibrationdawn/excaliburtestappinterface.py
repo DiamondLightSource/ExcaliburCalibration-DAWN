@@ -186,15 +186,15 @@ class ExcaliburTestAppInterface(object):
             command(list(str)): List of arguments to send to command line call
 
         """
-        logging.debug("Sending command: " + "'{}'".format(" ".join(command)) +
-                      " with kwargs " + str(cmd_kwargs))
+        logging.debug("Sending command: '%s' with kwargs %s",
+                      ' '.join(command), str(cmd_kwargs))
 
         try:
             output = subprocess.check_output(command, **cmd_kwargs)
         except subprocess.CalledProcessError as error:
-            logging.debug(error.output)
+            logging.debug("Error output: %s", error.output)
         else:
-            logging.debug(output)
+            logging.debug("Output: %s", output)
 
     def set_lv_state(self, lv_state):
         """Set LV to given state; 0 - Off, 1 - On."""

@@ -342,6 +342,9 @@ class ExcaliburNode(object):
         else:
             self.server_name = None
 
+        logging.debug("Creating ExcaliburNode with server %s and ip %s",
+                      self.server_name, self.ipaddress)
+
         # Detector default Settings
         self.settings = {'mode': 'spm',  # 'spm' or 'csm'
                          'gain': 'shgm',  # 'slgm', 'lgm', 'hgm' or 'shgm'
@@ -482,16 +485,15 @@ class ExcaliburNode(object):
         dac1 = dac0 + gain * (default_6kev_dac - dac0) * \
             np.ones([6, 8]).astype('float')
 
-        logging.debug("E0: {E}".format(E=E0))
-        logging.debug("DAC0 Array: {array}".format(array=dac0))
-        logging.debug("E1: {E}".format(E=E1))
-        logging.debug("DAC1 Array: {array}".format(array=dac1))
+        logging.debug("E0: %s", E0)
+        logging.debug("DAC0 Array: %s", dac0)
+        logging.debug("E1: %s", E1)
+        logging.debug("DAC1 Array: %s", dac1)
 
         slope = (dac1[self.fem - 1, :] - dac0[self.fem - 1, :]) / (E1 - E0)
         offset = dac0[self.fem - 1, :]
         self.save_kev2dac_calib(threshold, slope, offset)
-        logging.debug("Slope: {slope}, Offset: {offset}".format(slope=slope,
-                                                                offset=offset))
+        logging.debug("Slope: %s, Offset: %s", slope, offset)
 
     def save_kev2dac_calib(self, threshold, gain, offset):
         """Save KeV conversion data to file.
@@ -520,7 +522,7 @@ class ExcaliburNode(object):
                                          ).format(fem=self.fem,
                                                   threshold=threshold)
 
-        logging.debug("Saving calibration to: " + thresh_filename)
+        logging.debug("Saving calibration to: %s", thresh_filename)
         np.savetxt(thresh_filename, thresh_coeff, fmt='%.2f')
         os.chmod(thresh_filename, 0777)  # Allow anyone to overwrite
 
@@ -646,8 +648,7 @@ class ExcaliburNode(object):
         slope = (OneE_Dac[self.fem - 1, :] - self.dac_target) / OneE_E
         offset = [self.dac_target] * 8
         self.save_kev2dac_calib(threshold, slope, offset)
-        logging.debug("Slope: {slope}, Offset: {offset}".format(slope=slope,
-                                                                offset=offset))
+        logging.debug("Slope: %s, Offset: %s", slope, offset)
 
         self.settings['filename'] = 'image'
 
@@ -709,9 +710,8 @@ class ExcaliburNode(object):
 
         self.save_kev2dac_calib(threshold, gain, offset)
 
-        logging.debug("Gain: {gain}, Offset: {offset}".format(gain=gain,
-                                                              offset=offset))
-        logging.debug(self.settings['gain'])
+        logging.debug("Gain: %s, Offset: %s", gain, offset)
+        logging.debug("Self.settngs gain: %s", self.settings['gain'])
 
     def set_threshold0(self, thresh_energy='5'):
         """Set threshold0 energy in keV.
@@ -746,7 +746,8 @@ class ExcaliburNode(object):
                                ).format(fem=self.fem, threshold=threshold)
 
         thresh_coeff = np.genfromtxt(fname)
-        logging.debug(thresh_coeff[0, :].astype(np.int))
+        logging.debug("Thresh coefficients 0: %s",
+                      thresh_coeff[0, :].astype(np.int))
 
         thresh_DACs = (thresh_energy * thresh_coeff[0, :] +
                        thresh_coeff[1, :]).astype(np.int)
@@ -1452,7 +1453,7 @@ class ExcaliburNode(object):
             backup_dir = self.calib_dir + '_backup_' + time.asctime()
             shutil.copytree(self.calib_dir, backup_dir)
 
-            logging.debug(backup_dir)
+            logging.debug("Backup directory: %s", backup_dir)
 
         dac_file = posixpath.join(calib_dir, 'dacs')
         if os.path.isfile(dac_file) == 0:
@@ -2167,7 +2168,7 @@ class ExcaliburNode(object):
 
         """
 
-        logging.debug(config_file)
+        logging.debug("Config files: %s", config_file)
 
         # shutil.copy(config_file, config_file + ".backup")
         config_bits = np.loadtxt(config_file)
@@ -2187,7 +2188,7 @@ class ExcaliburNode(object):
         EPICS_calib_path = self.calib_dir + '_epics'
         shutil.copytree(self.calib_dir, EPICS_calib_path)
 
-        logging.debug(EPICS_calib_path)
+        logging.debug("EPICS_calib_path: %s", EPICS_calib_path)
 
         template_path = posixpath.join(EPICS_calib_path,
                                        'fem{fem}',
