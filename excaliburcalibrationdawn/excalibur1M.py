@@ -39,6 +39,26 @@ class Excalibur1M(object):
         for node in self.nodes:
             node.read_chip_ids()
 
+    def enable_lv(self):
+        """Enable LV."""
+        self.nodes[0].enable_lv()
+
+    def disable_lv(self):
+        """Disable LV."""
+        self.nodes[0].disable_lv()
+
+    def enable_hv(self):
+        """Enable HV."""
+        self.nodes[0].enable_hv()
+
+    def disable_hv(self):
+        """Disable HV."""
+        self.nodes[0].disable_hv()
+
+    def set_hv_bias(self, hv_bias):
+        """Set HV bias."""
+        self.nodes[0].set_hv_bias(hv_bias)
+
     def threshold_equalization(self, chips):
         """Calibrate discriminator equalization for given chips in detector.
 
