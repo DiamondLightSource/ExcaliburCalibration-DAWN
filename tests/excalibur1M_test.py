@@ -25,6 +25,57 @@ class InitTest(unittest.TestCase):
         self.assertEqual(2, self.e.nodes[1].fem)
 
 
+class SetVoltageTest(unittest.TestCase):
+
+    def setUp(self):
+        self.e = Excalibur1M("test-server", 1, 2)
+        self.node1_mock = MagicMock()
+        self.node2_mock = MagicMock()
+        self.e.nodes = [self.node1_mock, self.node2_mock]
+
+    def test_enable_lv(self):
+
+        self.e.enable_lv()
+
+        self.node1_mock.enable_lv.assert_called_once_with()
+        self.assertFalse(self.node2_mock.enable_lv.call_count)
+
+    def test_disable_lv(self):
+
+        self.e.disable_lv()
+
+        self.node1_mock.disable_lv.assert_called_once_with()
+        self.assertFalse(self.node2_mock.disable_lv.call_count)
+
+    def test_initialise_lv(self):
+
+        self.e.initialise_lv()
+
+        self.node1_mock.initialise_lv.assert_called_once_with()
+        self.assertFalse(self.node2_mock.initialise_lv.call_count)
+
+    def test_enable_hv(self):
+
+        self.e.enable_hv()
+
+        self.node1_mock.enable_hv.assert_called_once_with()
+        self.assertFalse(self.node2_mock.enable_hv.call_count)
+
+    def test_disable_hv(self):
+
+        self.e.disable_hv()
+
+        self.node1_mock.disable_hv.assert_called_once_with()
+        self.assertFalse(self.node2_mock.disable_hv.call_count)
+
+    def test_set_hv_bias(self):
+
+        self.e.set_hv_bias(120)
+
+        self.node1_mock.set_hv_bias.assert_called_once_with(120)
+        self.assertFalse(self.node2_mock.set_hv_bias.call_count)
+
+
 class FunctionsTest(unittest.TestCase):
 
     def setUp(self):

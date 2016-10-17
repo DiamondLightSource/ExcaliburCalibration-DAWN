@@ -101,6 +101,15 @@ class SetVoltageTest(unittest.TestCase):
 
         self.app_mock.set_lv_state.assert_called_once_with(0)
 
+    @patch(Node_patch_path + '.enable_lv')
+    @patch(Node_patch_path + '.disable_lv')
+    def test_initialise_lv(self, disable_mock, enable_mock):
+
+        self.e.initialise_lv()
+
+        self.assertEqual(2, enable_mock.call_count)
+        self.assertEqual(1, disable_mock.call_count)
+
     def test_enable_hv(self):
 
         self.e.enable_hv()

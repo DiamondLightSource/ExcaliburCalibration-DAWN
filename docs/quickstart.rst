@@ -11,7 +11,7 @@ Create a python console and create an ExcaliburNode instance for the master FEM 
 ExcaliburNode provides some helper functions to perform initialisation for the
 detector. To enable LV, set the HV bias to 120 and enable HV::
 
-   >>> master.enable_lv()
+   >>> master.initialise_lv()
    >>> master.set_hv_bias(120)
    >>> master.enable_hv()
 

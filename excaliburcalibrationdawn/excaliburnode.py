@@ -385,6 +385,12 @@ class ExcaliburNode(object):
         """Disable LV."""
         self.app.set_lv_state(0)
 
+    def initialise_lv(self):
+        """Initialise LV; bug in ETA means LV doesn't turn on first time."""
+        self.enable_lv()
+        self.disable_lv()
+        self.enable_lv()
+
     def enable_hv(self):
         """Enable HV."""
         self.app.set_hv_state(1)

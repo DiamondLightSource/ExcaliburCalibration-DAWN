@@ -39,6 +39,10 @@ class Excalibur1M(object):
         for node in self.nodes:
             node.read_chip_ids()
 
+    def initialise_lv(self):
+        """Initialise LV; bug in ETA means LV doesn't turn on first time."""
+        self.nodes[0].initialise_lv()
+
     def enable_lv(self):
         """Enable LV."""
         self.nodes[0].enable_lv()
