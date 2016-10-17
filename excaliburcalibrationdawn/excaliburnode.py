@@ -123,7 +123,7 @@ When running Python calibration scripts on node i13-1-excalibur0X (with X
 in [1:6]), you should use: x=excaliburRX(X)
 
 For example when running the Python calibration scripts on node
-i13-1-excalibur0X (with X in [1:6]), you should use: x=excaliburRX(X)
+i13-1-excalibur0X (with X in [1:6]), you should use: x = excaliburRX(X)
 For I13 installation top FEM is connected to node 1 and bottom fem to
 node 6
 
@@ -394,7 +394,7 @@ class ExcaliburNode(object):
         self.app.set_hv_state(0)
 
     def set_hv_bias(self, hv_bias):
-        """Enable HV."""
+        """Set HV bias."""
         self.app.set_hv_bias(hv_bias)
 
     def threshold_equalization(self, chips=range(8)):
