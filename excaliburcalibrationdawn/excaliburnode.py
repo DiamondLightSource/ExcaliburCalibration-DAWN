@@ -376,6 +376,20 @@ class ExcaliburNode(object):
                                  self.num_chips * self.chip_size]
 
         # self.read_chip_ids()
+        
+    def setup(self):
+        self.initialise_lv()
+        self.set_hv_bias(120)
+        self.enable_hv()
+        self.read_chip_ids()
+        self.app.load_dacs(range(8), posixpath.join(self.config_dir,
+                                                    "Default_SPM.dacs"))
+        
+    def disable(self):
+        """Set HV bias to 0 and disable LV and HV."""
+        self.set_hv_bias(0)
+        self.disable_hv()
+        self.disable_lv()
 
     def enable_lv(self):
         """Enable LV."""
@@ -400,7 +414,12 @@ class ExcaliburNode(object):
         self.app.set_hv_state(0)
 
     def set_hv_bias(self, hv_bias):
-        """Set HV bias."""
+        """Set HV bias.
+
+        Args:
+            hv_bias: Voltage to set
+
+        """
         self.app.set_hv_bias(hv_bias)
 
     def threshold_equalization(self, chips=range(8)):

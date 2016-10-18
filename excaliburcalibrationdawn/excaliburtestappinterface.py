@@ -95,7 +95,7 @@ class ExcaliburTestAppInterface(object):
     READ_MODE = "--readmode"  # --readmode 1
     GAIN_MODE = "--gainmode"  # --gainmode 3
     PATH = "--path"  # --path /scratch/excalibur_images
-    HDF_FILE = "--hdffile"  # --hdffile image_1
+    HDF_FILE = "--hdffile="  # --hdffile image_1
     TP_COUNT = "--tpcount"  # --tpcount 2
     CONFIG = "--config"
     PIXEL_MASK = "--pixelmask"  # --pixelmask mask.txt
@@ -253,15 +253,14 @@ class ExcaliburTestAppInterface(object):
             list(str): Full acquire command to send to subprocess call
 
         """
-        if burst is not None and burst:
-            extra_params = [self.BURST]
-        else:
-            extra_params = [self.ACQUIRE]
-        extra_params.extend([self.NUM_FRAMES, str(frames),
-                             self.ACQ_TIME, str(acq_time)])
+        extra_params = [self.ACQUIRE,
+                        self.NUM_FRAMES, str(frames),
+                        self.ACQ_TIME, str(acq_time)]
 
         # Add any optional parameters if they are provided
         # TODO: Are any combinations invalid?
+        if burst is not None and burst:
+            extra_params.append(self.BURST)
         if self._check_argument_valid("Pixel mode", pixel_mode,
                                       self.mode_code.keys()):
             extra_params.extend([self.PIXEL_MODE, self.mode_code[pixel_mode]])
@@ -296,7 +295,7 @@ class ExcaliburTestAppInterface(object):
             if os.path.isfile(full_path):
                 raise IOError("File already exists")
             else:
-                extra_params.extend([self.HDF_FILE, str(hdf_file)])
+                extra_params.extend([self.HDF_FILE + str(hdf_file)])
 
         command = self._construct_command(chips, *extra_params)
         self._send_command(command)
@@ -356,7 +355,7 @@ class ExcaliburTestAppInterface(object):
         command = self._construct_command(chips,
                                           self.DAC_FILE, dac_file,
                                           self.SCAN, scan_command,
-                                          self.HDF_FILE, hdf_file)
+                                          self.HDF_FILE + hdf_file)
         self._send_command(command)
 
     def read_chip_ids(self, chips=range(8), **cmd_kwargs):
@@ -390,8 +389,7 @@ class ExcaliburTestAppInterface(object):
             dac_file(str): Path to file containing DAC values
 
         """
-        command = self._construct_command(chips,
-                                          self.DAC_FILE, dac_file)
+        command = self._construct_command(chips, self.DAC_FILE, dac_file)
         self._send_command(command)
 
     def configure_test_pulse(self, chips, dac_file, tp_mask,

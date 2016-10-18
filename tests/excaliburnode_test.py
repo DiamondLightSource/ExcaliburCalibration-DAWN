@@ -81,6 +81,22 @@ class InitTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             ExcaliburNode(7)
 
+    @patch(ETAI_patch_path + '.load_dacs')
+    @patch(Node_patch_path + '.read_chip_ids')
+    @patch(Node_patch_path + '.enable_hv')
+    @patch(Node_patch_path + '.set_hv_bias')
+    @patch(Node_patch_path + '.initialise_lv')
+    def test_setup(self, init_mock, set_mock, enable_mock, read_mock,
+                   load_mock):
+
+        self.e.setup()
+
+        init_mock.assert_called_once_with()
+        set_mock.assert_called_once_with(120)
+        enable_mock.assert_called_once_with()
+        read_mock.assert_called_once_with()
+        load_mock.assert_called_once_with(range(8),'/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/config/Default_SPM.dacs')
+
 
 class SetVoltageTest(unittest.TestCase):
 
@@ -127,6 +143,17 @@ class SetVoltageTest(unittest.TestCase):
         self.e.set_hv_bias(120)
 
         self.app_mock.set_hv_bias.assert_called_once_with(120)
+
+    @patch(Node_patch_path + '.disable_lv')
+    @patch(Node_patch_path + '.disable_hv')
+    @patch(Node_patch_path + '.set_hv_bias')
+    def test_disable(self, set_mock, hv_mock, lv_mock):
+
+        self.e.disable()
+
+        set_mock.assert_called_once_with(0)
+        hv_mock.assert_called_once_with()
+        lv_mock.assert_called_once_with()
 
 
 @patch(Node_patch_path + '.check_calib_dir')

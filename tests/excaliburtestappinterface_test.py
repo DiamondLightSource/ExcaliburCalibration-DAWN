@@ -158,13 +158,13 @@ class TestAPICalls(unittest.TestCase):
 
     @patch('os.path.isfile', return_value=False)
     def test_acquire_all_args(self, _, send_mock, construct_mock):
-        expected_params = ['--burst', '-n', '100', '-t', '10',
+        expected_params = ['-a', '-n', '100', '-t', '10', '--burst',
                            '--csmspm', '1', '--disccsmspm', '1',
                            '--depth', '1', '--counter', '1',
                            '--equalization', '1', '--gainmode', '3',
                            '--readmode', '1', '--trigmode', '2',
                            '--tpcount', '10', '--path', '/scratch/RX_Images',
-                           '--hdffile', 'test.hdf5']
+                           '--hdffile=test.hdf5']
         frames = 100
         acquire_time = 10
 
@@ -197,7 +197,7 @@ class TestAPICalls(unittest.TestCase):
         self.assertEqual(construct_mock.return_value, send_mock.call_args_list[1][0][0])
 
     def test_perform_dac_scan(self, send_mock, construct_mock):
-        expected_params = ['--dacs', 'dac_file', '--dacscan', '2,0,10,1', '--hdffile', 'hdf_file']
+        expected_params = ['--dacs', 'dac_file', '--dacscan', '2,0,10,1', '--hdffile=hdf_file']
         scan_range = MagicMock()
         scan_range.start = 0
         scan_range.stop = 10
