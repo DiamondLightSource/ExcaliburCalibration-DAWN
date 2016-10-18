@@ -1,9 +1,14 @@
 """
-Python library for EXCALIBUR detector calibration and test
-/dls/detectors/support/silicon_pixels/excaliburRX/PyScripts/excaliburDAWN.py
-DIAMOND LIGHT SOURCE 17-07-2015
+Python library for MPX3RX-based detectors calibration and test
+/dls/detectors/support/silicon_pixels/excaliburRX/PyScripts/MPX3RX-DAWN.py
+DIAMOND LIGHT SOURCE 30-07-2015
 
-Developed for I13 EXCALIBUR-3M-RX001 detector
+Initially developed for I13 EXCALIBUR-3M-RX001 detector
+EXCALIBUR-specific functions need to be extracted and copied into a separate library
+This will allow for the scripts to be usable with any MPX3-based system provided that a library of control functions is available for each type of detector:
+# EXCALIBUR
+# LANCELOT/MERLIN 
+
 """
 import math
 import subprocess
@@ -147,7 +152,7 @@ class excaliburRX(object):
     ================== PYTHON SCRIPT
     
     Select the DExplore perspective 
-    Open the file /dls/detectors/support/silicon_pixels/excaliburRX/PyScripts/excaliburDAWN.py 
+    Open the file /dls/detectors/support/silicon_pixels/excaliburRX/PyScripts/MPX3RX-DAWN.py 
     Run excaliburDAWN.py in the interactive console by clicking on the python icon "activates the interactive console" (CTL Alt ENTER)
     Select "Python Console" when the interactive interpreter console opens
     (You might have to run the script twice)
