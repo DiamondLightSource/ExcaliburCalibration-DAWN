@@ -5,7 +5,6 @@ import os
 import shutil
 from scipy.optimize import curve_fit
 
-
 def lin_function(x,offset,gain):
     return offset+gain*x
 
@@ -13,11 +12,116 @@ def gauss_function(x, a, x0, sigma):
     return a*np.exp(-(x-x0)**2/(2*sigma**2))
 
 class excaliburRX(object):
-    fem=32 #start numbering at 1
+    """
+    excaliburRX is a class defining methods required to calibrate each 1/2 module (8 MPX3-RX chips) of an EXCALIBUR-RX detector.
+    These calibration scripts will work only inside the Python interpreter of DAWN software running on the PC sever node connected to the FEM controlling the half-module which you wish to calibrate
+    
+    To calibrate a 1/2 Module you need to ssh to the PC server node (standard DLS machine) connected to the FEM card controlling this 1/2 module.
+    On the PC server node, start DAWN by typing in a shell:
+    > module load dawn 
+    > dawn &
+    Select the DExplore perspective 
+    Open the file /dls/detectors/support/silicon_pixels/excaliburRX/PyScripts/excaliburDAWN.py 
+    Run excaliburDAWN.py in the interactive console by clicking on the python icon "activates the interactive console" (CTL Alt ENTER)
+    Select "Python Console" when the interactive interpreter console opens
+    (You might have to run the script twice)
+    In the Interactive console you need to create an excaliburRx object:
+    > x=excaliburRX(node)
+    were node is the PC server node number you are connected to.
+    For example when running the Python calibration scripts on node i13-1-excalibur0X (with X in [1:6]), you should use: x=excaliburRX(X) 
+    To run calibration scripts, just type in the interactive Python console:
+    > x.calibration()  
+      
+    By default, calibration files will be created locally in a temporary folder : /tmp/femX of the PC server node X.
+    You should copy the folder /femX in the path were EPICS expects calibration files for all the fems/nodes 
+    
+    NOTE: excaliburRX detector class communicates with FEMs via excalibur Test-Application which is an executable file saved in: 
+    /dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp
+    
+    NOTE: excaliburRX detector class requires configuration files copied in:
+    /dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/config/
+    
+    [ktf91651@p99-excalibur01 ~]$ /dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp -i 192.168.0.106 -p 6969 -m 0xff --help
+
+    Usage: /dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp options
+    
+      -h --help                   Display this usage information.
+      -i --ipaddress              IP address of FEM to connect to.
+      -p --port                   Port of FEM to connect to.
+      -m --mask                   Select MPX3 enable mask.
+      -r --reset                  Issue front-end reset/init.
+         --lvenable <mode>        Set power card LV enable: 0=off (default), 1=on.
+         --hvenable <mode>        Set power card HV enable: 0=off (default), 1=on.
+         --hvbias <volts>         Set power card HV bias in volts.
+      -e --efuse                  Read and display MPX3 eFuse IDs.
+      -d --dacs <filename>        Load MPX3 DAC values from filename if given, otherwise use default values
+      -c --config                 Load MPX3 pixel configuration.
+      -s --slow                   Display front-end slow control parameters.
+      -a --acquire                Execute image acquisition loop.
+         --burst                  Select burst mode for image acquisition.
+         --matrixread             During acquisition, perform matrix read only (i.e. no shutter for config read or digital test).
+      -n --frames <frames>        Number of frames to acquire.
+      -t --acqtime <time>         Acquisition time (shutter duration) in milliseconds.
+         --dacscan <params>       Execute DAC scan, params format must be comma separated dac,start,stop,step.
+         --readmode <mode>        Readout mode: 0=sequential (default), 1=continuous.
+         --trigmode <mode>        Trigger mode: 0=internal (default), 1=external shutter, 2=external sync.
+         --colourmode <mode>      Select MPX3 colour mode: 0=fine pitch mode (default), 1=spectroscopic mode.
+         --csmspm <mode>          Select MPX3 pixel mode: 0=single pixel mode (default), 1=charge summing mode.
+         --disccsmspm <mode>      Select MPX3 discriminator output mode: 0=DiscL (default), 1=DiscH.
+         --equalization <mode>    Select MPX3 equalization mode: 0=off (default), 1=on.
+         --gainmode <mode>        Select MPX3 gain mode: 0=SHGM, 1=HGM, 2=LGM, 3=SLGM (default).
+         --counter <counter>      Select MPX3 counter to read: 0 (default) or 1.
+         --depth <depth>          Select MPX3 counter depth: 1, 6, 12 (default) or 24.
+         --sensedac <id>          Set MPX3 sense DAC field to <id>. NB Requires DAC load to take effect
+         --tpmask <filename>      Specify test pulse mask filename to load.
+         --tpcount <count>        Set test pulse count to <count>, default is 0.
+         --pixelmask <filename>   Specify pixel enable mask filename to load.
+         --discl <filename>       Specify pixel DiscL configuration filename to load.
+         --disch <filename>       Specify pixel DiscH configuration filename to load.
+         --path <path>            Specify path to write data files to, default is /tmp.
+         --hdffile <filename>     Write HDF file with optional filename, default is <path>/excalibur-YYMMDD-HHMMSS.hdf5
+    
+        
+    NOTE: chip 0 in this program correspond to the left chip of the bottom half of a module
+    or to the right chip of the top half of the module when facing the front-surface of sensor 
+    """
+    
+    def __init__(self,node):
+        self.fem=node
+        self.ipaddress="192.168.0.10"+str(7-self.fem)
+    
+    def calibration(self,chips=range(8)):
+        """
+        To calibrate all chips: x.calibration() or x.calibration(range(8)) or x.calibration([0, 1, 2, 3, 4, 5, 6, 7])
+        To calibrate chip 0: x.calibration([0])
+        To calibrate chip 0 , 2 and 5 : x.calibration([0,2,5])
+        You need to edit this function to define which mode (SPM or CSM) and which gains you want to calibrate during the calibration sequence
+        """
+        self.settings['mode']='spm'
+        self.settings['gain']='slgm'
+        self.checkCalibDir()# Checks whether a calibration directory exists, if not it creates one with default dacs
+        self.logChipId() # Log chip IDs in calibration folder
+        self.setdacs(chips) # Set DACs recommended by Rafa in May 2015
+        self.set_GND_FBK_CAS_ExcaliburRX001(chips,x.fem) # This will load the DAC values specific to each chip to have FBK, CAS and GND reading back the recommended analogue value 
+        """
+        IMPORTANT NOTE: These values of GND, FBK and CAS Dacs were adjusted for the modules present in RX001 on 20 june 2015
+        If modules are replaced, these DACs need to be re-adjusted and the FBK_DAC, GND_DAC and Cas_DAC arrays in GND_FBK_CAS_ExcaliburRX001 have to be edited
+        """
+        self.calibrateDisc(chips,'discL')# Calibrates DiscL Discriminator connected to Threshold 0 using a rectangular ROI in 1  
+        """
+        NOTE: Always equalize DiscL before DiscH since Threshold1 is set at 0 when equalizing DiscL. So if DiscH was equalized first, this would induce noisy counts interfering with DiscL equalization 
+        """
+        #self.calibrateDisc(chips,'discH',1,'rect')
+        #self.settings['mode']='csm'
+        #self.settings['gain']='slgm'
+        #self.calibrateDisc(chips,'discL',1,'rect')
+        #self.calibrateDisc(chips,'discH',1,'rect')
+        return 
+
     chipSize=256
     nbOfChips=8
-    command='/home/ktf91651/bin/excaliburTestApp'
-    ipaddress="192.168.0.100"
+    command="/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp"
+
     port='6969'
     chipRange=range(0,8)
     plotname=''
@@ -37,7 +141,7 @@ class excaliburRX(object):
               'acqtime':'100',
               'frames':'1',
               'imagepath':'/tmp/',
-              'filename':'cont',
+              'filename':'image',
               'Threshold':'Not set',
               'filenameIndex':''}
     
@@ -48,7 +152,6 @@ class excaliburRX(object):
               'hgm':'1',
               'lgm':'2',
               'slgm':'3'}
-    
     
     dacNumber={'Threshold0':'1',
             'Threshold1':'2',
@@ -106,14 +209,17 @@ class excaliburRX(object):
             'TPREFA':'24',
             'TPREFB':'25'}
 
-
-    
     calibSettings={'calibDir':'/tmp/',
-                   'configDir':'/home/ktf91651/excaliburRx/config/',
+                   'configDir':'/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/config/',
                    'dacfilename':'dacs',
                    'dacfile':'',
                    'noiseEdge':'10'} #Default .dacs file. This will be overwritten by setThreshold function
-#
+
+    arbNoiseEdgeEnergySPM={'shgm':'2.5',
+                           'hgm':'3',
+                          'lgm':'3.5',
+                        'slgm':'4'}
+    
     def setdacs(self,chips):
         self.setDac(chips,'Threshold1', 0)
         self.setDac(chips,'Threshold2', 0)
@@ -139,15 +245,19 @@ class excaliburRX(object):
         self.setDac(chips,'TPREFA', 500)
         self.setDac(chips,'TPREFB', 500)
 
-    def mask(self,chips):# Create hexadecimal chip mask from selected chip range
+    def mask(self,chips):# Create hexadecimal chip mask corresponding to selected chips
         maskBin=0
         for chip in chips:
             maskBin=2**(self.nbOfChips-chip-1)+maskBin
         return str(hex(maskBin))
 
     def chipId(self):
-        #subprocess.call([self.command,"-i",self.ipaddress,"-p",self.port,"-m",self.mask(self.chipRange),"-r","-e"])
-        subprocess.call([self.command,"-i",self.ipaddress,"-p",self.port,"-m",self.mask(self.chipRange),"-r"])
+        """
+        Reads chip IDs
+        Usage: x.chipId(chips)
+        where chips is a list of chips i.e. x.chipId(range(8))
+        """
+        subprocess.call([self.command,"-i",self.ipaddress,"-p",self.port,"-m",self.mask(self.chipRange),"-r","-e"])
         print(str(self.chipRange))
     
     def logChipId(self):
@@ -160,6 +270,10 @@ class excaliburRX(object):
         subprocess.call([self.command,"-i",self.ipaddress,"-p",self.port,"-m",self.mask(self.chipRange),"--slow"])
     
     def setDac(self,chips,dacName,dacValue):
+        """
+        Usage: x.setDac([0],'Threshold0', 30)
+               x.setDac(range(8),'Threshold1', 100)
+        """
         for chip in chips:
             dacFile=self.calibSettings['calibDir']+  'fem' + str(self.fem) +'/'+self.settings['mode'] + '/' + self.settings['gain']+ '/' + self.calibSettings['dacfilename']
             f = open(dacFile , 'r+b')
@@ -195,14 +309,14 @@ class excaliburRX(object):
         if dacRange[0]>dacRange[1]:
             for chip in chips:
                 dnp.plot.addline(np.array(range(dacRange[0],dacRange[1]-dacRange[2],-dacRange[2])),np.squeeze(dacScanData[:,0:256,chip*256:chip*256+256].mean(2).mean(1)),name="dacScan")
-            spectrum=np.diff(np.squeeze(dacScanData[:,0:256,chip*256:chip*256+256].mean(2).mean(1)))
-            for chip in chips:
+                spectrum=np.diff(np.squeeze(dacScanData[:,0:256,chip*256:chip*256+256].mean(2).mean(1)))
+            #for chip in chips:
                 dnp.plot.addline(np.array(range(dacRange[0],dacRange[1],-dacRange[2]))[1:],spectrum[1:],name="Spectrum")
         else:
             for chip in chips:
                 dnp.plot.addline(np.array(range(dacRange[0],dacRange[1]+dacRange[2],dacRange[2])),np.squeeze(dacScanData[:,0:256,chip*256:chip*256+256].mean(2).mean(1)),name="dacScan")
-            spectrum=-np.diff(np.squeeze(dacScanData[:,0:256,chip*256:chip*256+256].mean(2).mean(1)))
-            for chip in chips:
+                spectrum=-np.diff(np.squeeze(dacScanData[:,0:256,chip*256:chip*256+256].mean(2).mean(1)))
+            #for chip in chips:
                 dnp.plot.addline(np.array(range(dacRange[0],dacRange[1],dacRange[2]))[1:],spectrum[1:],name="Spectrum")
         return [dacScanData,dacRange]
     
@@ -238,9 +352,25 @@ class excaliburRX(object):
             discHbitsFile=self.calibSettings['calibDir']+  'fem' + str(self.fem) +'/'+self.settings['mode'] + '/' + self.settings['gain']+ '/' + 'discHbits.chip'+str(chip)
             discLbitsFile=self.calibSettings['calibDir']+  'fem' + str(self.fem) +'/'+self.settings['mode'] + '/' + self.settings['gain']+ '/' + 'discLbits.chip'+str(chip)
             pixelmaskFile=self.calibSettings['calibDir']+  'fem' + str(self.fem) +'/'+self.settings['mode'] + '/' + self.settings['gain']+ '/' + 'pixelmask.chip'+str(chip)
-            subprocess.call([self.command,"-i",self.ipaddress,"-p",self.port,"-m",self.mask(range(chip,chip+1)),"--config","--discl="+discLbitsFile,"--disch="+discHbitsFile,"--pixelmask="+pixelmaskFile])
-            discbits=self.openDiscLbitsFile(chips,'discLbits')
-        return discbits
+            
+            if os.path.isfile(discLbitsFile):
+                if os.path.isfile(discHbitsFile):
+                    if os.path.isfile(pixelmaskFile):
+                        subprocess.call([self.command,"-i",self.ipaddress,"-p",self.port,"-m",self.mask(range(chip,chip+1)),"--config","--discl="+discLbitsFile,"--disch="+discHbitsFile,"--pixelmask="+pixelmaskFile])
+                    else:
+                        subprocess.call([self.command,"-i",self.ipaddress,"-p",self.port,"-m",self.mask(range(chip,chip+1)),"--config","--discl="+discLbitsFile,"--disch="+discHbitsFile])
+                else:
+                    if os.path.isfile(pixelmaskFile):
+                        subprocess.call([self.command,"-i",self.ipaddress,"-p",self.port,"-m",self.mask(range(chip,chip+1)),"--config","--discl="+discLbitsFile,"--pixelmask="+pixelmaskFile])
+                    else:
+                        subprocess.call([self.command,"-i",self.ipaddress,"-p",self.port,"-m",self.mask(range(chip,chip+1)),"--config","--discl="+discLbitsFile])
+            else: 
+                print str(discLbitFile) + " does not exist !"
+
+        self.setDac(range(8),"Threshold1", 100)
+        self.setDac(range(8),"Threshold0", 40)
+        self.expose()
+        return
         
     def updateFilenameIndex(self):
         idxFilename=self.settings['imagepath']+self.settings['filename']+'.idx'
@@ -375,19 +505,29 @@ class excaliburRX(object):
 
     def init(self):
         chips=range(x.nbOfChips)
-        x.loadConfig(chips)
-        x.setDac(chips,"Threshold0", 20)
+        x.setDac(chips,"Threshold0", 30)
         x.shoot(10)
         LogoTP=np.ones([256,8*256])
         logoSmall=np.loadtxt(self.calibSettings['configDir']+'logo.txt')
         LogoTP[7:250,225:1823]=logoSmall
         LogoTP[LogoTP>0]=1
         LogoTP=1-LogoTP
+        
         for chip in chips:
             testbitsFile=self.calibSettings['calibDir']+'Logo_chip'+str(chip)+'_mask'
             np.savetxt(testbitsFile,LogoTP[0:256,chip*256:chip*256+256],fmt='%.18g', delimiter=' ' )
-            subprocess.call([self.command,"-i",self.ipaddress,"-p",self.port,"-m",self.mask(range(chip,chip+1)),"--dacs",self.calibSettings['calibDir']+self.calibSettings['dacfilename'],"--config","--tpmask="+testbitsFile])
+            
+            discHbitsFile=self.calibSettings['calibDir']+  'fem' + str(self.fem) +'/'+self.settings['mode'] + '/' + self.settings['gain']+ '/' + 'discHbits.chip'+str(chip)
+            discLbitsFile=self.calibSettings['calibDir']+  'fem' + str(self.fem) +'/'+self.settings['mode'] + '/' + self.settings['gain']+ '/' + 'discLbits.chip'+str(chip)
+            pixelmaskFile=self.calibSettings['calibDir']+  'fem' + str(self.fem) +'/'+self.settings['mode'] + '/' + self.settings['gain']+ '/' + 'pixelmask.chip'+str(chip)
+            
+            if os.path.isfile(discLbitsFile) and os.path.isfile(discHbitsFile) and os.path.isfile(pixelmaskFile):
+                subprocess.call([self.command,"-i",self.ipaddress,"-p",self.port,"-m",self.mask(range(chip,chip+1)),"--dacs",self.calibSettings['calibDir']+self.calibSettings['dacfilename'],"--config","--discl="+discLbitsFile,"--disch="+discHbitsFile,"--pixelmask="+pixelmaskFile,"--tpmask="+testbitsFile])
+            else :
+                subprocess.call([self.command,"-i",self.ipaddress,"-p",self.port,"-m",self.mask(range(chip,chip+1)),"--dacs",self.calibSettings['calibDir']+self.calibSettings['dacfilename'],"--config","--tpmask="+testbitsFile])
+
         self.settings['fullFilename']=self.settings['filename']+"_"+self.settings['filenameIndex']+".hdf5"
+        time.sleep(0.2)
         subprocess.call([self.command,"-i",self.ipaddress,"-p",self.port,"-m",self.mask(chips),"--depth="+self.settings['bitdepth'],"--acquire","--readmode="+str(self.settings['readmode']),"--frames="+str(self.settings['frames']),"--acqtime="+str(self.settings['acqtime']),"--counter=0","--path="+self.settings['imagepath'],"--hdffile="+self.settings['fullFilename'],"--tpcount="+str(100)])
         dh = dnp.io.load(self.settings['imagepath'] + self.settings['fullFilename'])
         imageRaw=dh.image[...]
@@ -452,6 +592,7 @@ class excaliburRX(object):
 
     def maskPixelsUsingDACscan(self,chips,Threshold,dacRange):# dacRange=(20,120,2)
         badPixTot=np.zeros(8)
+        self.settings['acqtime']=100
         [dacScanData,scanRange]=x.scanDac(chips,Threshold,dacRange)
         badPixels=dacScanData.sum(0)>1
         dnp.plot.image(badPixels,name='Bad pixels')
@@ -523,13 +664,17 @@ class excaliburRX(object):
     def findEdge(self,chips,dacscanData,dacRange,edgeVal):
         dnp.plot.clear("noise edges histogram")
         dnp.plot.clear("noise edges")
-        edgeDacs=dacRange[1]-dacRange[2]*np.argmax((dacscanData[::-1,:,:]>edgeVal),0)
+        if dacRange[1]>dacRange[0]:
+            edgeDacs=dacRange[1]-dacRange[2]*np.argmax((dacscanData[::-1,:,:]>edgeVal),0)
+        else:
+            edgeDacs=dacRange[0]-dacRange[2]*np.argmax((dacscanData[:,:,:]>edgeVal),0)
+            
         dnp.plot.image(edgeDacs,name="noise edges")
         for chip in chips:
             dnp.plot.addline(np.histogram(edgeDacs[0:256,chip*256:chip*256+256])[1][0:-1],np.histogram(edgeDacs[0:256,chip*256:chip*256+256])[0],name="noise edges histogram")
         return edgeDacs
 
-    def findMax(self,chips,dacscanData,dacRange,edgeVal):
+    def findMax(self,chips,dacscanData,dacRange,edgeVal):# edgeVal aprameter not needed anymore
         dnp.plot.clear("noise edges histogram")
         dnp.plot.clear("noise edges")
         edgeDacs=dacRange[1]-dacRange[2]*np.argmax((dacscanData[::-1,:,:]),0)
@@ -539,9 +684,20 @@ class excaliburRX(object):
         return edgeDacs
 
     def optimize_DACDisc(self,chips,discName,roiFullMask):
+        """
+        Usage [OptDACdisc]=x.optimize_DACDisc([chips,discName,roiFullMask)
+        where 
+        "OptDacdisc" is an array of 8 integers corresponding to the optimum DAC disc value of each chip 
+        "chips" is a list containing the number of the chips to calibrate
+        "discName" is either "discL" or "discH"
+        roiFullMask is 256x256 logical array used to select the pixels masked during calibration 
+        """
+        # Definition of parameters to be used for theshold scans
         self.settings['acqtime']='5'
         self.settings['counter']='0'
-        self.settings['equalization']='1'
+        self.settings['equalization']='1' # Migth not be necessary when optimizing DAC Disc
+        dacRange=(0,150,5)
+        #Setting variables depending on whether discL or discH is equalized (Note: equalize discL before discH)
         if discName=='discL':
              Threshold='Threshold0'
              self.setDac(chips,'Threshold1', 0)
@@ -552,35 +708,48 @@ class excaliburRX(object):
              self.setDac(chips,'Threshold0', 60) # To be above the noise since DiscL is equalized before DiscH
              self.settings['disccsmspm']='1'
              DACdiscName='DACDiscH'
-        dacRange=(0,150,5)     
-        OptDACdisc=np.zeros(self.nbOfChips)
-        name="Histogram of edges when scanning DACDisc"
-        DACDiscRange=range(50,150,50)
+        """
+        ###########################################################################################
+        STEP 1
+        Perform threshold DAC scans for all discbits set at 0 and various DACdisc values
+        discbits set at 0 shift DAC scans to the right
+        Plot noise edge position as a function of DACdisc
+        Calculate noise edge shift in threshold DAC units per DACdisc DAC unit  
+        ##########################################################################################
+        """
+        discbit=0
+        DACDiscRange=range(0,150,50)#range(50,150,50)
         Bins=(dacRange[1]-dacRange[0])/dacRange[2]
+        # Initialization of fit parameters and plots
+        OptDACdisc=np.zeros(self.nbOfChips)
         sigma=np.zeros([8,len(DACDiscRange)])
         x0=np.zeros([8,len(DACDiscRange)])
         a=np.zeros([8,len(DACDiscRange)])
-        discbit=0
-        discbits=discbit*np.ones([self.chipSize,self.chipSize*self.nbOfChips])
         p0 = [5000, 50, 30]
+        offset=np.zeros(8)
+        gain=np.zeros(8)
+        name="Histogram of edges when scanning DACDisc"
         plotname=name+" for discbit =" + str(discbit)
         fitplotname=plotname + " (fitted)"
         calibplotname="Mean edge shift in Threshold DACs as a function of DACDisc for discbit =" + str(discbit)
         dnp.plot.clear(plotname)
         dnp.plot.clear(fitplotname)
         dnp.plot.clear(calibplotname)
+        # Set discbits at 0
+        discbits=discbit*np.ones([self.chipSize,self.chipSize*self.nbOfChips])
         for chip in chips:
             if discName=='discH':
                 discLbits=self.openDiscLbitsFile(chips, 'discLbits')
                 self.loadConfigbits(range(chip,chip+1),discLbits[:,chip*256:chip*256+256],discbits[:,chip*256:chip*256+256],roiFullMask[:,chip*256:chip*256+256])
             if discName=='discL':
                 discHbits=np.zeros([self.chipSize,self.chipSize*self.nbOfChips])
-                self.loadConfigbits(range(chip,chip+1),discbits[:,chip*256:chip*256+256],discHbits[:,chip*256:chip*256+256],roiFullMask[:,chip*256:chip*256+256])
+                self.loadConfigbits(range(chip,chip+1),discbits[:,chip*256:chip*256+256],discHbits[:,chip*256:chip*256+256],roiFullMask[:,chip*256:chip*256+256])# Set discL and DiscH bits at 0 and unmask the whole matrix
+        # Threshold DAC scans, fitting and plotting
         idx=0
         for DACDisc in DACDiscRange:
             self.setDac(chips,DACdiscName,DACDisc)
-            [dacscanData,scanRange]=self.scanDac(chips,Threshold,dacRange)
-            edgeDacs=self.findMax(chips,dacscanData,dacRange,self.edgeVal)
+            [dacscanData,scanRange]=self.scanDac(chips,Threshold,dacRange)# Scan threshold
+            edgeDacs=self.findMax(chips,dacscanData,dacRange,self.edgeVal)# Find noise edges
             for chip in chips:
                 edgeHisto=np.histogram(edgeDacs[0:256,chip*256:chip*256+256],bins=Bins)
                 dnp.plot.addline(edgeHisto[1][0:-1],edgeHisto[0],name=plotname)
@@ -594,38 +763,40 @@ class excaliburRX(object):
             dnp.plot.clear(calibplotname)
             for chip in chips:
                 dnp.plot.addline(np.asarray(DACDiscRange[0:idx]),x0[chip,0:idx],name=calibplotname)
-        offset=np.zeros(8)
-        gain=np.zeros(8)
+        # Plots mean noise edge as a function of DAC Disc for all discbits set at 0
         for chip in chips:
             popt, pcov = curve_fit(lin_function,np.asarray(DACDiscRange),x0[chip,:],[0,-1])
             offset[chip]=popt[0]
-            gain[chip]=popt[1]
+            gain[chip]=popt[1]# Noise edge shift in DAC units per DACdisc DAC unit 
             dnp.plot.addline(np.asarray(DACDiscRange),lin_function(np.asarray(DACDiscRange),offset[chip],gain[chip]),name=calibplotname)
-
-################################
-#####################################
+        
+        print "Edge shift (in Threshold DAC units) produced by 1 DACdisc DAC unit for discbits=15:"
+        for chip in chips:
+            print "Chip" + str(chip) + ' : ' + str(round(gain[chip],2)) + ' Threshold DAC units'
 #################################
-# Adjust Fit range to remove outliers at 0 and max DAC 150 
-
-
-
-        #name="Histogram of edges for discbit=15 (no correction)"
-        DACDiscRange=range(80,85,5)
-        Bins=(dacRange[1]-dacRange[0])/dacRange[2]
-        
-        sigma=np.zeros([8,len(DACDiscRange)])
-        x0=np.zeros([8,len(DACDiscRange)])
-        a=np.zeros([8,len(DACDiscRange)])
-        
+# Fit range should be adjusted to remove outliers at 0 and max DAC 150 
+        """
+        ###########################################################################################
+        STEP 2
+        Perform threshold DAC scan for all discbits set at 15 (no correction) 
+        Fit threshold scan and calculate width of noise edge distribution
+        ##########################################################################################
+        """
         discbit=15
-        discbits=discbit*np.ones([self.chipSize,self.chipSize*self.nbOfChips])
+        DACDisc=80 # Value does no tmatter since no correction is applied when discbits=15
+        Bins=(dacRange[1]-dacRange[0])/dacRange[2]
+        # Initialization of fit parameters and plots
+        sigma=np.zeros([8])
+        x0=np.zeros([8])
+        a=np.zeros([8])
         p0 = [5000, 0, 30]
         plotname=name+" for discbit =" + str(discbit)
         fitplotname=plotname + " (fitted)"
-        calibplotname="Mean edge shift in Threshold DACs as a function of DACDisc for discbit =" + str(discbit)
         dnp.plot.clear(plotname)
         dnp.plot.clear(fitplotname)
         dnp.plot.clear(calibplotname)
+        # Set discbits at 15
+        discbits=discbit*np.ones([self.chipSize,self.chipSize*self.nbOfChips])
         for chip in chips:
             #self.loadDiscbits(range(chip,chip+1),discName,discbit*roiFullMask[:,chip*256:chip*256+256])
             if discName=='discH':
@@ -635,44 +806,63 @@ class excaliburRX(object):
             if discName=='discL':
                 discHbits=np.zeros([self.chipSize,self.chipSize*self.nbOfChips])
                 self.loadConfigbits(range(chip,chip+1),discbits[:,chip*256:chip*256+256],discHbits[:,chip*256:chip*256+256],roiFullMask[:,chip*256:chip*256+256])
-        idx=-1
-        for DACDisc in DACDiscRange:
-            idx=idx+1
-            self.setDac(chips,DACdiscName,DACDisc)
-            [dacscanData,scanRange]=self.scanDac(chips,Threshold,dacRange)
-            edgeDacs=self.findMax(chips,dacscanData,dacRange,self.edgeVal)
-            for chip in chips:
-                edgeHisto=np.histogram(edgeDacs[0:256,chip*256:chip*256+256],bins=Bins)
-                dnp.plot.addline(edgeHisto[1][0:-1],edgeHisto[0],name=plotname)
-                popt, pcov = curve_fit(gauss_function, edgeHisto[1][0:-2], edgeHisto[0][0:-1],p0)
-                x=edgeHisto[1][0:-1]
-                a[chip,idx]=popt[0]
-                sigma[chip,idx]=popt[2]
-                x0[chip,idx]=popt[1]
-                dnp.plot.addline(x,gauss_function(x,a[chip,idx],x0[chip,idx],sigma[chip,idx]),name=fitplotname)
-            dnp.plot.clear(calibplotname)
-            for chip in chips:
-                dnp.plot.addline(np.asarray(DACDiscRange[0:idx]),x0[chip,0:idx],name=calibplotname)
-        print "#######################################################################################"
+
+        self.setDac(chips,DACdiscName,DACDisc)
+        [dacscanData,scanRange]=self.scanDac(chips,Threshold,dacRange)
+        edgeDacs=self.findMax(chips,dacscanData,dacRange,self.edgeVal)
+        for chip in chips:
+            edgeHisto=np.histogram(edgeDacs[0:256,chip*256:chip*256+256],bins=Bins)
+            dnp.plot.addline(edgeHisto[1][0:-1],edgeHisto[0],name=plotname)
+            popt, pcov = curve_fit(gauss_function, edgeHisto[1][0:-2], edgeHisto[0][0:-1],p0)
+            x=edgeHisto[1][0:-1]
+            a[chip]=popt[0]
+            sigma[chip]=popt[2]
+            x0[chip]=popt[1]
+            dnp.plot.addline(x,gauss_function(x,a[chip],x0[chip],sigma[chip]),name=fitplotname)
+        
+        
+        print "Mean noise edge for discbits =15 :"
+        for chip in chips:
+            print "Chip" + str(chip) + ' : ' + str(round(x0[chip])) + ' DAC units'
+        
+        print "sigma of Noise edge distribution for discbits =15 :"
+        for chip in chips:
+            print "Chip" + str(chip) + ' : ' + str(round(sigma[chip])) + ' DAC units rms'
+        
+        """
+        ###########################################################################################
+        STEP 3
+        Calculate DAC disc required to bring all noise edges within X sigma of the mean noise edge 
+        X is defined by self.nbOfsigma 
+        ###########################################################################################
+        """
+        
         print "Optimum equalization target :"
         for chip in chips:
-            print "Chip" + str(chip) + ' : ' + str(round(x0[chip,idx])) + ' DAC units'
+            print "Chip" + str(chip) + ' : ' + str(round(x0[chip])) + ' DAC units'
         if abs(x0-self.dacTarget).any()>self.accDist:
             print "########################### ONE OR MORE CHIPS NEED A DIFFERENT EQUALIZATION TARGET"
         else:
             print "Default equalization target of " + str(self.dacTarget) + " DAC units can be used."
+        
         print "DAC shift required to bring all pixels with an edge within +/- " + "sigma of the target, at the target of " + str(self.dacTarget) + " DAC units : "
         for chip in chips:
-            print "Chip" + str(chip) + ' : ' + str(int(self.nbOfSigma*sigma[chip,idx])) + ' Threshold DAC units'
-        print "Edge shift (in Threshold DAC units) produced by 1 DACdisc DAC unit for discbits=31 (maximum correction) :"
+            print "Chip" + str(chip) + ' : ' + str(int(self.nbOfSigma*sigma[chip])) + ' Threshold DAC units'
+        
+        print "Edge shift (in Threshold DAC units) produced by 1 DACdisc DAC unit for discbits=15 :"
         for chip in chips:
             print "Chip" + str(chip) + ' : ' + str(round(gain[chip],2)) + ' Threshold DAC units'
+            
         for chip in chips:
-            #OptDACdisc[chip]=-int(self.nbOfSigma*sigma[chip,idx]/gain[chip])
-            OptDACdisc[chip]=int(self.nbOfSigma*sigma[chip,idx]/gain[chip])
-        print "DACdisc value required to bring all pixels with an edge within +/- " + str(self.nbOfSigma)+ " sigma of the target, at the target of " + str(self.dacTarget) + " DAC units : "
+            OptDACdisc[chip]=int(self.nbOfSigma*sigma[chip]/gain[chip])
+        
+        print "#######################################################################################"
+        print "Optimum DACdisc value required to bring all pixels with an edge within +/- " + str(self.nbOfSigma)+ " sigma of the target, at the target of " + str(self.dacTarget) + " DAC units : "
         for chip in chips:
             print "Chip" + str(chip) + ' : ' + str(OptDACdisc[chip]) + ' Threshold DAC units'
+        print "#######################################################################################"
+        
+        
         print "Edge shift (in Threshold DAC Units) produced by 1 step of the 32 discbit correction steps :"
         for chip in chips:
             print "Chip" + str(chip) + ' : ' + str(OptDACdisc[chip]/16) + ' Threshold DAC units'
@@ -732,11 +922,12 @@ class excaliburRX(object):
                     roiChipMask=1-roiFullMask[0:256,chip*256:chip*256+256]
                     discbitsChip=discbits[0:256,chip*256:chip*256+256]
                     dnp.plot.addline(np.histogram(discbitsChip[roiChipMask.astype(bool)],bins=range(32))[1][0:-1],np.histogram(discbitsChip[roiChipMask.astype(bool)],bins=range(32))[0],name='Histogram of Final Discbits')
-            for chip in chips:
-                equPixTot[chip]=256**2-(discbits[0:256,chip*256:chip*256+256]==-10).sum()
-                print ('####### ' + str(round(equPixTot[chip],0)) + ' equalized pixels in chip ' + str(chip) + ' (' + str(round(100*equPixTot[chip]/(256**2),4)) + '%)')
+#            for chip in chips:
+#                equPixTot[chip]=256**2-(discbits[0:256,chip*256:chip*256+256]==-10).sum()
+#                print ('####### ' + str(round(equPixTot[chip],0)) + ' equalized pixels in chip ' + str(chip) + ' (' + str(round(100*equPixTot[chip]/(256**2),4)) + '%)')
         self.settings['disccsmspm']='0'
         self.settings['equalization']='0'
+        print "Pixel threshold equalization complete"
         return discbits
 
     def checkCalib(self,chips,DiscName,dacRange):
@@ -768,10 +959,11 @@ class excaliburRX(object):
         dnp.plot.image(roiFullMask)
         return roiFullMask
 
-    def calibrateDisc(self,chips,discName,steps,roiType):
-        self.checkCalibDir() # Create calibration directory structure if necessary
-        self.setdacs(chips)
-        self.logChipId() # Log chip IDs in calibration folder
+    def calibrateDisc(self,chips,discName,steps=1,roiType='rect'):
+        """
+        Usage x.calibrateDisc([0],"threshold0") to calibrate threshold 0 of chip 0 using the full matrix as a ROI during calibration 
+        x.calibrateDisc(range(8),"threshold1") to calibrate threshold 1 of all chips using the full chip matrix as a ROI during calibration 
+        """
         self.optimize_DACDisc(chips,discName,roiFullMask=1-self.Roi(chips,0,1,'rect'))
         for step in range(steps):# Run calibration over each roi
              roiFullMask=self.Roi(chips,step,steps,roiType)
@@ -781,20 +973,6 @@ class excaliburRX(object):
         self.saveDiscbits(chips,discbits,discName+'bits')
         return 
     
-
-    
-    def calibration(self,chips):
-        # Function defining the automatic calibration sequence
-        self.settings['mode']='spm'
-        self.settings['gain']='slgm'
-        self.calibrateDisc(chips,'discL',1,'rect')
-        #self.calibrateDisc(chips,'discH',1,'rect')
-        #self.settings['mode']='csm'
-        #self.settings['gain']='slgm'
-        #self.calibrateDisc(chips,'discL',1,'rect')
-        #self.calibrateDisc(chips,'discH',1,'rect')
-        return 
-
     def loop(self,ni):
         tmp=0
         for i in range(ni):
@@ -814,10 +992,302 @@ class excaliburRX(object):
         self.expose()
         self.expose()
         
+    
+    def set_GND_FBK_CAS_ExcaliburRX001(self,chips,fem):
+        """
+        IMPORTANT NOTE: These values of GND, FBK and CAS Dacs were adjusted for the modules present in RX001 on 20 june 2015
+        If modules are replaced, these DACs need to be re-adjusted 
         
-x=excaliburRX()
-#x.calibration(range(8))
+        
+        GND DAC needs to be adjusted manually to read back 0.65V
+        FBK DAC needs to be adjusted manually to read back 0.9V
+        CAS DAC needs to be adjusted manually to read back 0.85V
+        
+        The procedure to adjust a DAC manually is as follows:
+        For GND dac of chip 0:
+        x.setDac([0],'GND',150)
+        x.readDac([0],'GND')
+        Once the DAC value correspond to the required analogue value, edit the GND_Dacs matrix:
+        GND_Dacs[0,:]=[NEW DAC VALUE,x,x,x,x,x,x,x]
+        
+        For FBK dac of chip 0:
+        x.setDac([0],'FBK',150)
+        x.readDac([0],'FBK')
+        Once the DAC value correspond to the required analogue value, edit the FBK_Dacs matrix:
+        FBK_Dacs[0,:]=[NEW DAC VALUE,x,x,x,x,x,x,x]
+        
+        For Cas dac of chip 0:
+        x.setDac([0],'Cas',150)
+        x.readDac([0],'Cas')
+        Once the DAC value correspond to the required analogue value, edit the CAS_Dacs matrix:
+        CAS_Dacs[0,:]=[NEW DAC VALUE,x,x,x,x,x,x,x]
+        
+        This process could be automated if many modules have to be calibrated
+        
+        """
+        GND_Dacs=145*np.ones([6,8]).astype('int')
+        FBK_Dacs=190*np.ones([6,8]).astype('int')
+        CAS_Dacs=180*np.ones([6,8]).astype('int')
+        
+        # DACs specific to FEM1 (Top FEM)
+        # @ Moly temp: 27 degC on node 1
+        GND_Dacs[0,:]=[154,145,140,170,158,145,145,140]
+        FBK_Dacs[0,:]=[212,196,192,230,212,205,201,195]
+        CAS_Dacs[0,:]=[201,185,186,226,208,190,198,187]
+        
+        # @ Moly temp: 28 degC on node 2
+        GND_Dacs[1,:]=[138,145,146,156,162,157,155,145]
+        FBK_Dacs[1,:]=[190,201,200,221,221,212,220,204]
+        CAS_Dacs[1,:]=[181,188,192,208,210,201,207,190]
+        
+        #@ Moly temp: 35 degC on node 3
+        GND_Dacs[2,:]=[155,150,145,146,160,145,136,152]
+        FBK_Dacs[2,:]=[218,205,198,200,210,196,190,200]
+        CAS_Dacs[2,:]=[201,193,186,183,200,190,180,187]
+        
+        #@ Moly temp: 34 degC on node 4
+        GND_Dacs[3,:]=[145,141,142,142,141,141,143,150]
+        FBK_Dacs[3,:]=[205,190,197,200,190,190,200,210]
+        CAS_Dacs[3,:]=[187,187,183,187,177,181,189,194]
+        # NOTE : chip 2 FBK cannot be set to target value
+        
+        #@ Moly temp: 31 degC on node 5
+        GND_Dacs[4,:]=[136,146,136,160,142,135,140,148]
+        FBK_Dacs[4,:]=[190,201,189,207,189,189,191,208]
+        CAS_Dacs[4,:]=[180,188,180,197,175,172,185,200]
+        
+        #@ Moly temp: 31 degC on node 6
+        """
+        NOTE: DAC out read-back selection crashes one of the bottom 1/2 module 
+        """
+        gnd=145
+        fbk=190
+        cas=180
+        GND_Dacs[5,:]=[gnd,gnd,gnd,gnd,gnd,gnd,gnd,gnd]
+        FBK_Dacs[5,:]=[fbk,fbk,fbk,fbk,fbk,fbk,fbk,fbk]
+        CAS_Dacs[5,:]=[cas,cas,cas,cas,cas,cas,cas,cas]
+        
+        for chip in chips:
+            self.setDac(range(chip,chip+1),'GND',GND_Dacs[fem-1,chip])
+            self.setDac(range(chip,chip+1),'FBK',FBK_Dacs[fem-1,chip])
+            self.setDac(range(chip,chip+1),'Cas',CAS_Dacs[fem-1,chip])
+        
+        return
 
+    def Fe55ThreshCalib(self,chips,Threshold):
+        
+        self.settings['acqtime']=1000
+        dacRange=(self.dacTarget+80,self.dacTarget+20,2)
+        self.loadConfig(range(8))
+        self.settings['filename']='Fe55_Threshold_scan'
+        [dacscanData,scanRange]=self.scanDac(chips,"Threshold"+str(Threshold),dacRange)
+        edgeDacs=self.findEdge(chips,dacscanData,dacRange,2)        
+        chipEdgeDacs=np.zeros([len(chips)])
+        for chip in chips:
+            chipEdgeDacs[chip]=edgeDacs[0:256,chip*256:chip*256+256].mean()
+        
+        Fe55_Dac=np.ones([6,8]).astype('float')
+        Fe55_E=6#keV
+        
+        Fe55_Dac[0,:]=[62,62,62,62,62,62,62,62]
+        Fe55_Dac[1,:]=[64,64,64,64,64,64,64,64]
+        Fe55_Dac[2,:]=[62,62,62,62,62,62,62,62]
+        Fe55_Dac[3,:]=[60,35,64,64,64,64,64,64]
+        Fe55_Dac[4,:]=[64,64,64,64,64,64,64,64]
+        Fe55_Dac[5,:]=[64,64,64,64,64,64,64,64]
+        
+        slope=(Fe55_Dac[self.fem-1,:]-self.dacTarget)/Fe55_E
+        offset=[self.dacTarget,self.dacTarget,self.dacTarget,self.dacTarget,self.dacTarget,self.dacTarget,self.dacTarget,self.dacTarget]
+        self.save_keV2dac_calib(Threshold,slope,offset)
+        print str(slope) + str(offset)
+        
+        self.settings['filename']='image'
+        return 
+
+
+    def arbThreshCalib(self,chips,Threshold):
+        # Simple function wich performs a DAC scan and align the noise edge of all th echips using offset parameter and put edges at an arbitrary value using slope 
+        #chipEdgeDac=np.array([10,20,20,20,20,20,20,20])
+        #offset= [0,0,0,0,0,0,0,0]
+        dacRange=(self.dacTarget+10,self.dacTarget,1)
+        x.loadConfig(range(8))
+        [dacscanData,scanRange]=self.scanDac(chips,"Threshold"+str(Threshold),dacRange)
+        edgeDacs=self.findEdge(chips,dacscanData,dacRange,2)        
+        chipEdgeDacs=np.zeros([len(chips)])
+        for chip in chips:
+            chipEdgeDacs[chip]=edgeDacs[0:256,chip*256:chip*256+256].mean()
+        offset= chipEdgeDacs.mean()-chipEdgeDacs
+        E=float(self.arbNoiseEdgeEnergySPM[self.settings['gain']])
+        gain = chipEdgeDacs/E
+        self.save_keV2dac_calib(Threshold,gain,offset)
+        return chipEdgeDacs
+        
+    def setThreshEnergy(self,Threshold,threshEnergy):
+        threshCoeff= np.genfromtxt(self.calibSettings['calibDir']+  'fem' + str(self.fem) +'/'+self.settings['mode'] + '/' + self.settings['gain']+ '/'  + 'threshold'+ str(Threshold))
+        threshDACs=(threshEnergy*threshCoeff[0,:]+threshCoeff[1,:]).astype(np.int)
+        for chip in range(8):
+            self.setDac(range(chip,chip+1),"Threshold"+str(Threshold), threshDACs[chip])
+        time.sleep(0.2)
+        self.settings['acqtime']='100'
+        self.expose()
+        print  "A Threshold" + str(Threshold) + " of " + str(threshEnergy) + "keV corresponds to " + str(threshDACs) + " DAC units for each chip"
+        return threshDACs
+        
+    def save_keV2dac_calib(self,Threshold,gain,offset):
+        # Each Threshold calibration file consists of 2 rows of 8 floating point numbers:
+        # g0     g1   g2   g3   g4   g5   g6   g7
+        # Off0 Off1 Off2 Off3 Off4 Off5 Off6 Off7 
+        # and the DAC value to apply to chip x for a requested threshold energy value E in keV is given by:
+        # DACx= gx * E + Offx 
+        threshCoeff=np.zeros([2,8])
+        threshCoeff[0,:]=gain
+        threshCoeff[1,:]=offset
+        np.savetxt(self.calibSettings['calibDir']+  'fem' + str(self.fem) +'/'+self.settings['mode'] + '/' + self.settings['gain']+ '/'  + 'threshold'+ str(Threshold),threshCoeff,fmt='%.2f')
+        return gain,offset
+
+
+#    def keV2dac(self,XrayEnergy1,XrayEnergy2,XrayEdge1,XrayEdge2):
+#        slope=(XrayEdge2-XrayEdge1)/(XrayEnergy2-XrayEnergy1)
+#        offset=XrayEdge2-XrayEnergy2*slope
+#        print slope,offset
+#        return slope,offset
+     
+#    def save_keV2dac(self,thresholdNb,mode,gain,slope,offset):
+#        np.savetxt(self.calibSettings['calibDir']+ mode + '/' + gain + '/' + 'th'+ str(thresholdNb) + '.slope',slope)
+#        np.savetxt(self.calibSettings['calibDir']+ mode + '/' + gain + '/' + 'th'+ str(thresholdNb) +'.offset',offset)
+#        return slope,offset
+
+#    def findXrayEdge(self,XrayEnergy,thresholdDacNb,chipNb,scanStart,scanStep,scanStop,acqtime,dacfilename):
+#        XrayEdge=self.threshold_dacScan(thresholdDacNb,chipNb,scanStart,scanStep,scanStop,acqtime,dacfilename)
+#        return XrayEdge
+ 
+#    def threshold_calibration(self,thresholdNb,mode,gain,XrayEnergy1,XrayEnergy2,chipNb,scanStart,scanStep,scanStop,acqtime,dacfilename):
+#        self.save_keV2dac(0,mode,gain,[1,1,1,1,1,1,1,1],[0,0,0,0,0,0,0,0])
+#        self.setThreshold(0,mode,gain,scanStart)
+#        var = raw_input(str(XrayEnergy1)+" keV X-rays Ready?: ")
+#        print "Ok", var
+#        XrayEdge1=self.findXrayEdge(XrayEnergy1,thresholdNb,chipNb,scanStart,scanStep,scanStop,acqtime,dacfilename)
+#        var = raw_input(str(XrayEnergy2)+" keV X-rays Ready?: ")
+#        print "Ok", var
+#        XrayEdge2=self.findXrayEdge(XrayEnergy2,thresholdNb,chipNb,scanStart,scanStep,scanStop,acqtime,dacfilename)
+#        [slope,offset]=self.keV2dac(XrayEnergy1,XrayEnergy2,XrayEdge1,XrayEdge2)
+#        self.save_keV2dac(thresholdNb,mode,gain,slope,offset)
+        return [slope,offset]
+
+
+    def rotateConfig(self,configFile):
+        print configFile
+        shutil.copy(configFile,configFile+".backup")
+        configBits=np.loadtxt(configFile)
+        np.savetxt(configFile,np.rot90(configBits,2),fmt='%.18g', delimiter=' ' )
+        return 
+    
+#     def rotateAllConfig(self,calibPath):
+#         #x.rotateAllConfig("/dls/tmp/excalibur/calib_spm_shgm/")
+#         chips=[0,1,2,3,4,5,6,7]
+#         print calibPath
+#         if self.fem % 2 == 1 :
+#             print "Config files will be backed-up and rotated before saving new config file for fem " + str(self.fem)
+#             for chip in chips:
+#                 discLbitsFile=calibPath+"/fem"+str(self.fem)+"/"+ self.settings['mode'] + "/" + self.settings['gain']+       "/discLbits.chip"+str(chip)
+#                 self.rotateConfig(discLbitsFile)
+#                 discHbitsFile=calibPath+"/fem"+str(self.fem)+"/"+ self.settings['mode'] + "/" + self.settings['gain']+       "/discHbits.chip"+str(chip)
+#                 self.rotateConfig(discHbitsFile)
+#                 pixelmaskFile=calibPath+"/fem"+str(self.fem)+"/"+ self.settings['mode'] + "/" + self.settings['gain']+       "/pixelmask.chip"+str(chip)
+#                 self.rotateConfig(pixelmaskFile)
+#         return 
+             
+
+
+x=excaliburRX(1)
+
+
+
+
+#x.calibration(range(8))
+#x.loadConfig(range(8))
+#x.maskPixelsUsingDACscan(range(8),"Threshold0",(40,120,2))
+#x.Fe55ThreshCalib(range(8),0)
+
+
+
+#     def setThreshold(self,thresholdNb,mode,gain,thresholdValue):
+#         subDir=self.calibSettings['calibDir']+ mode + '/' + gain + '/'
+#         for chipNb in self.chipRange:
+#             self.loadDiscLbits(range(chipNb,chipNb+1),subDir + 'discLbits.chip'+str(chipNb))
+#             print(self.calibSettings['calibDir']+ mode + '/' + gain + '/''discLbits.chip'+str(chipNb))
+#         #dacTh0 = np.genfromtxt(subDir+ '/keV2dac',delimiter=",")*threshold
+#         dacTh0 = np.genfromtxt(subDir+ '/' + 'th'+ str(thresholdNb) +'.slope',delimiter=",")*thresholdValue+np.genfromtxt(subDir+ '/' +'th'+ str(thresholdNb) +'.offset',delimiter=",")
+#         #dacTh0 = ([0,0,0,0,0,0,1,1]*dacTh0+[120,120,120,120,120,120,0,0]).astype(np.int)
+#         for chipNb in self.chipRange:
+#             self.setDacTh0(chipNb,dacTh0[chipNb].astype(np.int),subDir+'dacs')
+#         self.calibSettings['dacfile']=subDir+'dacs'
+#         self.settings['gainmode']=gain
+#         return dacTh0
+# 
+#     def energyEdgeScan(self,energy,scanRange):
+#         #scanRange=range(50,30,-2)
+#         meanCounts=np.zeros((np.array(scanRange).shape[0],8),np.int)
+#         exca.settings['acqtime']='1000'
+#         scanIdx=0
+#         threshVal=np.zeros(10,np.int)
+#         for thresh in scanRange:
+#             self.setThreshold('spm','slgm',thresh)
+#             self.settings['filechipNb,scanStart,scanStep,scanStop,acqtime,dacfilenamename']='energy' + str(energy) + 'thresh' + str(thresh) +'.hdf5'
+#             image=self.expose()
+#             time.sleep(1)
+#             subprocess.call(["bin/excaliburTestApp","-i","192.168.0.101","-p","6969","-m","0x3f","--slow"])
+#             
+#             #dh = dnp.io.load(self.settings['imagepath'] + self.settings['filename'])
+#             #imageRaw=dh.image[...]
+#             #image=dnp.squeeze(imageRaw.astype(np.int))
+#             #dnp.plot.image(image)
+# #             for chip in range(8):
+# #                 meanCoun)ts[scanIdx][chip]=image[0:256,chip*256:chip*256+256].mean()
+# #                 threshVal[scanIdx]=thresh
+# #             scanIdx=scanIdx+1
+#         return
+ 
+#     def threshCalib(self,energy1,energy2,scanRange):
+#         scanIdx=0
+#         meanCounts=np.zeros((np.array(scanRange).shape[0],8),np.float)
+#         threshVal=np.zeros(np.array(scanRange).shape[0],np.float)
+#         for thresh in scanRange:
+#             self.settings['filename']='energy' + str(energy1) + 'thresh' + str(thresh) +'.hdf5'
+#             dh = dnp.io.load(self.settings['imagepath'] + self.settings['filename'])
+#             imageRaw=dh.image[...]
+#             image=dnp.squeeze(imageRaw.astype(np.int))
+#             dnp.plot.image(image)
+#             for chip in range(8):
+#                 meanCounts[scanIdx][chip]=image[0:256,chip*256:chip*256+256].mean()
+#                 threshVal[scanIdx]=thresh
+#             scanIdx=scanIdx+1
+#             energyEdge1=(threshVal[np.argmax((meanCounts>10),0)])
+#         
+#         scanIdx=0
+#         for thresh in scanRange:
+#             self.settings['filename']='energy' + str(energy2) + 'thresh' + str(thresh) +'.hdf5'
+#             dh = dnp.io.load(self.settings['imagepath'] + self.settings['filename'])
+#             imageRaw=dh.image[...]
+#             image=dnp.squeeze(imageRaw.astype(np.int))
+#             dnp.plot.image(image)
+#             for chip in range(8):
+#                 meanCounts[scanIdx][chip]=image[0:256,chip*256:chip*256+256].mean()
+#                 threshVal[scanIdx]=thresh
+#             scanIdx=scanIdx+1
+#         energyEdge2=(threshVal[np.argmax((meanCounts>10),0)])
+#         
+#         slope=(energyEdge2-energyEdge1)/(energy2-energy1)
+#         offset=energyEdge2-energy2*slope
+#         exca.keV2dac(slope,offset)
+#         return (slope,offset,energyEdge1,energyEdge2)
+
+
+
+
+
+#x.calibration(range(8))
+#[dacScanData,scanRange]=x.scanDac(range(8),"Threshold0",(60,15,1))
 
 
 #x.maskPixelsUsingDACscan([7],'Threshold0',(150,50,2))
@@ -831,11 +1301,11 @@ x=excaliburRX()
 #x.csm(range(8),'shgm')
 
 
-#chips=[7]
+#chips=range(8)
 #x.settings['acqtime']='1000'
 #x.settings['gain']='hgm'
 #dacRange=(60,34,1)
-#dacRange=(60,25,1)
+#dacRange=(60,15,1)
 #x.settings['filename']='test'
 #x.chipId()
 #[dacScanData,scanRange]=x.scanDac(chips,"Threshold0",dacRange)
