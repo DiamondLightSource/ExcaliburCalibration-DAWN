@@ -1,7 +1,7 @@
 """
 EXCALIBUR calibration Python scripts
 /dls/detectors/support/silicon_pixels/excaliburRX/PyScripts/excaliburDAWN.py
-10-07-2015
+13-07-2015
 """
 
 import subprocess
@@ -139,7 +139,8 @@ class excaliburRX(object):
     > x=excaliburRX(node)
     ########################
     were node is the PC server node number you are connected to.
-    For example when running the Python calibration scripts on node i13-1-excalibur0X (with X in [1:6]), you should use: x=excaliburRX(X) 
+    For example when running the Python calibration scripts on node i13-1-excalibur0X (with X in [1:6]), you should use: x=excaliburRX(X)
+    For I13 installation top FEM is connected to node 1 and bottom fem to node 6
     
     To run calibration scripts, just type in the interactive Python console:
     ########################
@@ -147,7 +148,7 @@ class excaliburRX(object):
     ########################
     By default, calibration files will be created locally in a temporary folder : /tmp/femX of the PC server node X.
     You should copy the folder /femX in the path were EPICS expects calibration files for all the fems/nodes 
-    For I13 installation top FEM is connected to node 1 and bottom fem to node 6
+    
     
     The very first time you calibrate a module, you need to manually adjust 3 DACs: FBK, CAS and GND
     The procedure is described in set_GND_FBK_CAS_ExcaliburRX001
@@ -203,7 +204,7 @@ class excaliburRX(object):
         """
         NOTE: Always equalize DiscL before DiscH since Threshold1 is set at 0 when equalizing DiscL. So if DiscH was equalized first, this would induce noisy counts interfering with DiscL equalization 
         """
-        #self.calibrateDisc(chips,'discH',1,'rect')
+        self.calibrateDisc(chips,'discH',1,'rect')
 
         #self.settings['mode']='csm'
         #self.settings['gain']='slgm'
@@ -302,7 +303,7 @@ class excaliburRX(object):
             'TPREFA':'24',
             'TPREFB':'25'}
 
-    calibSettings={'calibDir':'/tmp/',
+    calibSettings={'calibDir':'/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/',#'/tmp/'
                    'configDir':'/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/config/',
                    'dacfilename':'dacs',
                    'dacfile':'',
@@ -365,6 +366,36 @@ class excaliburRX(object):
     
     def monitor(self):
         subprocess.call([self.command,"-i",self.ipaddress,"-p",self.port,"-m",self.mask(self.chipRange),"--slow"])
+    
+    def setTh0Dac(self,chips=range(8),dacValue=40):
+        """
+        This function sets Threshold 0 DAC to a selected value for all chips  
+        Usage: x.setTh0Dac(30)
+        """
+        self.setDac(chips,'Threshold0', dacValue)
+        x.expose()
+        
+    
+    def Fe55imageRX001(self,chips=range(8),exptime=60000):
+        """
+        THIS WILL SAVE FE55 IMAGE IN /dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/ DIRECTORY
+        """
+        self.settings['gain']='shgm'
+        self.loadConfig(chips)
+        self.setTh0Dac(chips,40)
+        self.settings['acqtime']=str(exptime)
+        self.settings['filename']='Fe55_image_node_'+str(self.fem)+'_'+str(self.settings['acqtime'])+'s'
+        self.settings['imagepath']='/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/Fe55_images/'
+        print (self.settings['acqtime'])
+        self.settings['acqtime']=str(exptime)
+        time.sleep(0.5)
+        self.expose()
+        self.settings['imagepath']='/tmp/'
+        self.settings['filename']='image'
+        self.settings['acqtime']='100'
+        return
+    
+    
     
     def setDac(self,chips,dacName="Threshold0",dacValue=40):
         """
@@ -518,6 +549,7 @@ class excaliburRX(object):
         time.sleep(0.5)
 
     def expose(self):
+        print(self.settings)
         self.updateFilenameIndex()
         self.settings['fullFilename']=self.settings['filename']+"_"+self.settings['filenameIndex']+".hdf5"
         subprocess.call([self.command,"-i",self.ipaddress,"-p",self.port,"-m",self.mask(self.chipRange),"--depth="+self.settings['bitdepth'],"--csmspm="+self.modeCode[self.settings['mode']],"--disccsmspm="+self.settings['disccsmspm'],"--equalization="+self.settings['equalization'],"--gainmode="+self.gainCode[self.settings['gain']],"--acquire","--frames="+str(self.settings['frames']),"--acqtime="+str(self.settings['acqtime']),"--trigmode="+self.settings['trigmode'],"--path="+self.settings['imagepath'],"--hdffile="+self.settings['fullFilename']])
@@ -733,6 +765,10 @@ class excaliburRX(object):
         dir=(self.calibSettings['calibDir']+ 'fem' + str(self.fem) +'/'+self.settings['mode'] + '/' + self.settings['gain']+ '/')
         if (os.path.isdir(dir))==0:
             os.makedirs(dir)
+        else:
+            backupDir=self.calibSettings['calibDir'][:-1]+'_backup_'+time.asctime()
+            shutil.copytree(self.calibSettings['calibDir'],backupDir)
+            print backupDir
         dacFile=dir+self.calibSettings['dacfilename']
         if os.path.isfile(dacFile)==0:
             shutil.copy(self.calibSettings['configDir']+self.calibSettings['dacfilename'],dir)
@@ -1101,7 +1137,7 @@ class excaliburRX(object):
         discbits=self.combineRois(chips,discName,steps,roiType)
         
         self.saveDiscbits(chips,discbits,discName+'bits')
-        self.loadConfig(range(8))# Load calibration files created
+        self.loadConfig(chips)# Load calibration files created
         self.copy_SLGM_into_other_gain_modes() # Copy slgm calibration folder to other gain calibration folders 
         return 
     
