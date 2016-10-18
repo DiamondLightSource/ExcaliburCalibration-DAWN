@@ -17,6 +17,7 @@ import time
 import os
 import shutil
 from scipy.optimize import curve_fit
+import scisoftpy as dnp
 
 def myerf(x,A, mu, sigma):# Function required to express S-curve 
     return A/2. * (1+math.erf((x-mu)/(math.sqrt(2)*sigma)))
@@ -429,8 +430,8 @@ class excaliburRX(object):
         #self.calibrateDisc(chips,'discL',1,'rect')
         #self.calibrateDisc(chips,'discH',1,'rect')
         
-        badPixels=self.maskRowBlock(range(4),256-20,256)
-
+        #badPixels=self.maskRowBlock(range(4),256-20,256) # EG (13/06/2016) creates mask for horizonal noise
+        
         return 
 
     def threshold_calibration_allGains(self,chips=range(8),Threshold="0"):
@@ -1166,7 +1167,7 @@ class excaliburRX(object):
         image=dnp.squeeze(imageRaw.astype(np.int))
         dnp.plot.clear()
         dnp.plot.image(image,name='Image data')
-        return image
+        #return image
 
     def shoot(self,acqtime):
         """
@@ -1841,7 +1842,7 @@ class excaliburRX(object):
         for i in range(ni):
             tmp=self.expose()+tmp
             dnp.plot.image(tmp,name='sum')
-        return
+            return
         
     def csm(self,chips=range(8),gain='slgm'):
         """
@@ -1922,21 +1923,21 @@ class excaliburRX(object):
         CENTRAL MODULE: AC-EXC-7
         """
         # @ Moly temp: 27 degC on node 1
-        GND_Dacs[2,:]=[154,145,140,170,158,145,145,140]
-        FBK_Dacs[2,:]=[212,196,192,230,212,205,201,195]
-        CAS_Dacs[2,:]=[201,185,186,226,208,190,198,187]
+        GND_Dacs[2,:]=[143,156,139,150,144,150,149,158]
+        FBK_Dacs[2,:]=[189,213,185,193,204,207,198,220]
+        CAS_Dacs[2,:]=[181,201,177,184,194,193,193,210]
         
         # @ Moly temp: 28 degC on node 2
-        GND_Dacs[3,:]=[138,145,146,156,162,157,155,145]
-        FBK_Dacs[3,:]=[190,201,200,221,221,212,220,204]
-        CAS_Dacs[3,:]=[181,188,192,208,210,201,207,190]
+        GND_Dacs[3,:]=[140,145,139,146,139,148,142,143]
+        FBK_Dacs[3,:]=[193,199,188,196,185,219,190,190]
+        CAS_Dacs[3,:]=[189,192,188,181,181,207,189,186]
         """
         BOTTOM MODULE: AC-EXC-4
         """
-        #@ Moly temp: 31 degC on node 5
-        GND_Dacs[4,:]=[136,146,136,160,142,135,140,148]
-        FBK_Dacs[4,:]=[190,201,189,207,189,189,191,208]
-        CAS_Dacs[4,:]=[180,188,180,197,175,172,185,200]
+#         #@ Moly temp: 31 degC on node 5
+#         GND_Dacs[4,:]=[136,146,136,160,142,135,140,148]
+#         FBK_Dacs[4,:]=[190,201,189,207,189,189,191,208]
+#         CAS_Dacs[4,:]=[180,188,180,197,175,172,185,200]
         
         #@ Moly temp: 31 degC on node 6
         """
@@ -1958,9 +1959,21 @@ class excaliburRX(object):
         gnd=145
         fbk=190
         cas=180
-        GND_Dacs[5,:]=[158,140,gnd,145,158,145,138,153]
-        FBK_Dacs[5,:]=[215,190,fbk,205,221,196,196,210]
-        CAS_Dacs[5,:]=[205,178,cas,190,205,180,189,202]
+#         GND_Dacs[5,:]=[158,140,gnd,145,158,145,138,153]
+#         FBK_Dacs[5,:]=[215,190,fbk,205,221,196,196,210]
+#         CAS_Dacs[5,:]=[205,178,cas,190,205,180,189,202]
+        
+        """
+        1st MODULE 1M:
+        """
+        GND_Dacs[4,:]=[151,135,150,162,153,144,134,145]# up -fem5
+        FBK_Dacs[4,:]=[200,195,205,218,202,194,185,197]
+        CAS_Dacs[4,:]=[196,180,202,214,197,193,186,187]
+        
+        GND_Dacs[5,:]=[134,145,171,146,152,142,141,141] # Bottom -fem6
+        FBK_Dacs[5,:]=[192,203,228,197,206,191,206,189]
+        CAS_Dacs[5,:]=[178,191,218,184,192,186,195,185]
+
         
         for chip in chips:
             self.setDac(range(chip,chip+1),'GND',GND_Dacs[fem-1,chip])
