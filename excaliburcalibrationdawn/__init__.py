@@ -1,4 +1,4 @@
-from excaliburnode import ExcaliburNode
+from excaliburnode import ExcaliburNode, Range
 from excalibur1M import Excalibur1M
 from excaliburdawn import ExcaliburDAWN
 from excaliburtestappinterface import ExcaliburTestAppInterface
