@@ -1016,6 +1016,9 @@ class ExcaliburNode(object):
     def expose(self, exposure=None):
         """Acquire single frame using current detector settings.
 
+        Args:
+            exposure: Exposure time of image
+
         Returns:
             numpy.array: Image data
 

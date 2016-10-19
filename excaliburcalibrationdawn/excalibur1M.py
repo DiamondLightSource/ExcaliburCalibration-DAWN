@@ -60,7 +60,12 @@ class Excalibur1M(object):
         self.nodes[0].disable_hv()
 
     def set_hv_bias(self, hv_bias):
-        """Set HV bias."""
+        """Set HV bias.
+
+        Args:
+            hv_bias: Voltage to set
+
+        """
         self.nodes[0].set_hv_bias(hv_bias)
 
     def threshold_equalization(self, chips):
