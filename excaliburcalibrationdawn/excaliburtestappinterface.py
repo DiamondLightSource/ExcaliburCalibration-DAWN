@@ -120,8 +120,9 @@ class ExcaliburTestAppInterface(object):
                     RPZ='19', GND='20', TPREF='21', FBK='22', Cas='23',
                     TPREFA='24', TPREFB='25')
 
-    def __init__(self, ip_address, port, server_name=None):
-        self.server_name = server_name
+    def __init__(self, node, ip_address, port, server_name=None):
+        self.node = node
+        self.server_path = "{}.diamond.ac.uk".format(server_name)
         self.ip_address = ip_address
         self.port = str(port)
 
@@ -130,8 +131,7 @@ class ExcaliburTestAppInterface(object):
 
         self.base_cmd = []
         if server_name is not None:  # TODO: Default localhost and always add?
-            self.base_cmd.append("ssh {server}".format(
-                server=self.server_name))
+            self.base_cmd.extend(["ssh", self.server_path])
         self.base_cmd.extend([self.path,
                               self.IP_ADDRESS, self.ip_address,
                               self.PORT, self.port])
@@ -197,7 +197,12 @@ class ExcaliburTestAppInterface(object):
             logging.debug("Output: %s", output)
 
     def set_lv_state(self, lv_state):
-        """Set LV to given state; 0 - Off, 1 - On."""
+        """Set LV to given state; 0 - Off, 1 - On.
+
+        Args:
+            lv_state: State to set
+
+        """
         if lv_state not in [0, 1]:
             raise ValueError("LV can only be on (0) or off (1), got "
                              "{value}".format(value=lv_state))
@@ -207,7 +212,12 @@ class ExcaliburTestAppInterface(object):
         self._send_command(command)
 
     def set_hv_state(self, hv_state):
-        """Set HV to given state; 0 - Off, 1 - On."""
+        """Set HV to given state; 0 - Off, 1 - On.
+
+        Args:
+            hv_state: State to set
+
+        """
         if hv_state not in [0, 1]:
             raise ValueError("HV can only be on (0) or off (1), got "
                              "{value}".format(value=hv_state))
@@ -216,7 +226,12 @@ class ExcaliburTestAppInterface(object):
         self._send_command(command)
 
     def set_hv_bias(self, hv_bias):
-        """Set HV bias to given value."""
+        """Set HV bias to given value.
+
+        Args:
+            hv_bias: Voltage to set
+
+        """
         if hv_bias < 0 or hv_bias > 120:
             raise ValueError("HV bias must be between 0 and 120 volts, got "
                              "{value}".format(value=hv_bias))
@@ -440,3 +455,25 @@ class ExcaliburTestAppInterface(object):
             self._send_command(command)
         else:
             print(str(discl) + " does not exist !")
+
+    def grab_remote_file(self, server_source):
+        """SSH into the server node and copy the given file to the local host.
+
+        Args:
+            server_source: File path on server
+
+        Returns:
+            str: File path to local copied file
+
+        """
+        file_name, extension = posixpath.splitext(server_source)
+        full_source = "{server}:{source}".format(server=self.server_path,
+                                                 source=server_source)
+        new_file = "{base}_fem{node}{ext}".format(base=file_name,
+                                                  node=self.node,
+                                                  ext=extension)
+
+        command = ["scp", full_source, new_file]
+        self._send_command(command)
+
+        return new_file

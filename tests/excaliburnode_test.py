@@ -72,8 +72,8 @@ class InitTest(unittest.TestCase):
 
     def test_server_used(self):
         e = ExcaliburNode(1, "test-server")
-        self.assertEqual("test-server1", e.server_name)
-        self.assertEqual("test-server1", e.app.server_name)
+        self.assertEqual("test-server6", e.server_name)
+        self.assertEqual("test-server6.diamond.ac.uk", e.app.server_path)
 
     def test_given_node_invalid_node_raises(self):
         with self.assertRaises(ValueError):

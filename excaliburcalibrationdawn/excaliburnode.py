@@ -330,15 +330,18 @@ class ExcaliburNode(object):
         if node not in [1, 2, 3, 4, 5, 6]:
             raise ValueError("Node {node} is invalid. Should be 1-6.".format(
                 node=node))
+        suffix = 7 - node  # FEMs are numbered in reverse
 
         self.fem = node
-        self.ipaddress = "192.168.0.10{}".format(7 - self.fem)
+        self.ipaddress = "192.168.0.10{}".format(suffix)
 
         if server_root is not None:
-            self.server_name = "{root}{fem}".format(root=server_root,
-                                                    fem=self.fem)
+            self.server_name = "{root}{suffix}".format(root=server_root,
+                                                       suffix=suffix)
+            self.remote_node = True
         else:
             self.server_name = None
+            self.remote_node = False
 
         logging.debug("Creating ExcaliburNode with server %s and ip %s",
                       self.server_name, self.ipaddress)
@@ -366,7 +369,7 @@ class ExcaliburNode(object):
                                             self.settings['mode'],
                                             self.settings['gain'])
 
-        self.app = ExcaliburTestAppInterface(self.ipaddress, 6969,
+        self.app = ExcaliburTestAppInterface(self.fem, self.ipaddress, 6969,
                                              self.server_name)
         self.dawn = ExcaliburDAWN()
 
@@ -1092,8 +1095,12 @@ class ExcaliburNode(object):
                          hdf_file=self.settings['fullFilename'])
 
         time.sleep(0.5)
-        image = self.dawn.load_image_data(self.settings['imagepath'] +
-                                          self.settings['fullFilename'])
+        file_path = posixpath.join(self.settings['imagepath'],
+                                   self.settings['fullFilename'])
+        if self.remote_node:
+            file_path = self.app.grab_remote_file(file_path)
+
+        image = self.dawn.load_image_data(file_path)
         return image
 
     def acquire_ff(self, num, acquire_time):

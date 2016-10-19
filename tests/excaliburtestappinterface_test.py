@@ -12,7 +12,7 @@ ETAI_patch_path = "excaliburcalibrationdawn.excaliburtestappinterface.ExcaliburT
 class TestInit(unittest.TestCase):
 
     def test_attributes_set(self):
-        e = ExcaliburTestAppInterface("test_ip", "test_port")
+        e = ExcaliburTestAppInterface(1, "test_ip", "test_port")
         expected_path = "/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp"
 
         self.assertEqual(expected_path, e.path)
@@ -28,8 +28,9 @@ class TestInit(unittest.TestCase):
                           '-p', 'test_port'], e.base_cmd)
 
     def test_base_cmd_with_server_given(self):
-        e = ExcaliburTestAppInterface("test_ip", "test_port", "test_server")
-        self.assertEqual(['ssh test_server',
+        e = ExcaliburTestAppInterface(1, "test_ip", "test_port", "test_server")
+        self.assertEqual(['ssh',
+                          'test_server.diamond.ac.uk',
                           '/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
                           '-i', 'test_ip',
                           '-p', 'test_port'], e.base_cmd)
@@ -39,7 +40,7 @@ class TestInit(unittest.TestCase):
 class TestConstructCommand(unittest.TestCase):
 
     def test_returns(self, mask_mock):
-        e = ExcaliburTestAppInterface("test_ip", "test_port")
+        e = ExcaliburTestAppInterface(1, "test_ip", "test_port")
         expected_command = ['/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
                             '-i', 'test_ip',
                             '-p', 'test_port',
@@ -52,7 +53,7 @@ class TestConstructCommand(unittest.TestCase):
         self.assertEqual(expected_command, command)
 
     def test_adds_args_and_returns(self, mask_mock):
-        e = ExcaliburTestAppInterface("test_ip", "test_port")
+        e = ExcaliburTestAppInterface(1, "test_ip", "test_port")
         expected_command = ['/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
                             '-i', 'test_ip',
                             '-p', 'test_port',
@@ -72,7 +73,7 @@ class TestConstructCommand(unittest.TestCase):
 class TestSendCommand(unittest.TestCase):
 
     def test_subp_called_and_logged(self, subp_mock, logging_mock):
-        e = ExcaliburTestAppInterface("test_ip", "test_port")
+        e = ExcaliburTestAppInterface(1, "test_ip", "test_port")
         expected_message = "Sending command: '%s' with kwargs %s"
         subp_mock.return_value = "Success"
 
@@ -84,7 +85,7 @@ class TestSendCommand(unittest.TestCase):
         self.assertEqual("Output: %s", logging_mock.call_args_list[1][0][0])
 
     def test_error_raised_then_catch_and_log(self, subp_mock, logging_mock):
-        e = ExcaliburTestAppInterface("test_ip", "test_port")
+        e = ExcaliburTestAppInterface(1, "test_ip", "test_port")
         expected_message = "Sending command: '%s' with kwargs %s"
         subp_mock.side_effect = CalledProcessError(1, "test_command",
                                                    output="Invalid command")
@@ -103,7 +104,7 @@ class TestSendCommand(unittest.TestCase):
 class TestAPICalls(unittest.TestCase):
 
     def setUp(self):
-        self.e = ExcaliburTestAppInterface("test_ip", "test_port")
+        self.e = ExcaliburTestAppInterface(1, "test_ip", "test_port")
         self.chips = range(8)
 
     def test_set_lv_state(self, send_mock, construct_mock):
@@ -291,7 +292,7 @@ class CheckArgumentValidTest(unittest.TestCase):
 class MaskTest(unittest.TestCase):
 
     def setUp(self):
-        self.e = ExcaliburTestAppInterface("test_ip", "test_port")
+        self.e = ExcaliburTestAppInterface(1, "test_ip", "test_port")
 
     def test_return_values(self):
 
@@ -323,7 +324,7 @@ class MaskTest(unittest.TestCase):
 class LoadConfigTest(unittest.TestCase):
 
     def setUp(self):
-        self.e = ExcaliburTestAppInterface("test_ip", "test_port")
+        self.e = ExcaliburTestAppInterface(1, "test_ip", "test_port")
         self.discl = "discl"
         self.disch = "disch"
         self.pixelmask = "pixelmask"
@@ -372,3 +373,16 @@ class LoadConfigTest(unittest.TestCase):
 
         self.assertFalse(construct_mock.call_count)
         self.assertFalse(send_mock.call_count)
+
+
+class GrabRemoteFile(unittest.TestCase):
+
+    @patch(ETAI_patch_path + '._send_command')
+    def test_correct_calls_made(self, send_mock):
+        e = ExcaliburTestAppInterface(1, "test_ip", "test_port", "test_server")
+
+        e.grab_remote_file("/tmp/test_file")
+
+        send_mock.assert_called_once_with(
+            ['scp', 'test_server.diamond.ac.uk:/tmp/test_file',
+             '/tmp/test_file_fem1'])
