@@ -31,6 +31,7 @@ class SetVoltageTest(unittest.TestCase):
         self.e = Excalibur1M("test-server", 1, 2)
         self.node1_mock = MagicMock()
         self.node2_mock = MagicMock()
+        self.e.master_node = self.node1_mock
         self.e.nodes = [self.node1_mock, self.node2_mock]
 
     def test_enable_lv(self):

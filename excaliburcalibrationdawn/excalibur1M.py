@@ -15,22 +15,23 @@ class Excalibur1M(object):
 
     node_shape = [256, 8*256]
 
-    def __init__(self, detector, node1, node2):
+    def __init__(self, detector_name, master_node, node_2):
         """Initialise two ExcaliburNode instances as a 1M detector.
 
         Args:
-            detector: Name of detector; string that gives the server name for
-                each node if the node is added - e.g. i13-1-excalibur0 where
-                i13-1-excalibur01 is the server for node 1.
-            node1: Identifier for first node of detector
-            node2: Identifier for second node of detector
+            detector_name: Name of detector; string that gives the server name
+                for each node if the suffix is added - e.g. p99-excalibur0
+                where p99-excalibur01 is the server for node 6 (nodes reversed)
+            master_node: Identifier for master node of detector
+            node_2: Identifier for second node of detector
 
         """
         logging.debug("Creating Excalibur1M with server %s and nodes %s, %s",
-                      detector, node1, node2)
-        self.server_root = detector
-        self.nodes = [ExcaliburNode(node1, self.server_root),
-                      ExcaliburNode(node2, self.server_root)]
+                      detector_name, master_node, node_2)
+        self.server_root = detector_name
+        self.master_node = ExcaliburNode(master_node, self.server_root)
+        self.nodes = [self.master_node,
+                      ExcaliburNode(node_2, self.server_root)]
 
         self.dawn = ExcaliburDAWN()
 
@@ -41,23 +42,23 @@ class Excalibur1M(object):
 
     def initialise_lv(self):
         """Initialise LV; bug in ETA means LV doesn't turn on first time."""
-        self.nodes[0].initialise_lv()
+        self.master_node.initialise_lv()
 
     def enable_lv(self):
         """Enable LV."""
-        self.nodes[0].enable_lv()
+        self.master_node.enable_lv()
 
     def disable_lv(self):
         """Disable LV."""
-        self.nodes[0].disable_lv()
+        self.master_node.disable_lv()
 
     def enable_hv(self):
         """Enable HV."""
-        self.nodes[0].enable_hv()
+        self.master_node.enable_hv()
 
     def disable_hv(self):
         """Disable HV."""
-        self.nodes[0].disable_hv()
+        self.master_node.disable_hv()
 
     def set_hv_bias(self, hv_bias):
         """Set HV bias.
@@ -66,7 +67,7 @@ class Excalibur1M(object):
             hv_bias: Voltage to set
 
         """
-        self.nodes[0].set_hv_bias(hv_bias)
+        self.master_node.set_hv_bias(hv_bias)
 
     def threshold_equalization(self, chips):
         """Calibrate discriminator equalization for given chips in detector.
