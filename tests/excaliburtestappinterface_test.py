@@ -268,6 +268,15 @@ class TestAPICalls(unittest.TestCase):
         construct_mock.assert_called_once_with(self.chips, *expected_params)
         send_cmd_mock.assert_called_once_with(construct_mock.return_value)
 
+    def test_load_tp_mask(self, send_cmd_mock, construct_mock):
+        tp_mask = MagicMock()
+        expected_params = ['--config', '--tpmask', tp_mask]
+
+        self.e.load_tp_mask(self.chips, tp_mask)
+
+        construct_mock.assert_called_once_with(self.chips, *expected_params)
+        send_cmd_mock.assert_called_once_with(construct_mock.return_value)
+
 
 class CheckArgumentValidTest(unittest.TestCase):
 
@@ -373,6 +382,25 @@ class LoadConfigTest(unittest.TestCase):
 
         self.assertFalse(construct_mock.call_count)
         self.assertFalse(send_mock.call_count)
+
+
+class TestSimpleWrappers(unittest.TestCase):
+
+    def setUp(self):
+        self.e = ExcaliburTestAppInterface(1, "test_ip", "test_port",
+                                           "test_server")
+        self.chips = range(8)
+
+    @patch(ETAI_patch_path + '.acquire')
+    def test_acquire_tp_image(self, acquire_mock):
+        expected_params = [1, 100]
+        expected_kwargs = dict(hdf_file='test.hdf5', path='/scratch',
+                               tp_count=1000)
+
+        self.e.acquire_tp_image(self.chips, 100, 1000, "/scratch", "test.hdf5")
+
+        acquire_mock.assert_called_once_with(self.chips, *expected_params,
+                                             **expected_kwargs)
 
 
 class GrabRemoteFile(unittest.TestCase):

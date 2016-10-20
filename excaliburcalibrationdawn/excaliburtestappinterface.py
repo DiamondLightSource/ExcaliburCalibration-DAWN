@@ -430,6 +430,34 @@ class ExcaliburTestAppInterface(object):
                                           *extra_params)
         self._send_command(command)
 
+    def load_tp_mask(self, chips, tp_mask):
+        """Load the given mask onto the given chips.
+
+        Args:
+            chips: Chips to load for
+            tp_mask: Path to tp_mask file
+
+        """
+        command = self._construct_command(chips,
+                                          self.CONFIG,
+                                          self.TP_MASK, tp_mask)
+        self._send_command(command)
+
+    def acquire_tp_image(self, chips=range(8), exposure=1000, tp_count=1000,
+                         path="/tmp", hdf_file="triangle.hdf5"):
+        """Acquire and plot a test pulse image.
+
+        Args:
+            chips: Chips to capture for
+            tp_count: Test pulse count
+            exposure: Exposure time
+            path: Folder to save into
+            hdf_file: Name of image file to save
+
+        """
+        self.acquire(chips, 1, exposure, tp_count=tp_count,
+                     path=path, hdf_file=hdf_file)
+
     def load_config(self, chips, discl, disch=None, pixelmask=None):
         """Read the given config files and load them onto the given chips.
 
@@ -457,7 +485,7 @@ class ExcaliburTestAppInterface(object):
             print(str(discl) + " does not exist !")
 
     def grab_remote_file(self, server_source):
-        """SSH into the server node and copy the given file to the local host.
+        """Use scp to copy the given file from the server to the local host.
 
         Args:
             server_source: File path on server
