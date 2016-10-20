@@ -3,10 +3,10 @@ From the command line run the following to start up DAWN::
    $ module load dawn
    $ dawn &
 
-Create a python console and create an ExcaliburNode instance for the master FEM (e.g. FEM 1)::
+Create a python console and create an ExcaliburNode instance for the master FEM; the one interfaced with the I2C bus of the power card (e.g. FEM 1 on server p99-excalibur06)::
 
    >>> from excaliburcalibrationdawn import ExcaliburNode
-   >>> master = ExcaliburNode(1)
+   >>> master = ExcaliburNode(1, "p99-excalibur0")
 
 ExcaliburNode provides some helper functions to perform initialisation for the
 detector. To enable LV, set the HV bias to 120 and enable HV::
@@ -15,7 +15,7 @@ detector. To enable LV, set the HV bias to 120 and enable HV::
    >>> master.set_hv_bias(120)
    >>> master.enable_hv()
 
-To create an ExcaliburNode instance to calibrate a 1/2 module (e.g. FEM2)::
+To create an ExcaliburNode instance to calibrate a 1/2 module (e.g. FEM )::
 
    >>> x = ExcaliburNode(2)
 
