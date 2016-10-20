@@ -1093,7 +1093,8 @@ class CheckCalibDirTest(unittest.TestCase):
                                           expected_path)
         self.assertFalse(copy_tree_mock.call_count)
 
-    @patch('time.asctime', return_value='Fri Sep 16 14:59:18 2016')
+    @patch(Node_patch_path + '.get_time_stamp',
+           return_value="2016-10-20_15:45:48")
     @patch('os.path.isfile', return_value=True)
     @patch('os.path.isdir', return_value=True)
     def test_does_exist_then_backup(self, isdir_mock, isfile_mock, _,
@@ -1107,7 +1108,7 @@ class CheckCalibDirTest(unittest.TestCase):
         isfile_mock.assert_called_once_with(expected_path + '/dacs')
         self.assertFalse(make_mock.call_count)
         copy_tree_mock.assert_called_once_with('/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib',
-                                               '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib_backup_Fri Sep 16 14:59:18 2016')
+                                               '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib_backup_2016-10-20_15:45:48')
         self.assertFalse(copy_mock.call_count)
 
 
@@ -1615,6 +1616,21 @@ class DisplayMasksTest(unittest.TestCase):
         e.display_masks()
 
         self.assertEqual(expected_call, print_mock.call_args_list[0][0][0])
+
+
+class GetTimeStampTest(unittest.TestCase):
+
+    datetime_mock = MagicMock()
+    datetime_mock.now.return_value.isoformat.return_value = "2016-10-20_15:45:48.834130"
+
+    @patch('excaliburcalibrationdawn.excaliburnode.datetime',
+           new=datetime_mock)
+    def test_get_time_stamp(self):
+        expected_time_stamp = "2016-10-20_15:45:48"
+
+        time_stamp = ExcaliburNode.get_time_stamp()
+
+        self.assertEqual(expected_time_stamp, time_stamp)
 
 
 class ToListTest(unittest.TestCase):

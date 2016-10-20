@@ -3,6 +3,7 @@ import os
 import posixpath
 import shutil
 import time
+from datetime import datetime
 import logging
 
 from collections import namedtuple
@@ -1215,7 +1216,7 @@ class ExcaliburNode(object):
         if (os.path.isdir(calib_dir)) == 0:
             os.makedirs(calib_dir)
         else:
-            backup_dir = self.calib_dir + '_backup_' + time.asctime()
+            backup_dir = self.calib_dir + '_backup_' + self.get_time_stamp()
             shutil.copytree(self.calib_dir, backup_dir)
 
             logging.debug("Backup directory: %s", backup_dir)
@@ -1988,6 +1989,14 @@ class ExcaliburNode(object):
         mask_files = [file_ for file_ in files if file_.endswith(".mask")]
 
         print("Available masks: " + ", ".join(mask_files))
+
+    @staticmethod
+    def get_time_stamp():
+        """Get a time stamp"""
+        iso = datetime.now().isoformat(sep="_")  # Get ISO 8601 time stamp
+        time_stamp = iso.split(".")[0]  # Remove milliseconds
+
+        return time_stamp
 
     @staticmethod
     def _to_list(value):
