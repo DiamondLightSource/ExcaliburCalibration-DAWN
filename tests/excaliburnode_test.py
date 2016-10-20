@@ -1601,6 +1601,22 @@ class SliceGrabSetTest(unittest.TestCase):
         np.testing.assert_array_equal(expected_stop, stop)
 
 
+class DisplayMasksTest(unittest.TestCase):
+
+    @patch("sys.stdout.write")
+    @patch("os.listdir",
+           return_value=["diagonal.mask", "stfcinverted.mask",
+                         "triangle.mask", "zeros.mask", "test.notmask"])
+    def test_display_masks(self, _, print_mock):
+        expected_call = "Available masks: diagonal.mask, stfcinverted.mask, " \
+                        "triangle.mask, zeros.mask"
+        e = ExcaliburNode(1)
+
+        e.display_masks()
+
+        self.assertEqual(expected_call, print_mock.call_args_list[0][0][0])
+
+
 class ToListTest(unittest.TestCase):
 
     def test_to_list_given_value_then_return_list(self):

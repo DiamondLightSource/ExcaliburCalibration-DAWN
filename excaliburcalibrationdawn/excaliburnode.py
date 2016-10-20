@@ -2291,8 +2291,16 @@ class ExcaliburNode(object):
         stop = [self.chip_size - 1, (chip_idx + 1) * self.chip_size - 1]
         return start, stop
 
+    def display_masks(self):
+        """Print list of masks in config directory"""
+        files = os.listdir(self.config_dir)
+        mask_files = [file_ for file_ in files if file_.endswith(".mask")]
+
+        print("Available masks: " + ", ".join(mask_files))
+
     @staticmethod
     def _to_list(value):
+        """Return a list of value, or value if already a list."""
         if isinstance(value, list):
             return value
         else:
