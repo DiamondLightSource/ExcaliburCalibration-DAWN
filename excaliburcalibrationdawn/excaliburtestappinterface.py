@@ -276,25 +276,22 @@ class ExcaliburTestAppInterface(object):
         # TODO: Are any combinations invalid?
         if burst is not None and burst:
             extra_params.append(self.BURST)
-        if self._check_argument_valid("Pixel mode", pixel_mode,
-                                      self.mode_code.keys()):
+        if self._arg_valid("Pixel mode", pixel_mode, self.mode_code.keys()):
             extra_params.extend([self.PIXEL_MODE, self.mode_code[pixel_mode]])
-        if self._check_argument_valid("Discriminator mode", disc_mode,
-                                      self.disc_code.keys()):
+        if self._arg_valid("Discriminator mode", disc_mode,
+                           self.disc_code.keys()):
             extra_params.extend([self.DISC_MODE, self.disc_code[disc_mode]])
-        if self._check_argument_valid("Depth", depth, [1, 6, 12, 24]):
+        if self._arg_valid("Depth", depth, [1, 6, 12, 24]):
             extra_params.extend([self.DEPTH, str(depth)])
-        if self._check_argument_valid("Counter", counter, [0, 1]):
+        if self._arg_valid("Counter", counter, [0, 1]):
             extra_params.extend([self.COUNTER, str(counter)])
-        if self._check_argument_valid("Equalization", equalization, [0, 1]):
+        if self._arg_valid("Equalization", equalization, [0, 1]):
             extra_params.extend([self.EQUALIZATION, str(equalization)])
-        if self._check_argument_valid("Gain Mode", gain_mode,
-                                      self.gain_code.keys()):
+        if self._arg_valid("Gain Mode", gain_mode, self.gain_code.keys()):
             extra_params.extend([self.GAIN_MODE, self.gain_code[gain_mode]])
-        if self._check_argument_valid("Readout mode", read_mode,
-                                      self.read_code.keys()):
+        if self._arg_valid("Readout mode", read_mode, self.read_code.keys()):
             extra_params.extend([self.READ_MODE, self.read_code[read_mode]])
-        if self._check_argument_valid("Trigger mode", trig_mode, [0, 1, 2]):
+        if self._arg_valid("Trigger mode", trig_mode, [0, 1, 2]):
             extra_params.extend([self.TRIG_MODE, str(trig_mode)])
 
         if tp_count is not None:
@@ -316,7 +313,20 @@ class ExcaliburTestAppInterface(object):
         self._send_command(command)
 
     @staticmethod
-    def _check_argument_valid(name, value, valid_values):
+    def _arg_valid(name, value, valid_values):
+        """Check if given argument is not None and is a valid value.
+
+        Args:
+            name: Name of argument (for error message)
+            value: Value to check
+            valid_values: Allowed values
+
+        Returns:
+            bool: True if valid, False if None
+        Raises:
+            ValueError: Argument not None, but not valid
+
+        """
         if value is None:
             return False
         elif value not in valid_values:

@@ -282,18 +282,18 @@ class CheckArgumentValidTest(unittest.TestCase):
 
     def test_given_None_then_False(self):
 
-        response = ExcaliburTestAppInterface._check_argument_valid("Test", None, [])
+        response = ExcaliburTestAppInterface._arg_valid("Test", None, [])
 
         self.assertFalse(response)
 
     def test_given_invalid_then_raise(self):
 
         with self.assertRaises(ValueError):
-            ExcaliburTestAppInterface._check_argument_valid("Test", 10, [1, 2, 3, 4, 5])
+            ExcaliburTestAppInterface._arg_valid("Test", 10, [1, 2, 3, 4, 5])
 
     def test_given_valid_then_True(self):
 
-        response = ExcaliburTestAppInterface._check_argument_valid("Test", 5, [1, 2, 3, 4, 5])
+        response = ExcaliburTestAppInterface._arg_valid("Test", 5, [1, 2, 3, 4, 5])
 
         self.assertTrue(response)
 

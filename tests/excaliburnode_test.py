@@ -95,7 +95,7 @@ class InitTest(unittest.TestCase):
         set_mock.assert_called_once_with(120)
         enable_mock.assert_called_once_with()
         read_mock.assert_called_once_with()
-        load_mock.assert_called_once_with(range(8),'/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/config/Default_SPM.dacs')
+        load_mock.assert_called_once_with(range(8), '/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/config/Default_SPM.dacs')
 
 
 class SetVoltageTest(unittest.TestCase):
