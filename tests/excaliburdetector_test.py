@@ -105,6 +105,18 @@ class FunctionsTest(unittest.TestCase):
         for node in self.e.Nodes:
             node.read_chip_ids.assert_called_once_with()
 
+    def test_monitor(self):
+        self.e.monitor()
+
+        for node in self.e.Nodes:
+            node.monitor.assert_called_once_with()
+
+    def test_setup(self):
+        self.e.setup()
+
+        for node in self.e.Nodes:
+            node.setup.assert_called_once_with()
+
     def test_threshold_equalization(self):
         self.e.threshold_equalization([[0], [0], [0], [0], [0], [0]])
 

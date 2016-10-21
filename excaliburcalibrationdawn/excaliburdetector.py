@@ -28,7 +28,7 @@ class ExcaliburDetector(object):
 
         """
         self.server_root = detector_name
-        
+
         if len(nodes) > len(set(nodes)):
             raise ValueError("Given duplicate node in {nodes}".format(
                                  nodes=nodes))
@@ -79,6 +79,16 @@ class ExcaliburDetector(object):
 
         """
         self.MasterNode.set_hv_bias(hv_bias)
+
+    def setup(self):
+        """Perform necessary initialisation."""
+        for node in self.Nodes:
+            node.setup()
+
+    def monitor(self):
+        """Monitor temperature, humidity, FEM voltage status and DAC out."""
+        for node in self.Nodes:
+            node.monitor()
 
     def threshold_equalization(self, chips):
         """Calibrate discriminator equalization for given chips in detector.
