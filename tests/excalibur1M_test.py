@@ -18,11 +18,11 @@ class InitTest(unittest.TestCase):
         self.e = Excalibur1M("test-server", 1, 2)
 
     def test_class_attributes_set(self):
-        self.assertIsInstance(self.e.nodes[0], ExcaliburNode)
-        self.assertIsInstance(self.e.nodes[1], ExcaliburNode)
+        self.assertIsInstance(self.e.Nodes[0], ExcaliburNode)
+        self.assertIsInstance(self.e.Nodes[1], ExcaliburNode)
 
-        self.assertEqual(1, self.e.nodes[0].fem)
-        self.assertEqual(2, self.e.nodes[1].fem)
+        self.assertEqual(1, self.e.Nodes[0].fem)
+        self.assertEqual(2, self.e.Nodes[1].fem)
 
 
 class SetVoltageTest(unittest.TestCase):
@@ -31,8 +31,8 @@ class SetVoltageTest(unittest.TestCase):
         self.e = Excalibur1M("test-server", 1, 2)
         self.node1_mock = MagicMock()
         self.node2_mock = MagicMock()
-        self.e.master_node = self.node1_mock
-        self.e.nodes = [self.node1_mock, self.node2_mock]
+        self.e.MasterNode = self.node1_mock
+        self.e.Nodes = [self.node1_mock, self.node2_mock]
 
     def test_enable_lv(self):
 
@@ -83,7 +83,7 @@ class FunctionsTest(unittest.TestCase):
         self.e = Excalibur1M("test-server", 1, 2)
         self.node1_mock = MagicMock()
         self.node2_mock = MagicMock()
-        self.e.nodes = [self.node1_mock, self.node2_mock]
+        self.e.Nodes = [self.node1_mock, self.node2_mock]
 
     def test_read_chip_ids(self):
         self.e.read_chip_ids()

@@ -29,36 +29,36 @@ class Excalibur1M(object):
         logging.debug("Creating Excalibur1M with server %s and nodes %s, %s",
                       detector_name, master_node, node_2)
         self.server_root = detector_name
-        self.master_node = ExcaliburNode(master_node, self.server_root)
-        self.nodes = [self.master_node,
+        self.MasterNode = ExcaliburNode(master_node, self.server_root)
+        self.Nodes = [self.MasterNode,
                       ExcaliburNode(node_2, self.server_root)]
 
         self.dawn = ExcaliburDAWN()
 
     def read_chip_ids(self):
         """Read chip IDs for all chips in all nodes."""
-        for node in self.nodes:
+        for node in self.Nodes:
             node.read_chip_ids()
 
     def initialise_lv(self):
         """Initialise LV; bug in ETA means LV doesn't turn on first time."""
-        self.master_node.initialise_lv()
+        self.MasterNode.initialise_lv()
 
     def enable_lv(self):
         """Enable LV."""
-        self.master_node.enable_lv()
+        self.MasterNode.enable_lv()
 
     def disable_lv(self):
         """Disable LV."""
-        self.master_node.disable_lv()
+        self.MasterNode.disable_lv()
 
     def enable_hv(self):
         """Enable HV."""
-        self.master_node.enable_hv()
+        self.MasterNode.enable_hv()
 
     def disable_hv(self):
         """Disable HV."""
-        self.master_node.disable_hv()
+        self.MasterNode.disable_hv()
 
     def set_hv_bias(self, hv_bias):
         """Set HV bias.
@@ -67,7 +67,7 @@ class Excalibur1M(object):
             hv_bias: Voltage to set
 
         """
-        self.master_node.set_hv_bias(hv_bias)
+        self.MasterNode.set_hv_bias(hv_bias)
 
     def threshold_equalization(self, chips):
         """Calibrate discriminator equalization for given chips in detector.
@@ -76,7 +76,7 @@ class Excalibur1M(object):
             chips: List of lists of chips for each node
 
         """
-        for node_idx, node in enumerate(self.nodes):
+        for node_idx, node in enumerate(self.Nodes):
             node.threshold_equalization(chips[node_idx])
 
     def optimize_dac_disc(self, chips, roi):
@@ -87,7 +87,7 @@ class Excalibur1M(object):
             roi: Mask to apply during optimization
 
         """
-        for node_idx, node in enumerate(self.nodes):
+        for node_idx, node in enumerate(self.Nodes):
             node_roi = self._grab_node_slice(roi, node_idx)
             node.optimize_disc_l(chips[node_idx], node_roi)
             node.optimize_disc_h(chips[node_idx], node_roi)
@@ -102,11 +102,11 @@ class Excalibur1M(object):
             numpy.array: Image data
 
         """
-        for node in self.nodes:
+        for node in self.Nodes:
             node.settings['acquire_time'] = exposure_time
 
-        image = self.nodes[0].expose()
-        for node_idx, node in enumerate(self.nodes[1:]):
+        image = self.Nodes[0].expose()
+        for node_idx, node in enumerate(self.Nodes[1:]):
             image = np.concatenate((image, node.expose()), axis=0)
 
         self.dawn.plot_image(image, "Excalibur1M Image")
