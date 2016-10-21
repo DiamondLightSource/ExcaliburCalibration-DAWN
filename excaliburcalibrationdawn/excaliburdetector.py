@@ -28,16 +28,21 @@ class ExcaliburDetector(object):
 
         """
         self.server_root = detector_name
-
+        
+        if len(nodes) > len(set(nodes)):
+            raise ValueError("Given duplicate node in {nodes}".format(
+                                 nodes=nodes))
         if not set(nodes).issubset(self.valid_nodes):
             raise ValueError("Given nodes {nodes} not valid, should be in "
                              "{valid_nodes}".format(
                                  nodes=nodes, valid_nodes=self.valid_nodes))
 
-        self.Nodes = []
-        for node in nodes:
+        self.MasterNode = ExcaliburNode(master_node, self.server_root)
+        self.Nodes = [self.MasterNode]
+        secondary_nodes = list(nodes)
+        secondary_nodes.remove(master_node)
+        for node in secondary_nodes:
             self.Nodes.append(ExcaliburNode(node, self.server_root))
-        self.MasterNode = self.Nodes[master_node - 1]
 
         self.dawn = ExcaliburDAWN()
 
@@ -112,7 +117,7 @@ class ExcaliburDetector(object):
             node.settings['acquire_time'] = exposure_time
 
         image = self.Nodes[0].expose()
-        for node_idx, node in enumerate(self.Nodes[1:]):
+        for node in self.Nodes[1:]:
             image = np.concatenate((image, node.expose()), axis=0)
 
         self.dawn.plot_image(image, "Excalibur1M Image")

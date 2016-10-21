@@ -20,6 +20,10 @@ class Excalibur1M(ExcaliburDetector):
             master_node: Identifier for master node of detector
 
         """
+        if len(nodes) != 2:
+            raise ValueError("Excalibur1M requires two nodes, given "
+                             "{nodes}".format(nodes=nodes))
+
         super(Excalibur1M, self).__init__(detector_name, nodes, master_node)
 
         logging.debug("Creating Excalibur1M with server %s and nodes %s "

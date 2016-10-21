@@ -6,7 +6,8 @@ from mock import patch, MagicMock, ANY
 
 from excaliburcalibrationdawn.excaliburdetector import ExcaliburDetector
 from excaliburcalibrationdawn.excaliburnode import ExcaliburNode, np
-Detector_patch_path = "excaliburcalibrationdawn.excaliburdetector.ExcaliburDetector"
+Detector_patch_path = "excaliburcalibrationdawn.excaliburdetector" \
+                      ".ExcaliburDetector"
 Node_patch_path = "excaliburcalibrationdawn.excalibur1M.ExcaliburNode"
 DAWN_patch_path = "excaliburcalibrationdawn.excaliburdetector.ExcaliburDAWN"
 util_patch_path = "excaliburcalibrationdawn.arrayutil"
@@ -26,6 +27,14 @@ class InitTest(unittest.TestCase):
             self.assertEqual(node + 1, self.e.Nodes[node].fem)
 
         self.assertEqual(self.e.MasterNode, self.e.Nodes[0])
+
+    def test_given_invalid_node_then_error(self):
+        with self.assertRaises(ValueError):
+            ExcaliburDetector("test-server", [10], 10)
+
+    def test_given_duplicate_node_then_error(self):
+        with self.assertRaises(ValueError):
+            ExcaliburDetector("test-server", [1, 1], 1)
 
 
 class SetVoltageTest(unittest.TestCase):
