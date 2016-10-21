@@ -1,4 +1,6 @@
 """A 1M Excalibur detector."""
+from inspect import getmembers, ismethod
+
 from excaliburcalibrationdawn.excaliburnode import ExcaliburNode
 from excaliburcalibrationdawn.excaliburdawn import ExcaliburDAWN
 from excaliburcalibrationdawn import arrayutil as util
@@ -15,6 +17,10 @@ class Excalibur1M(object):
 
     node_shape = [256, 8*256]
 
+    _node_methods = ["read_chip_ids"]
+    _master_node_methods = ["initialise_lv", "enable_lv", "disable_lv",
+                            "enable_hv", "disable_hv", "set_hv_bias"]
+
     def __init__(self, detector_name, master_node, node_2):
         """Initialise two ExcaliburNode instances as a 1M detector.
 
@@ -26,8 +32,15 @@ class Excalibur1M(object):
             node_2: Identifier for second node of detector
 
         """
+        self._check_node_methods()
+        for method in self._node_methods:
+            self._create_node_method(method)
+        for method in self._master_node_methods:
+            self._create_master_node_method(method)
+
         logging.debug("Creating Excalibur1M with server %s and nodes %s, %s",
                       detector_name, master_node, node_2)
+
         self.server_root = detector_name
         self.MasterNode = ExcaliburNode(master_node, self.server_root)
         self.Nodes = [self.MasterNode,
@@ -35,39 +48,41 @@ class Excalibur1M(object):
 
         self.dawn = ExcaliburDAWN()
 
-    def read_chip_ids(self):
-        """Read chip IDs for all chips in all nodes."""
-        for node in self.Nodes:
-            node.read_chip_ids()
-
-    def initialise_lv(self):
-        """Initialise LV; bug in ETA means LV doesn't turn on first time."""
-        self.MasterNode.initialise_lv()
-
-    def enable_lv(self):
-        """Enable LV."""
-        self.MasterNode.enable_lv()
-
-    def disable_lv(self):
-        """Disable LV."""
-        self.MasterNode.disable_lv()
-
-    def enable_hv(self):
-        """Enable HV."""
-        self.MasterNode.enable_hv()
-
-    def disable_hv(self):
-        """Disable HV."""
-        self.MasterNode.disable_hv()
-
-    def set_hv_bias(self, hv_bias):
-        """Set HV bias.
+    def _create_node_method(self, method):
+        """Create method that calls `method` on all nodes.
 
         Args:
-            hv_bias: Voltage to set
+            method: Name of method
 
         """
-        self.MasterNode.set_hv_bias(hv_bias)
+        def _call_method_on_nodes(*params):
+            for node in self.Nodes:
+                node.__getattribute__(method)(*params)
+
+        self.__setattr__(method, _call_method_on_nodes)
+
+    def _create_master_node_method(self, method):
+        """Create method that calls `method` on master node.
+
+        Args:
+            method: Name of method
+
+        """
+        def _call_method_on_master_node(*params):
+            self.MasterNode.__getattribute__(method)(*params)
+
+        self.__setattr__(method, _call_method_on_master_node)
+
+    def _check_node_methods(self):
+        """Check the methods in *_methods exist in ExcaliburNode."""
+        asserted_methods = self._node_methods + self._master_node_methods
+        methods = [name for name, _ in getmembers(ExcaliburNode, ismethod)]
+
+        for method in asserted_methods:
+            if method not in methods:
+                raise AttributeError("ExcaliburNode does not have method {} "
+                                     "asserted in '*_methods' lists".
+                                     format(method))
 
     def threshold_equalization(self, chips):
         """Calibrate discriminator equalization for given chips in detector.

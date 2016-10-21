@@ -14,15 +14,59 @@ util_patch_path = "excaliburcalibrationdawn.arrayutil"
 
 class InitTest(unittest.TestCase):
 
+    def test_class_attributes_set(self):
+        e = Excalibur1M("test-server", 1, 2)
+        self.assertIsInstance(e.Nodes[0], ExcaliburNode)
+        self.assertIsInstance(e.Nodes[1], ExcaliburNode)
+
+        self.assertEqual(1, e.Nodes[0].fem)
+        self.assertEqual(2, e.Nodes[1].fem)
+
+    @patch(E1M_patch_path + '._create_master_node_method')
+    @patch(E1M_patch_path + '._create_node_method')
+    @patch(E1M_patch_path + '._check_node_methods')
+    def test_setup_methods_called(self, check_mock, node_mock, master_mock):
+        e = Excalibur1M("test-server", 1, 2)
+
+        check_mock.assert_called_once_with()
+        self.assertEqual(e._node_methods,
+                         [call[0][0] for call in node_mock.call_args_list])
+        self.assertEqual(e._master_node_methods,
+                         [call[0][0] for call in master_mock.call_args_list])
+
+
+class CreateMethodTest(unittest.TestCase):
+
     def setUp(self):
         self.e = Excalibur1M("test-server", 1, 2)
+        self.node1_mock = MagicMock()
+        self.node2_mock = MagicMock()
+        self.e.MasterNode = self.node1_mock
+        self.e.Nodes = [self.node1_mock, self.node2_mock]
 
-    def test_class_attributes_set(self):
-        self.assertIsInstance(self.e.Nodes[0], ExcaliburNode)
-        self.assertIsInstance(self.e.Nodes[1], ExcaliburNode)
+    def test_create_node_method(self):
 
-        self.assertEqual(1, self.e.Nodes[0].fem)
-        self.assertEqual(2, self.e.Nodes[1].fem)
+        self.e._create_node_method("test_method")
+        self.node1_mock.test_method = MagicMock(name="test_method")
+        self.node2_mock.test_method = MagicMock(name="test_method")
+
+        self.e.test_method()
+
+        self.node1_mock.test_method.assert_called_once_with()
+        self.node2_mock.test_method.assert_called_once_with()
+
+    def test_create_master_node_method(self):
+
+        self.e._create_master_node_method("test_method")
+        self.node1_mock.test_method = MagicMock(name="test_method")
+
+        self.e.test_method()
+
+        self.node1_mock.test_method.assert_called_once_with()
+        self.assertFalse(self.node2_mock.test_method.call_count)
+
+    def test_check_node_methods(self):
+        self.e._check_node_methods()
 
 
 class SetVoltageTest(unittest.TestCase):
@@ -35,6 +79,8 @@ class SetVoltageTest(unittest.TestCase):
         self.e.Nodes = [self.node1_mock, self.node2_mock]
 
     def test_enable_lv(self):
+        self.node1_mock.enable_lv = MagicMock(name="enable_lv")
+        self.node2_mock.enable_lv = MagicMock(name="enable_lv")
 
         self.e.enable_lv()
 
@@ -42,6 +88,8 @@ class SetVoltageTest(unittest.TestCase):
         self.assertFalse(self.node2_mock.enable_lv.call_count)
 
     def test_disable_lv(self):
+        self.node1_mock.disable_lv = MagicMock(name="disable_lv")
+        self.node2_mock.disable_lv = MagicMock(name="disable_lv")
 
         self.e.disable_lv()
 
@@ -49,6 +97,8 @@ class SetVoltageTest(unittest.TestCase):
         self.assertFalse(self.node2_mock.disable_lv.call_count)
 
     def test_initialise_lv(self):
+        self.node1_mock.initialise_lv = MagicMock(name="initialise_lv")
+        self.node2_mock.initialise_lv = MagicMock(name="initialise_lv")
 
         self.e.initialise_lv()
 
@@ -56,6 +106,8 @@ class SetVoltageTest(unittest.TestCase):
         self.assertFalse(self.node2_mock.initialise_lv.call_count)
 
     def test_enable_hv(self):
+        self.node1_mock.enable_hv = MagicMock(name="enable_hv")
+        self.node2_mock.enable_hv = MagicMock(name="enable_hv")
 
         self.e.enable_hv()
 
@@ -63,6 +115,8 @@ class SetVoltageTest(unittest.TestCase):
         self.assertFalse(self.node2_mock.enable_hv.call_count)
 
     def test_disable_hv(self):
+        self.node1_mock.disable_hv = MagicMock(name="disable_hv")
+        self.node2_mock.disable_hv = MagicMock(name="disable_hv")
 
         self.e.disable_hv()
 
@@ -70,6 +124,8 @@ class SetVoltageTest(unittest.TestCase):
         self.assertFalse(self.node2_mock.disable_hv.call_count)
 
     def test_set_hv_bias(self):
+        self.node1_mock.set_hv_bias = MagicMock(name="set_hv_bias")
+        self.node2_mock.set_hv_bias = MagicMock(name="set_hv_bias")
 
         self.e.set_hv_bias(120)
 
@@ -86,6 +142,9 @@ class FunctionsTest(unittest.TestCase):
         self.e.Nodes = [self.node1_mock, self.node2_mock]
 
     def test_read_chip_ids(self):
+        self.node1_mock.read_chip_ids = MagicMock(name="read_chip_ids")
+        self.node2_mock.read_chip_ids = MagicMock(name="read_chip_ids")
+
         self.e.read_chip_ids()
 
         self.node1_mock.read_chip_ids.assert_called_once_with()
