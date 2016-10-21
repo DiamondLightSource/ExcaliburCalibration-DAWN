@@ -1,7 +1,7 @@
 """An Excalibur RX detector."""
 from excaliburcalibrationdawn.excaliburnode import ExcaliburNode
 from excaliburcalibrationdawn.excaliburdawn import ExcaliburDAWN
-from excaliburcalibrationdawn import arrayutil as util
+from excaliburcalibrationdawn import util
 
 import numpy as np
 
@@ -130,7 +130,8 @@ class ExcaliburDetector(object):
         for node in self.Nodes[1:]:
             image = np.concatenate((image, node.expose()), axis=0)
 
-        self.dawn.plot_image(image, "Excalibur1M Image")
+        self.dawn.plot_image(image, "Excalibur1M Image {time_stamp}".format(
+            time_stamp=util.get_time_stamp()))
 
     def _grab_node_slice(self, array, node_idx):
         """Grab a node from a full array.

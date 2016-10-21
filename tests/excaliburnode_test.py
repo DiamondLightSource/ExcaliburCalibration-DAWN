@@ -8,7 +8,7 @@ from excaliburcalibrationdawn.excaliburnode import ExcaliburNode, np, Range
 Node_patch_path = "excaliburcalibrationdawn.excaliburnode.ExcaliburNode"
 ETAI_patch_path = "excaliburcalibrationdawn.excaliburnode.ExcaliburTestAppInterface"
 DAWN_patch_path = "excaliburcalibrationdawn.excaliburnode.ExcaliburDAWN"
-util_patch_path = "excaliburcalibrationdawn.arrayutil"
+util_patch_path = "excaliburcalibrationdawn.util"
 
 
 class InitTest(unittest.TestCase):
@@ -1093,7 +1093,7 @@ class CheckCalibDirTest(unittest.TestCase):
                                           expected_path)
         self.assertFalse(copy_tree_mock.call_count)
 
-    @patch(Node_patch_path + '.get_time_stamp',
+    @patch(util_patch_path + '.get_time_stamp',
            return_value="2016-10-20_15:45:48")
     @patch('os.path.isfile', return_value=True)
     @patch('os.path.isdir', return_value=True)
@@ -1528,21 +1528,8 @@ class RotateTest(unittest.TestCase):
     def setUp(self):
         self.e = ExcaliburNode(1)
 
-    @patch('numpy.rot90')
-    @patch('numpy.savetxt')
-    @patch('numpy.loadtxt')
-    def test_rotate_config(self, load_mock, save_mock, rotate_mock):
-        test_path = 'path/to/config'
-
-        self.e.rotate_config(test_path)
-
-        load_mock.assert_called_once_with(test_path)
-        rotate_mock.assert_called_once_with(load_mock.return_value, 2)
-        save_mock.assert_called_once_with(test_path, rotate_mock.return_value,
-                                          fmt='%.18g', delimiter=' ')
-
     @patch('shutil.copytree')
-    @patch(Node_patch_path + '.rotate_config')
+    @patch(util_patch_path + '.rotate_config')
     @patch('os.path.isfile', return_value=True)
     def test_rotate_config_files_exist(self, _, rotate_mock, copy_mock):
         self.e.num_chips = 1  # Make test easier
@@ -1616,31 +1603,3 @@ class DisplayMasksTest(unittest.TestCase):
         e.display_masks()
 
         self.assertEqual(expected_call, print_mock.call_args_list[0][0][0])
-
-
-class GetTimeStampTest(unittest.TestCase):
-
-    datetime_mock = MagicMock()
-    datetime_mock.now.return_value.isoformat.return_value = "2016-10-20_15:45:48.834130"
-
-    @patch('excaliburcalibrationdawn.excaliburnode.datetime',
-           new=datetime_mock)
-    def test_get_time_stamp(self):
-        expected_time_stamp = "2016-10-20_15:45:48"
-
-        time_stamp = ExcaliburNode.get_time_stamp()
-
-        self.assertEqual(expected_time_stamp, time_stamp)
-
-
-class ToListTest(unittest.TestCase):
-
-    def test_to_list_given_value_then_return_list(self):
-        response = ExcaliburNode._to_list(1)
-
-        self.assertEqual([1], response)
-
-    def test_to_list_given_list_then_return(self):
-        response = ExcaliburNode._to_list([1])
-
-        self.assertEqual([1], response)

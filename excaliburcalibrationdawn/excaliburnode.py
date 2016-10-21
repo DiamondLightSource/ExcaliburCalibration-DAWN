@@ -3,7 +3,6 @@ import os
 import posixpath
 import shutil
 import time
-from datetime import datetime
 import logging
 
 from collections import namedtuple
@@ -14,7 +13,7 @@ from excaliburcalibrationdawn.excaliburtestappinterface import \
     ExcaliburTestAppInterface
 from excaliburcalibrationdawn.excaliburdawn import ExcaliburDAWN
 from config import MPX3RX
-from excaliburcalibrationdawn import arrayutil as util
+from excaliburcalibrationdawn import util as util
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -181,7 +180,7 @@ class ExcaliburNode(object):
             chips: Chip or list of chips to calibrate
 
         """
-        chips = self._to_list(chips)
+        chips = util.to_list(chips)
         self.settings['mode'] = 'spm'
         self.settings['gain'] = 'slgm'
 
@@ -1216,7 +1215,7 @@ class ExcaliburNode(object):
         if (os.path.isdir(calib_dir)) == 0:
             os.makedirs(calib_dir)
         else:
-            backup_dir = self.calib_dir + '_backup_' + self.get_time_stamp()
+            backup_dir = self.calib_dir + '_backup_' + util.get_time_stamp()
             shutil.copytree(self.calib_dir, backup_dir)
 
             logging.debug("Backup directory: %s", backup_dir)
@@ -1885,22 +1884,6 @@ class ExcaliburNode(object):
         # self.read_dac(range(8), 'FBK')
         # self.read_dac(range(8), 'Cas')
 
-    @staticmethod
-    def rotate_config(config_file):
-        """Rotate array in given file 180 degrees.
-
-        Args:
-            config_file: Config file to rotate
-
-        """
-
-        logging.debug("Config files: %s", config_file)
-
-        # shutil.copy(config_file, config_file + ".backup")
-        config_bits = np.loadtxt(config_file)
-        np.savetxt(config_file, np.rot90(config_bits, 2), fmt='%.18g',
-                   delimiter=' ')
-
     def rotate_all_configs(self):
         """Rotate arrays in config files for EPICS.
 
@@ -1934,13 +1917,13 @@ class ExcaliburNode(object):
                                                        disc='pixelmask',
                                                        chip=chip_idx)
                 if os.path.isfile(discLbits_file):
-                    self.rotate_config(discLbits_file)
+                    util.rotate_config(discLbits_file)
                     print("{file} rotated".format(file=discLbits_file))
                 if os.path.isfile(discHbits_file):
-                    self.rotate_config(discHbits_file)
+                    util.rotate_config(discHbits_file)
                     print("{file} rotated".format(file=discHbits_file))
                 if os.path.isfile(pixel_mask_file):
-                    self.rotate_config(pixel_mask_file)
+                    util.rotate_config(pixel_mask_file)
                     print("{file} rotated".format(file=pixel_mask_file))
 
     def _grab_chip_slice(self, array, chip_idx):
@@ -1989,19 +1972,3 @@ class ExcaliburNode(object):
         mask_files = [file_ for file_ in files if file_.endswith(".mask")]
 
         print("Available masks: " + ", ".join(mask_files))
-
-    @staticmethod
-    def get_time_stamp():
-        """Get a time stamp"""
-        iso = datetime.now().isoformat(sep="_")  # Get ISO 8601 time stamp
-        time_stamp = iso.split(".")[0]  # Remove milliseconds
-
-        return time_stamp
-
-    @staticmethod
-    def _to_list(value):
-        """Return a list of value, or value if already a list."""
-        if isinstance(value, list):
-            return value
-        else:
-            return [value]

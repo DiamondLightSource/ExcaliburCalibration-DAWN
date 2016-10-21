@@ -10,7 +10,7 @@ Detector_patch_path = "excaliburcalibrationdawn.excaliburdetector" \
                       ".ExcaliburDetector"
 Node_patch_path = "excaliburcalibrationdawn.excalibur1M.ExcaliburNode"
 DAWN_patch_path = "excaliburcalibrationdawn.excaliburdetector.ExcaliburDAWN"
-util_patch_path = "excaliburcalibrationdawn.arrayutil"
+util_patch_path = "excaliburcalibrationdawn.util"
 
 mock_list = [MagicMock(), MagicMock(), MagicMock(),
              MagicMock(), MagicMock(), MagicMock()]
@@ -136,8 +136,10 @@ class FunctionsTest(unittest.TestCase):
             self.assertEqual(([0], grab_mock.return_value),
                              node.optimize_disc_h.call_args_list[0][0])
 
+    @patch(util_patch_path + '.get_time_stamp',
+           return_value="2016-10-21_16:42:50")
     @patch(DAWN_patch_path + '.plot_image')
-    def test_expose(self, plot_mock):
+    def test_expose(self, plot_mock, _):
         mock_array = np.array([[0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
                                [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0]])
 
@@ -162,7 +164,7 @@ class FunctionsTest(unittest.TestCase):
         for node in self.e.Nodes:
             node.expose.assert_called_once_with()
 
-        plot_mock.assert_called_once_with(ANY, "Excalibur1M Image")
+        plot_mock.assert_called_once_with(ANY, "Excalibur1M Image 2016-10-21_16:42:50")
         np.testing.assert_array_equal(expected_array, plot_mock.call_args[0][0])
 
 
