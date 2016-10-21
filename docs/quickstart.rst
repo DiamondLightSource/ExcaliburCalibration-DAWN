@@ -15,9 +15,9 @@ detector. To enable LV, set the HV bias to 120 and enable HV::
    >>> master.set_hv_bias(120)
    >>> master.enable_hv()
 
-To create an ExcaliburNode instance to calibrate a 1/2 module (e.g. FEM )::
+To create an ExcaliburNode instance to calibrate a 1/2 module (e.g. FEM 2)::
 
-   >>> x = ExcaliburNode(2)
+   >>> x = ExcaliburNode(2, "p99-excalibur0")
 
 You can then perform calibration processes, to perform threshold equilisation
 on chip 1 (index 0)::
