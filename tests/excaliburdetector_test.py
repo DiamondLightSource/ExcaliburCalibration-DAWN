@@ -36,6 +36,10 @@ class InitTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             ExcaliburDetector("test-server", [1, 1], 1)
 
+    def test_given_master_node_not_in_nodes_then_error(self):
+        with self.assertRaises(ValueError):
+            ExcaliburDetector("test-server", [1, 2], 3)
+
 
 class SetVoltageTest(unittest.TestCase):
 

@@ -20,11 +20,11 @@ class ExcaliburDetector(object):
         """Initialise detector.
 
         Args:
-            detector_name: Name of detector; string that gives the server name
-                for each node if the suffix is added - e.g. p99-excalibur0
+            detector_name(str): Name of detector; string that gives the server
+                name for each node if the suffix is added - e.g. p99-excalibur0
                 where p99-excalibur01 is the server for node 6 (nodes reversed)
-            nodes: List of identifiers for nodes of detector
-            master_node: Identifier for master node of detector
+            nodes(list(int)): List of identifiers for nodes of detector
+            master_node(int): Node to assign as master
 
         """
         self.server_root = detector_name
@@ -36,6 +36,9 @@ class ExcaliburDetector(object):
             raise ValueError("Given nodes {nodes} not valid, should be in "
                              "{valid_nodes}".format(
                                  nodes=nodes, valid_nodes=self.valid_nodes))
+        if master_node not in nodes:
+            raise ValueError("Master node {master} not in given nodes "
+                             "{nodes}".format(master=master_node, nodes=nodes))
 
         self.MasterNode = ExcaliburNode(master_node, self.server_root)
         self.Nodes = [self.MasterNode]

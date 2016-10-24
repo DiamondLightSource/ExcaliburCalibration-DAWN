@@ -15,10 +15,10 @@ class Excalibur3M(ExcaliburDetector):
         """Initialise six ExcaliburNode instances as a 3M detector.
 
         Args:
-            detector_name: Name of detector; string that gives the server name
-                for each node if the suffix is added - e.g. p99-excalibur0
+            detector_name(str): Name of detector; string that gives the server
+                name for each node if the suffix is added - e.g. p99-excalibur0
                 where p99-excalibur01 is the server for node 6 (nodes reversed)
-            master_node: Identifier for master node of detector
+            master_node(int): Node to assign as master
 
         """
         super(Excalibur3M, self).__init__(detector_name, self.nodes,
