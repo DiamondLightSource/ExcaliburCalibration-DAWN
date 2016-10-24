@@ -120,20 +120,19 @@ class ExcaliburDAWN(object):
         self.clear_plot(plot_name)
         self.clear_plot(fit_plot_name)
 
-        # TODO: Get rid of horrible indexing; x, bins = np.histogram...
         for idx, chip_data in enumerate(scan_data):
-            edge_histo = np.histogram(chip_data, bins=bins)
-            self.plot.addline(edge_histo[1][0:-1], edge_histo[0],
-                              name=plot_name)
-            popt, _ = curve_fit(self.gauss_function, edge_histo[1][0:-2],
-                                edge_histo[0][0:-1], p0)
+            bin_counts, bin_edges = np.histogram(chip_data, bins=bins)
 
-            x = edge_histo[1][0:-1]
+            self.plot.addline(bin_edges[0:-1], bin_counts, name=plot_name)
+            popt, _ = curve_fit(self.gauss_function, bin_edges[0:-2],
+                                bin_counts[0:-1], p0)
+
             a[idx] = popt[0]
             x0[idx] = popt[1]
             sigma[idx] = popt[2]
-            self.plot.addline(x, self.gauss_function(x, a[idx], x0[idx],
-                                                     sigma[idx]),
+            self.plot.addline(bin_edges[0:-1],
+                              self.gauss_function(bin_edges[0:-1], a[idx],
+                                                  x0[idx], sigma[idx]),
                               name=fit_plot_name)
 
         return x0, sigma

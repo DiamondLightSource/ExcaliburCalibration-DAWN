@@ -286,7 +286,7 @@ class ExcaliburNode(object):
     def find_xray_energy_dac(self, chips=range(8), threshold="0", energy=5.9):
         """############## NOT TESTED
 
-        Perform a DAC scan and fits monochromatic spectra in order to find the
+        Perform a DAC scan and fit monochromatic spectra in order to find the
         DAC value corresponding to the X-ray energy
 
         Args:
@@ -319,6 +319,9 @@ class ExcaliburNode(object):
         for chip_idx in chips:
             scan_data.append(chip_dac_scan[chip_idx, :])
         self.dawn.fit_dac_scan(scan_data, dac_axis)
+
+        #  TODO: Do we really need a plot_dac_scan AND a fit_dac_scan?
+        #  TODO: Both are only called here...
 
         # edge_dacs = self.find_edge(chips, dac_scan_data, dac_range, 2)
         # chip_edge_dacs = np.zeros(range(8))

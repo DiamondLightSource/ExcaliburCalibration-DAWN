@@ -176,7 +176,7 @@ class PlotLinearFitTest(unittest.TestCase):
         self.assertEqual(dict(name="Test fits"), addline_mock.call_args_list[1][1])
 
 
-@patch('numpy.histogram')
+@patch('numpy.histogram', return_value=[MagicMock(), MagicMock()])
 @patch(DAWN_patch_path + '.gauss_function')
 @patch('excaliburcalibrationdawn.excaliburdawn.curve_fit',
        return_value=[[1, 2, 3], None])
