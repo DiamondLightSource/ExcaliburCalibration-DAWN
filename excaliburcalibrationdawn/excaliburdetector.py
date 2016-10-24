@@ -7,6 +7,7 @@ import numpy as np
 
 import logging
 logging.basicConfig(level=logging.DEBUG)
+# logging.basicConfig(level=logging.INFO)
 
 
 class ExcaliburDetector(object):
@@ -101,6 +102,7 @@ class ExcaliburDetector(object):
 
         """
         for node_idx, node in enumerate(self.Nodes):
+            logging.info("Equalizing node %", node_idx)
             node.threshold_equalization(chips[node_idx])
 
     def optimize_dac_disc(self, chips, roi):

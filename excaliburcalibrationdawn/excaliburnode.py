@@ -16,6 +16,7 @@ from config import MPX3RX
 from excaliburcalibrationdawn import util as util
 
 logging.basicConfig(level=logging.DEBUG)
+# logging.basicConfig(level=logging.INFO)
 
 
 Range = namedtuple("Range", "start stop step")
@@ -64,14 +65,14 @@ class ExcaliburNode(object):
         """Initialize Excalibur node object.
 
         For example: On I13 the top FEM of EXCALIBUR-3M-RX001 is connected to
-        node 1 (i13-1-excalibur01) and the bottom fem to node 6(?)
+        node 1 (i13-1-excalibur01) and the bottom fem to node 6
         (i13-1-excalibur06).
 
         Args:
             server_root: Server name root; add node number to get real server
             node: PC node number of 1/2 module (Between 1 and 6 for 3M)
 
-        """
+        """  # TODO: Check 'node 6' is correct
         if node not in [1, 2, 3, 4, 5, 6]:
             raise ValueError("Node {node} is invalid. Should be 1-6.".format(
                 node=node))
@@ -120,8 +121,6 @@ class ExcaliburNode(object):
 
         self.full_array_shape = [self.chip_size,
                                  self.num_chips * self.chip_size]
-
-        # self.read_chip_ids()
 
     def setup(self):
         """Perform necessary initialisation."""
@@ -481,7 +480,7 @@ class ExcaliburNode(object):
         Args:
             thresh_energy: Energy to set
 
-        """
+        """  # TODO: Move docstring body somewhere more relevant
         self.set_thresh_energy('0', float(thresh_energy))
 
     def set_thresh_energy(self, threshold="0", thresh_energy=5.0):
@@ -495,7 +494,7 @@ class ExcaliburNode(object):
             threshold: Threshold to set (0 or 1)
             thresh_energy: Energy to set
 
-        """
+        """  # TODO: Move docstring body somewhere more relevant
         fname = posixpath.join(self.calib_dir,
                                'fem{fem}',
                                self.settings['mode'],
