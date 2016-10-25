@@ -24,7 +24,7 @@ Range = namedtuple("Range", "start stop step")
 
 class ExcaliburNode(object):
 
-    """Class to calibrate Excalibur-RX detectors.
+    """Class to calibrate a node of an Excalibur-RX detector.
 
     ExcaliburNode is a class defining methods required to calibrate each 1/2
     module (8 MPX3-RX chips) of an EXCALIBUR-RX detector.
@@ -45,6 +45,8 @@ class ExcaliburNode(object):
     chip_size = 256
     # Number of chips in 1/2 module
     num_chips = 8
+    # Shape of full 1/2 module array
+    full_array_shape = [chip_size, num_chips * chip_size]
 
     root_path = '/dls/detectors/support/silicon_pixels/excaliburRX/'
     calib_dir = posixpath.join(root_path, '3M-RX001/calib')
@@ -115,12 +117,10 @@ class ExcaliburNode(object):
                                             self.settings['mode'],
                                             self.settings['gain'])
 
+        # Helper classes
         self.app = ExcaliburTestAppInterface(self.fem, self.ipaddress, 6969,
                                              self.server_name)
         self.dawn = ExcaliburDAWN()
-
-        self.full_array_shape = [self.chip_size,
-                                 self.num_chips * self.chip_size]
 
     def setup(self):
         """Perform necessary initialisation."""
@@ -184,7 +184,7 @@ class ExcaliburNode(object):
         self.settings['gain'] = 'slgm'
 
         self.check_calib_dir()
-        self.log_chip_id()
+        self.log_chip_ids()
         self.set_dacs(chips)
         self.set_gnd_fbk_cas_excalibur_rx001(chips, self.fem)
 
@@ -540,11 +540,11 @@ class ExcaliburNode(object):
         """Read chip IDs."""
         self.app.read_chip_ids()
 
-    def log_chip_id(self):
+    def log_chip_ids(self):
         """Read chip IDs and logs chipIDs in calibration directory."""
         log_filename = posixpath.join(self.calib_dir,
                                       'fem{fem}',
-                                      '/efuseIDs'
+                                      'efuseIDs'
                                       ).format(fem=self.fem)
 
         with open(log_filename, "w") as outfile:

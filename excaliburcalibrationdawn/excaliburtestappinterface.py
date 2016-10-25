@@ -70,7 +70,7 @@ class ExcaliburTestAppInterface(object):
     """A class to make subprocess calls to the excaliburTestApp tool."""
 
     # ExcaliburTestApp flags & example usage
-    IP_ADDRESS = "-i"  # -i 192.168.0.10
+    IP_ADDRESS = "-i"  # -i 192.168.0.101
     PORT = "-p"  # -p 6969
     MASK = "-m"  # -m 0xff
     RESET = "-r"
@@ -95,7 +95,7 @@ class ExcaliburTestAppInterface(object):
     READ_MODE = "--readmode"  # --readmode 1
     GAIN_MODE = "--gainmode"  # --gainmode 3
     PATH = "--path"  # --path /scratch/excalibur_images
-    HDF_FILE = "--hdffile="  # --hdffile image_1
+    HDF_FILE = "--hdffile="  # --hdffile=image_1.hdf5
     TP_COUNT = "--tpcount"  # --tpcount 2
     CONFIG = "--config"
     PIXEL_MASK = "--pixelmask"  # --pixelmask mask.txt

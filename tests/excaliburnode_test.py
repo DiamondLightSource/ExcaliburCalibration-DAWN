@@ -157,7 +157,7 @@ class SetVoltageTest(unittest.TestCase):
 
 
 @patch(Node_patch_path + '.check_calib_dir')
-@patch(Node_patch_path + '.log_chip_id')
+@patch(Node_patch_path + '.log_chip_ids')
 @patch(Node_patch_path + '.set_dacs')
 @patch(Node_patch_path + '.set_gnd_fbk_cas_excalibur_rx001')
 @patch(Node_patch_path + '.calibrate_disc')
@@ -477,7 +477,7 @@ class TestAppCallsTest(unittest.TestCase):
     @patch('__builtin__.open', return_value=file_mock)
     def test_log_chip_id(self, _, read_mock):
 
-        self.e.log_chip_id()
+        self.e.log_chip_ids()
 
         read_mock.assert_called_once_with(stdout=self.file_mock.__enter__.return_value)
 
