@@ -9,7 +9,7 @@ from excaliburcalibrationdawn.excaliburtestappinterface import ExcaliburTestAppI
 ETAI_patch_path = "excaliburcalibrationdawn.excaliburtestappinterface.ExcaliburTestAppInterface"
 
 
-class TestInit(unittest.TestCase):
+class InitTest(unittest.TestCase):
 
     def test_attributes_set(self):
         e = ExcaliburTestAppInterface(1, "test_ip", "test_port")
@@ -36,8 +36,18 @@ class TestInit(unittest.TestCase):
                           '-p', 'test_port'], e.base_cmd)
 
 
+class SetStatusTest(unittest.TestCase):
+
+    def test_status_set(self):
+        e = ExcaliburTestAppInterface(1, "test_ip", "test_port", "test_server")
+
+        self.assertEqual(0, e.status['lv'])
+        e._set_status("lv", 5)
+        self.assertEqual(5, e.status['lv'])
+
+
 @patch(ETAI_patch_path + '._mask')
-class TestConstructCommand(unittest.TestCase):
+class ConstructCommandTest(unittest.TestCase):
 
     def test_returns(self, mask_mock):
         e = ExcaliburTestAppInterface(1, "test_ip", "test_port")
@@ -70,7 +80,7 @@ class TestConstructCommand(unittest.TestCase):
 
 @patch('logging.debug')
 @patch('subprocess.check_output')
-class TestSendCommand(unittest.TestCase):
+class SendCommandTest(unittest.TestCase):
 
     def test_subp_called_and_logged(self, subp_mock, logging_mock):
         e = ExcaliburTestAppInterface(1, "test_ip", "test_port")
@@ -101,50 +111,65 @@ class TestSendCommand(unittest.TestCase):
 
 @patch(ETAI_patch_path + '._construct_command')
 @patch(ETAI_patch_path + '._send_command')
-class TestAPICalls(unittest.TestCase):
+class APICallsTest(unittest.TestCase):
 
     def setUp(self):
         self.e = ExcaliburTestAppInterface(1, "test_ip", "test_port")
         self.chips = range(8)
 
-    def test_set_lv_state(self, send_mock, construct_mock):
-        expected_params = ['--lvenable', '0']
+    @patch(ETAI_patch_path + '._set_status')
+    def test_set_lv_state(self, set_mock, send_mock, construct_mock):
+        expected_params = ['--lvenable', '1']
 
-        self.e.set_lv_state(0)
+        self.e.set_lv_state(1)
 
         construct_mock.assert_called_once_with(self.chips, *expected_params)
         send_mock.assert_called_once_with(construct_mock.return_value)
+        set_mock.assert_called_once_with("lv", 1)
 
-    def test_set_lv_state_raises(self, _, _2):
+    @patch(ETAI_patch_path + '._set_status')
+    def test_set_lv_state_raises(self, set_mock, _, _2):
 
         with self.assertRaises(ValueError):
             self.e.set_lv_state(2)
 
-    def test_set_hv_state(self, send_mock, construct_mock):
+        self.assertFalse(set_mock.call_count)
+
+    @patch(ETAI_patch_path + '._set_status')
+    def test_set_hv_state(self, set_mock, send_mock, construct_mock):
         expected_params = ['--hvenable', '1']
 
         self.e.set_hv_state(1)
 
         construct_mock.assert_called_once_with(self.chips, *expected_params)
         send_mock.assert_called_once_with(construct_mock.return_value)
+        set_mock.assert_called_once_with("hv", 1)
 
-    def test_set_hv_state_raises(self, _, _2):
+    @patch(ETAI_patch_path + '._set_status')
+    def test_set_hv_state_raises(self, set_mock, _, _2):
 
         with self.assertRaises(ValueError):
             self.e.set_hv_state(2)
 
-    def test_set_hv_bias(self, send_mock, construct_mock):
+        self.assertFalse(set_mock.call_count)
+
+    @patch(ETAI_patch_path + '._set_status')
+    def test_set_hv_bias(self, set_mock, send_mock, construct_mock):
         expected_params = ['--hvbias', '120']
 
         self.e.set_hv_bias(120)
 
         construct_mock.assert_called_once_with(self.chips, *expected_params)
         send_mock.assert_called_once_with(construct_mock.return_value)
+        set_mock.assert_called_once_with("hv_bias", 120)
 
-    def test_set_hv_bias_raises(self, _, _2):
+    @patch(ETAI_patch_path + '._set_status')
+    def test_set_hv_bias_raises(self, set_mock, _, _2):
 
         with self.assertRaises(ValueError):
             self.e.set_hv_bias(200)
+
+        self.assertFalse(set_mock.call_count)
 
     @patch('os.path.isfile', return_value=False)
     def test_acquire(self, _, send_mock, construct_mock):
@@ -384,7 +409,7 @@ class LoadConfigTest(unittest.TestCase):
         self.assertFalse(send_mock.call_count)
 
 
-class TestSimpleWrappers(unittest.TestCase):
+class SimpleWrappersTest(unittest.TestCase):
 
     def setUp(self):
         self.e = ExcaliburTestAppInterface(1, "test_ip", "test_port",

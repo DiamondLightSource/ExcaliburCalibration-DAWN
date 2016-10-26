@@ -136,6 +136,18 @@ class ExcaliburTestAppInterface(object):
                               self.IP_ADDRESS, self.ip_address,
                               self.PORT, self.port])
 
+        self.status = dict(lv=0, hv=0, hv_bias=0)
+
+    def _set_status(self, attribute, state):
+        """Set state of detector attribute.
+
+        Args:
+            attribute: Attribute to set
+            state: State to set to
+
+        """
+        self.status[attribute] = state
+
     def _construct_command(self, chips, *cmd_args):
         """Construct a command from the base_cmd, given chips and any cmd_args.
 
@@ -185,6 +197,9 @@ class ExcaliburTestAppInterface(object):
         Args:
             command(list(str)): List of arguments to send to command line call
 
+        Returns:
+            bool: Whether command was successful
+
         """
         logging.debug("Sending command: '%s' with kwargs %s",
                       ' '.join(command), str(cmd_kwargs))
@@ -193,8 +208,10 @@ class ExcaliburTestAppInterface(object):
             output = subprocess.check_output(command, **cmd_kwargs)
         except subprocess.CalledProcessError as error:
             logging.debug("Error output: %s", error.output)
+            return False
         else:
             logging.debug("Output: %s", output)
+            return True
 
     def set_lv_state(self, lv_state):
         """Set LV to given state; 0 - Off, 1 - On.
@@ -209,7 +226,9 @@ class ExcaliburTestAppInterface(object):
 
         chips = range(8)
         command = self._construct_command(chips, self.LV, str(lv_state))
-        self._send_command(command)
+        success = self._send_command(command)
+        if success:
+            self._set_status("lv", lv_state)
 
     def set_hv_state(self, hv_state):
         """Set HV to given state; 0 - Off, 1 - On.
@@ -223,7 +242,9 @@ class ExcaliburTestAppInterface(object):
                              "{value}".format(value=hv_state))
         chips = range(8)
         command = self._construct_command(chips, self.HV, str(hv_state))
-        self._send_command(command)
+        success = self._send_command(command)
+        if success:
+            self._set_status("hv", hv_state)
 
     def set_hv_bias(self, hv_bias):
         """Set HV bias to given value.
@@ -237,7 +258,9 @@ class ExcaliburTestAppInterface(object):
                              "{value}".format(value=hv_bias))
         chips = range(8)
         command = self._construct_command(chips, self.HV_BIAS, str(hv_bias))
-        self._send_command(command)
+        success = self._send_command(command)
+        if success:
+            self._set_status("hv_bias", hv_bias)
 
     def acquire(self, chips, frames, acq_time, burst=None, pixel_mode=None,
                 disc_mode=None, depth=None, counter=None, equalization=None,
