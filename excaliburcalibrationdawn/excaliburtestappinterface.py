@@ -136,17 +136,11 @@ class ExcaliburTestAppInterface(object):
                               self.IP_ADDRESS, self.ip_address,
                               self.PORT, self.port])
 
-        self.status = dict(lv=0, hv=0, hv_bias=0)
-
-    def _set_status(self, attribute, state):
-        """Set state of detector attribute.
-
-        Args:
-            attribute: Attribute to set
-            state: State to set to
-
-        """
-        self.status[attribute] = state
+        self.lv = 0
+        self.hv = 0
+        self.hv_bias = 0
+        self.dacs_loaded = None
+        self.initialised = False
 
     def _construct_command(self, chips, *cmd_args):
         """Construct a command from the base_cmd, given chips and any cmd_args.
@@ -201,17 +195,16 @@ class ExcaliburTestAppInterface(object):
             bool: Whether command was successful
 
         """
-        logging.debug("Sending command: '%s' with kwargs %s",
+        logging.debug("Sending Command:\n'%s' with kwargs %s",
                       ' '.join(command), str(cmd_kwargs))
 
         try:
-            output = subprocess.check_output(command, **cmd_kwargs)
+            subprocess.check_call(command, **cmd_kwargs)
         except subprocess.CalledProcessError as error:
-            logging.debug("Error output: %s", error.output)
+            logging.debug("Error Output:\n%s", error.output)
             return False
-        else:
-            logging.debug("Output: %s", output)
-            return True
+
+        return True
 
     def set_lv_state(self, lv_state):
         """Set LV to given state; 0 - Off, 1 - On.
@@ -228,7 +221,7 @@ class ExcaliburTestAppInterface(object):
         command = self._construct_command(chips, self.LV, str(lv_state))
         success = self._send_command(command)
         if success:
-            self._set_status("lv", lv_state)
+            self.lv = lv_state
 
     def set_hv_state(self, hv_state):
         """Set HV to given state; 0 - Off, 1 - On.
@@ -244,7 +237,7 @@ class ExcaliburTestAppInterface(object):
         command = self._construct_command(chips, self.HV, str(hv_state))
         success = self._send_command(command)
         if success:
-            self._set_status("hv", hv_state)
+            self.hv = hv_state
 
     def set_hv_bias(self, hv_bias):
         """Set HV bias to given value.
@@ -260,7 +253,7 @@ class ExcaliburTestAppInterface(object):
         command = self._construct_command(chips, self.HV_BIAS, str(hv_bias))
         success = self._send_command(command)
         if success:
-            self._set_status("hv_bias", hv_bias)
+            self.hv_bias = hv_bias
 
     def acquire(self, chips, frames, acq_time, burst=None, pixel_mode=None,
                 disc_mode=None, depth=None, counter=None, equalization=None,
@@ -291,6 +284,12 @@ class ExcaliburTestAppInterface(object):
             list(str): Full acquire command to send to subprocess call
 
         """
+        # Check detector has been initialised correctly
+        if self.dacs_loaded is None:
+            raise ValueError("No DAC file loaded to FEM. Call setup().")
+        if not self.initialised:
+            raise ValueError("FEM has not been initialised. Call setup().")
+
         extra_params = [self.ACQUIRE,
                         self.NUM_FRAMES, str(frames),
                         self.ACQ_TIME, str(acq_time)]
@@ -416,7 +415,9 @@ class ExcaliburTestAppInterface(object):
         command = self._construct_command(chips,
                                           self.RESET,
                                           self.READ_EFUSE)
-        self._send_command(command, **cmd_kwargs)
+        success = self._send_command(command, **cmd_kwargs)
+        if success and not self.initialised:
+            self.initialised = True
 
     def read_slow_control_parameters(self, **cmd_kwargs):
         """Read and display slow control parameters for the given chips.
@@ -438,7 +439,9 @@ class ExcaliburTestAppInterface(object):
 
         """
         command = self._construct_command(chips, self.DAC_FILE, dac_file)
-        self._send_command(command)
+        success = self._send_command(command)
+        if success:
+            self.dacs_loaded = dac_file.split('/')[-1]
 
     def configure_test_pulse(self, chips, dac_file, tp_mask,
                              config_files=None):
