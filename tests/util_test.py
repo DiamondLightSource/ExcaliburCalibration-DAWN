@@ -51,12 +51,12 @@ class FunctionsTest(unittest.TestCase):
                                           fmt='%.18g', delimiter=' ')
 
     datetime_mock = MagicMock()
-    datetime_mock.now.return_value.isoformat.return_value = "2016-10-20_15:45:48.834130"
+    datetime_mock.now.return_value.isoformat.return_value = "20161020~154548.834130"
 
     @patch(util_patch_path + '.datetime',
            new=datetime_mock)
     def test_get_time_stamp(self):
-        expected_time_stamp = "2016-10-20_15:45:48"
+        expected_time_stamp = "20161020~154548"
 
         time_stamp = util.get_time_stamp()
 

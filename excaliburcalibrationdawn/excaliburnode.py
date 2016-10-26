@@ -126,7 +126,7 @@ class ExcaliburNode(object):
         """Perform necessary initialisation."""
         self.initialise_lv()
         self.set_hv_bias(120)
-        self.enable_hv()
+        # self.enable_hv()
         self.read_chip_ids()
         self.app.load_dacs(range(8), posixpath.join(self.config_dir,
                                                     "Default_SPM.dacs"))
@@ -761,7 +761,7 @@ class ExcaliburNode(object):
 
         image = self._acquire(1, exposure)
 
-        self.dawn.plot_image(image, name="Image_{}".format(time.asctime()))
+        self.dawn.plot_image(image, "Node Image")
         return image
 
     def burst(self, frames, acquire_time):
@@ -836,6 +836,7 @@ class ExcaliburNode(object):
         if self.remote_node:
             file_path = self.app.grab_remote_file(file_path)
 
+        logging.debug("Loading %s", file_path)
         image = self.dawn.load_image_data(file_path)
         return image
 

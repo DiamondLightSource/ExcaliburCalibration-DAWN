@@ -4,6 +4,7 @@ from pkg_resources import require
 require("mock")
 from mock import patch, MagicMock, ANY
 DAWN_patch_path = "excaliburcalibrationdawn.excaliburdawn.ExcaliburDAWN"
+util_patch_path = "excaliburcalibrationdawn.util"
 
 import numpy as np
 
@@ -35,12 +36,14 @@ class SimpleMethodsTest(unittest.TestCase):
         self.chips = [0]
 
     @patch('scisoftpy.plot.image')
-    def test_plot_image(self, plot_mock):
+    @patch(util_patch_path + '.get_time_stamp', return_value="20161026~093547")
+    def test_plot_image(self, _, plot_mock):
         mock_data = MagicMock()
 
         self.e.plot_image(mock_data, name="Test Plot")
 
-        plot_mock.assert_called_once_with(mock_data, name="Test Plot")
+        plot_mock.assert_called_once_with(mock_data,
+                                          name="Test Plot - 20161026~093547")
 
     @patch('scisoftpy.plot.addline')
     @patch('numpy.histogram')
@@ -63,14 +66,13 @@ class SimpleMethodsTest(unittest.TestCase):
         self.assertEqual(load_mock.return_value.image[...], value)
 
     @patch(DAWN_patch_path + '.load_image')
-    @patch('scisoftpy.squeeze')
-    def test_load_image_data(self, squeeze_mock, load_mock):
+    def test_load_image_data(self, load_mock):
 
         value = self.e.load_image_data("test_path")
 
         load_mock.assert_called_once_with("test_path")
-        squeeze_mock.assert_called_once_with(load_mock.return_value.astype())
-        self.assertEqual(squeeze_mock.return_value, value)
+        self.assertEqual(load_mock.return_value.squeeze.return_value,
+                         value)
 
     @patch('scisoftpy.plot.clear')
     def test_clear_plot(self, clear_mock):

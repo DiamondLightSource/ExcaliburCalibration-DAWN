@@ -135,8 +135,7 @@ class ExcaliburDetector(object):
         for node in self.Nodes[1:]:
             image = np.concatenate((image, node.expose()), axis=0)
 
-        self.dawn.plot_image(image, "Excalibur1M Image {time_stamp}".format(
-            time_stamp=util.get_time_stamp()))
+        self.dawn.plot_image(image, "Excalibur Detector Image")
 
     def _grab_node_slice(self, array, node_idx):
         """Grab a node from a full array.

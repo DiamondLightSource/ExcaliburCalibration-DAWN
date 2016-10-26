@@ -4,8 +4,9 @@ import logging
 
 import numpy as np
 from scipy.optimize import curve_fit
-
 import scisoftpy
+
+import util
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -26,7 +27,11 @@ class ExcaliburDAWN(object):
             name: Name for plot
 
         """
-        self.plot.image(data_set, name=name)
+        plot_name = "{name} - {time_stamp}".format(
+            name=name, time_stamp=util.get_time_stamp())
+
+        self.plot.image(data_set, name=plot_name)
+        logging.info("Image plotted in DAWN as '%s'", plot_name)
 
     def load_image(self, path):
         """Load image data in given file into a numpy array.
@@ -48,8 +53,7 @@ class ExcaliburDAWN(object):
 
         """
         image_raw = self.load_image(path)
-        image = scisoftpy.squeeze(image_raw.astype(np.int))
-
+        image = image_raw.squeeze()
         return image
 
     def clear_plot(self, name):

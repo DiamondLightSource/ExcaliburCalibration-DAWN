@@ -49,14 +49,20 @@ def rotate_config(config_file):
 
 def get_time_stamp():
     """Get a time stamp"""
-    iso = datetime.now().isoformat(sep="_")  # Get ISO 8601 time stamp
+    iso = datetime.now().isoformat(sep="~")  # Get ISO 8601 time stamp
+    iso = iso.replace(":", "").replace("-", "")  # Remove date and time seps
     time_stamp = iso.split(".")[0]  # Remove milliseconds
 
     return time_stamp
 
 
 def to_list(value):
-    """Return a list of value, or value if already a list."""
+    """Return a list of value, or value if already a list.
+
+    Args:
+        value: List or variable to put in list
+
+    """
     if isinstance(value, list):
         return value
     else:

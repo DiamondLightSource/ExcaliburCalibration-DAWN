@@ -93,7 +93,7 @@ class InitTest(unittest.TestCase):
 
         init_mock.assert_called_once_with()
         set_mock.assert_called_once_with(120)
-        enable_mock.assert_called_once_with()
+        # enable_mock.assert_called_once_with()
         read_mock.assert_called_once_with()
         load_mock.assert_called_once_with(range(8), '/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/config/Default_SPM.dacs')
 
@@ -514,7 +514,8 @@ class TestAppCallsTest(unittest.TestCase):
         self.e.expose()
 
         acquire_mock.assert_called_once_with(1, 100)
-        plot_mock.assert_called_once_with(acquire_mock.return_value, name='Image_Tue Sep 27 10:12:27 2016')
+        plot_mock.assert_called_once_with(acquire_mock.return_value,
+                                          "Node Image")
 
     @patch('time.asctime', return_value='Tue Sep 27 10:12:27 2016')
     @patch(DAWN_patch_path + '.plot_image')
@@ -524,8 +525,9 @@ class TestAppCallsTest(unittest.TestCase):
         self.e.expose(200)
 
         acquire_mock.assert_called_once_with(1, 200)
-        plot_mock.assert_called_once_with(acquire_mock.return_value, name='Image_Tue Sep 27 10:12:27 2016')
-
+        plot_mock.assert_called_once_with(acquire_mock.return_value,
+                                          "Node Image")
+    
     @patch(Node_patch_path + '._acquire')
     def test_burst(self, acquire_mock):
 
