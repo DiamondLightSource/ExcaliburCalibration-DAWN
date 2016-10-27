@@ -8,7 +8,7 @@ from excaliburcalibrationdawn.excaliburnode import ExcaliburNode, np, Range
 Node_patch_path = "excaliburcalibrationdawn.excaliburnode.ExcaliburNode"
 ETAI_patch_path = "excaliburcalibrationdawn.excaliburnode.ExcaliburTestAppInterface"
 DAWN_patch_path = "excaliburcalibrationdawn.excaliburnode.ExcaliburDAWN"
-util_patch_path = "excaliburcalibrationdawn.arrayutil"
+util_patch_path = "excaliburcalibrationdawn.util"
 
 
 class InitTest(unittest.TestCase):
@@ -72,14 +72,30 @@ class InitTest(unittest.TestCase):
 
     def test_server_used(self):
         e = ExcaliburNode(1, "test-server")
-        self.assertEqual("test-server1", e.server_name)
-        self.assertEqual("test-server1", e.app.server_name)
+        self.assertEqual("test-server6", e.server_name)
+        self.assertEqual("test-server6.diamond.ac.uk", e.app.server_path)
 
     def test_given_node_invalid_node_raises(self):
         with self.assertRaises(ValueError):
             ExcaliburNode(0)
         with self.assertRaises(ValueError):
             ExcaliburNode(7)
+
+    @patch(ETAI_patch_path + '.load_dacs')
+    @patch(Node_patch_path + '.read_chip_ids')
+    @patch(Node_patch_path + '.enable_hv')
+    @patch(Node_patch_path + '.set_hv_bias')
+    @patch(Node_patch_path + '.initialise_lv')
+    def test_setup(self, init_mock, set_mock, enable_mock, read_mock,
+                   load_mock):
+
+        self.e.setup()
+
+        init_mock.assert_called_once_with()
+        set_mock.assert_called_once_with(120)
+        # enable_mock.assert_called_once_with()
+        read_mock.assert_called_once_with()
+        load_mock.assert_called_once_with(range(8), '/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/config/Default_SPM.dacs')
 
 
 class SetVoltageTest(unittest.TestCase):
@@ -101,6 +117,15 @@ class SetVoltageTest(unittest.TestCase):
 
         self.app_mock.set_lv_state.assert_called_once_with(0)
 
+    @patch(Node_patch_path + '.enable_lv')
+    @patch(Node_patch_path + '.disable_lv')
+    def test_initialise_lv(self, disable_mock, enable_mock):
+
+        self.e.initialise_lv()
+
+        self.assertEqual(2, enable_mock.call_count)
+        self.assertEqual(1, disable_mock.call_count)
+
     def test_enable_hv(self):
 
         self.e.enable_hv()
@@ -119,9 +144,20 @@ class SetVoltageTest(unittest.TestCase):
 
         self.app_mock.set_hv_bias.assert_called_once_with(120)
 
+    @patch(Node_patch_path + '.disable_lv')
+    @patch(Node_patch_path + '.disable_hv')
+    @patch(Node_patch_path + '.set_hv_bias')
+    def test_disable(self, set_mock, hv_mock, lv_mock):
+
+        self.e.disable()
+
+        set_mock.assert_called_once_with(0)
+        hv_mock.assert_called_once_with()
+        lv_mock.assert_called_once_with()
+
 
 @patch(Node_patch_path + '.check_calib_dir')
-@patch(Node_patch_path + '.log_chip_id')
+@patch(Node_patch_path + '.log_chip_ids')
 @patch(Node_patch_path + '.set_dacs')
 @patch(Node_patch_path + '.set_gnd_fbk_cas_excalibur_rx001')
 @patch(Node_patch_path + '.calibrate_disc')
@@ -441,7 +477,7 @@ class TestAppCallsTest(unittest.TestCase):
     @patch('__builtin__.open', return_value=file_mock)
     def test_log_chip_id(self, _, read_mock):
 
-        self.e.log_chip_id()
+        self.e.log_chip_ids()
 
         read_mock.assert_called_once_with(stdout=self.file_mock.__enter__.return_value)
 
@@ -478,7 +514,8 @@ class TestAppCallsTest(unittest.TestCase):
         self.e.expose()
 
         acquire_mock.assert_called_once_with(1, 100)
-        plot_mock.assert_called_once_with(acquire_mock.return_value, name='Image_Tue Sep 27 10:12:27 2016')
+        plot_mock.assert_called_once_with(acquire_mock.return_value,
+                                          "Node Image")
 
     @patch('time.asctime', return_value='Tue Sep 27 10:12:27 2016')
     @patch(DAWN_patch_path + '.plot_image')
@@ -488,8 +525,9 @@ class TestAppCallsTest(unittest.TestCase):
         self.e.expose(200)
 
         acquire_mock.assert_called_once_with(1, 200)
-        plot_mock.assert_called_once_with(acquire_mock.return_value, name='Image_Tue Sep 27 10:12:27 2016')
-
+        plot_mock.assert_called_once_with(acquire_mock.return_value,
+                                          "Node Image")
+    
     @patch(Node_patch_path + '._acquire')
     def test_burst(self, acquire_mock):
 
@@ -1057,7 +1095,8 @@ class CheckCalibDirTest(unittest.TestCase):
                                           expected_path)
         self.assertFalse(copy_tree_mock.call_count)
 
-    @patch('time.asctime', return_value='Fri Sep 16 14:59:18 2016')
+    @patch(util_patch_path + '.get_time_stamp',
+           return_value="2016-10-20_15:45:48")
     @patch('os.path.isfile', return_value=True)
     @patch('os.path.isdir', return_value=True)
     def test_does_exist_then_backup(self, isdir_mock, isfile_mock, _,
@@ -1071,7 +1110,7 @@ class CheckCalibDirTest(unittest.TestCase):
         isfile_mock.assert_called_once_with(expected_path + '/dacs')
         self.assertFalse(make_mock.call_count)
         copy_tree_mock.assert_called_once_with('/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib',
-                                               '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib_backup_Fri Sep 16 14:59:18 2016')
+                                               '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib_backup_2016-10-20_15:45:48')
         self.assertFalse(copy_mock.call_count)
 
 
@@ -1491,21 +1530,8 @@ class RotateTest(unittest.TestCase):
     def setUp(self):
         self.e = ExcaliburNode(1)
 
-    @patch('numpy.rot90')
-    @patch('numpy.savetxt')
-    @patch('numpy.loadtxt')
-    def test_rotate_config(self, load_mock, save_mock, rotate_mock):
-        test_path = 'path/to/config'
-
-        self.e.rotate_config(test_path)
-
-        load_mock.assert_called_once_with(test_path)
-        rotate_mock.assert_called_once_with(load_mock.return_value, 2)
-        save_mock.assert_called_once_with(test_path, rotate_mock.return_value,
-                                          fmt='%.18g', delimiter=' ')
-
     @patch('shutil.copytree')
-    @patch(Node_patch_path + '.rotate_config')
+    @patch(util_patch_path + '.rotate_config')
     @patch('os.path.isfile', return_value=True)
     def test_rotate_config_files_exist(self, _, rotate_mock, copy_mock):
         self.e.num_chips = 1  # Make test easier
@@ -1565,14 +1591,17 @@ class SliceGrabSetTest(unittest.TestCase):
         np.testing.assert_array_equal(expected_stop, stop)
 
 
-class ToListTest(unittest.TestCase):
+class DisplayMasksTest(unittest.TestCase):
 
-    def test_to_list_given_value_then_return_list(self):
-        response = ExcaliburNode._to_list(1)
+    @patch("sys.stdout.write")
+    @patch("os.listdir",
+           return_value=["diagonal.mask", "stfcinverted.mask",
+                         "triangle.mask", "zeros.mask", "test.notmask"])
+    def test_display_masks(self, _, print_mock):
+        expected_call = "Available masks: diagonal.mask, stfcinverted.mask, " \
+                        "triangle.mask, zeros.mask"
+        e = ExcaliburNode(1)
 
-        self.assertEqual([1], response)
+        e.display_masks()
 
-    def test_to_list_given_list_then_return(self):
-        response = ExcaliburNode._to_list([1])
-
-        self.assertEqual([1], response)
+        self.assertEqual(expected_call, print_mock.call_args_list[0][0][0])

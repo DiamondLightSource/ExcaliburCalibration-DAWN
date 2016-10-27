@@ -9,10 +9,10 @@ from excaliburcalibrationdawn.excaliburtestappinterface import ExcaliburTestAppI
 ETAI_patch_path = "excaliburcalibrationdawn.excaliburtestappinterface.ExcaliburTestAppInterface"
 
 
-class TestInit(unittest.TestCase):
+class InitTest(unittest.TestCase):
 
     def test_attributes_set(self):
-        e = ExcaliburTestAppInterface("test_ip", "test_port")
+        e = ExcaliburTestAppInterface(1, "test_ip", "test_port")
         expected_path = "/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp"
 
         self.assertEqual(expected_path, e.path)
@@ -28,18 +28,19 @@ class TestInit(unittest.TestCase):
                           '-p', 'test_port'], e.base_cmd)
 
     def test_base_cmd_with_server_given(self):
-        e = ExcaliburTestAppInterface("test_ip", "test_port", "test_server")
-        self.assertEqual(['ssh test_server',
+        e = ExcaliburTestAppInterface(1, "test_ip", "test_port", "test_server")
+        self.assertEqual(['ssh',
+                          'test_server.diamond.ac.uk',
                           '/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
                           '-i', 'test_ip',
                           '-p', 'test_port'], e.base_cmd)
 
 
 @patch(ETAI_patch_path + '._mask')
-class TestConstructCommand(unittest.TestCase):
+class ConstructCommandTest(unittest.TestCase):
 
     def test_returns(self, mask_mock):
-        e = ExcaliburTestAppInterface("test_ip", "test_port")
+        e = ExcaliburTestAppInterface(1, "test_ip", "test_port")
         expected_command = ['/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
                             '-i', 'test_ip',
                             '-p', 'test_port',
@@ -52,7 +53,7 @@ class TestConstructCommand(unittest.TestCase):
         self.assertEqual(expected_command, command)
 
     def test_adds_args_and_returns(self, mask_mock):
-        e = ExcaliburTestAppInterface("test_ip", "test_port")
+        e = ExcaliburTestAppInterface(1, "test_ip", "test_port")
         expected_command = ['/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
                             '-i', 'test_ip',
                             '-p', 'test_port',
@@ -68,12 +69,12 @@ class TestConstructCommand(unittest.TestCase):
 
 
 @patch('logging.debug')
-@patch('subprocess.check_output')
-class TestSendCommand(unittest.TestCase):
+@patch('subprocess.check_call')
+class SendCommandTest(unittest.TestCase):
 
     def test_subp_called_and_logged(self, subp_mock, logging_mock):
-        e = ExcaliburTestAppInterface("test_ip", "test_port")
-        expected_message = "Sending command: '%s' with kwargs %s"
+        e = ExcaliburTestAppInterface(1, "test_ip", "test_port")
+        expected_message = "Sending Command:\n'%s' with kwargs %s"
         subp_mock.return_value = "Success"
 
         e._send_command(["test_command"], test=True)
@@ -81,11 +82,10 @@ class TestSendCommand(unittest.TestCase):
         self.assertEqual((expected_message, "test_command", "{'test': True}"),
                          logging_mock.call_args_list[0][0])
         subp_mock.assert_called_once_with(["test_command"], test=True)
-        self.assertEqual("Output: %s", logging_mock.call_args_list[1][0][0])
 
     def test_error_raised_then_catch_and_log(self, subp_mock, logging_mock):
-        e = ExcaliburTestAppInterface("test_ip", "test_port")
-        expected_message = "Sending command: '%s' with kwargs %s"
+        e = ExcaliburTestAppInterface(1, "test_ip", "test_port")
+        expected_message = "Sending Command:\n'%s' with kwargs %s"
         subp_mock.side_effect = CalledProcessError(1, "test_command",
                                                    output="Invalid command")
 
@@ -94,56 +94,19 @@ class TestSendCommand(unittest.TestCase):
         self.assertEqual((expected_message, "test_command", "{'test': True}"),
                          logging_mock.call_args_list[0][0])
         subp_mock.assert_called_once_with(["test_command"], test=True)
-        self.assertEqual(("Error output: %s", "Invalid command"),
+        self.assertEqual(("Error Output:\n%s", "Invalid command"),
                          logging_mock.call_args_list[1][0])
 
 
 @patch(ETAI_patch_path + '._construct_command')
 @patch(ETAI_patch_path + '._send_command')
-class TestAPICalls(unittest.TestCase):
+class AcquireTest(unittest.TestCase):
 
     def setUp(self):
-        self.e = ExcaliburTestAppInterface("test_ip", "test_port")
+        self.e = ExcaliburTestAppInterface(1, "test_ip", "test_port")
+        self.e.dacs_loaded = "dacs.txt"
+        self.e.initialised = True
         self.chips = range(8)
-
-    def test_set_lv_state(self, send_mock, construct_mock):
-        expected_params = ['--lvenable', '0']
-
-        self.e.set_lv_state(0)
-
-        construct_mock.assert_called_once_with(self.chips, *expected_params)
-        send_mock.assert_called_once_with(construct_mock.return_value)
-
-    def test_set_lv_state_raises(self, _, _2):
-
-        with self.assertRaises(ValueError):
-            self.e.set_lv_state(2)
-
-    def test_set_hv_state(self, send_mock, construct_mock):
-        expected_params = ['--hvenable', '1']
-
-        self.e.set_hv_state(1)
-
-        construct_mock.assert_called_once_with(self.chips, *expected_params)
-        send_mock.assert_called_once_with(construct_mock.return_value)
-
-    def test_set_hv_state_raises(self, _, _2):
-
-        with self.assertRaises(ValueError):
-            self.e.set_hv_state(2)
-
-    def test_set_hv_bias(self, send_mock, construct_mock):
-        expected_params = ['--hvbias', '120']
-
-        self.e.set_hv_bias(120)
-
-        construct_mock.assert_called_once_with(self.chips, *expected_params)
-        send_mock.assert_called_once_with(construct_mock.return_value)
-
-    def test_set_hv_bias_raises(self, _, _2):
-
-        with self.assertRaises(ValueError):
-            self.e.set_hv_bias(200)
 
     @patch('os.path.isfile', return_value=False)
     def test_acquire(self, _, send_mock, construct_mock):
@@ -158,30 +121,131 @@ class TestAPICalls(unittest.TestCase):
 
     @patch('os.path.isfile', return_value=False)
     def test_acquire_all_args(self, _, send_mock, construct_mock):
-        expected_params = ['--burst', '-n', '100', '-t', '10',
+        expected_params = ['-a', '-n', '100', '-t', '10', '--burst',
                            '--csmspm', '1', '--disccsmspm', '1',
                            '--depth', '1', '--counter', '1',
                            '--equalization', '1', '--gainmode', '3',
                            '--readmode', '1', '--trigmode', '2',
                            '--tpcount', '10', '--path', '/scratch/RX_Images',
-                           '--hdffile', 'test.hdf5']
+                           '--hdffile=test.hdf5']
         frames = 100
         acquire_time = 10
 
         self.e.acquire(self.chips, frames, acquire_time, burst=True,
                        pixel_mode="csm", disc_mode="discH", depth=1, counter=1,
-                       equalization=1, gain_mode="slgm", read_mode="continuous",
-                       trig_mode=2, tp_count=10, path="/scratch/RX_Images",
-                       hdf_file="test.hdf5")
+                       equalization=1, gain_mode="slgm",
+                       read_mode="continuous", trig_mode=2, tp_count=10,
+                       path="/scratch/RX_Images", hdf_file="test.hdf5")
 
         construct_mock.assert_called_once_with(self.chips, *expected_params)
         send_mock.assert_called_once_with(construct_mock.return_value)
 
     @patch('os.path.isfile', return_value=True)
-    def test_acquire_given_existing_file_then_raises(self, _, _2, _3):
+    def test_given_existing_file_then_error(self, _, _2, _3):
 
         with self.assertRaises(IOError):
             self.e.acquire(self.chips, 1, 100, hdf_file="test.hdf5")
+
+    def test_dacs_not_loaded_then_error(self, _, _2):
+
+        self.e.dacs_loaded = None
+
+        with self.assertRaises(ValueError):
+            self.e.acquire(self.chips, 1, 100, hdf_file="test.hdf5")
+
+    def test_not_initialised_then_error(self, _, _2):
+
+        self.e.initialised = False
+
+        with self.assertRaises(ValueError):
+            self.e.acquire(self.chips, 1, 100, hdf_file="test.hdf5")
+
+
+@patch(ETAI_patch_path + '._construct_command')
+@patch(ETAI_patch_path + '._send_command')
+class APICallsTest(unittest.TestCase):
+
+    def setUp(self):
+        self.e = ExcaliburTestAppInterface(1, "test_ip", "test_port")
+        self.chips = range(8)
+
+    def test_set_lv_state(self, send_mock, construct_mock):
+        send_mock.return_value = True
+        expected_params = ['--lvenable', '1']
+
+        self.e.set_lv_state(1)
+
+        construct_mock.assert_called_once_with(self.chips, *expected_params)
+        send_mock.assert_called_once_with(construct_mock.return_value)
+        self.assertEqual(1, self.e.lv)
+
+    def test_set_lv_state_fails(self, send_mock, construct_mock):
+        send_mock.return_value = False
+        expected_params = ['--lvenable', '1']
+
+        self.e.set_lv_state(1)
+
+        construct_mock.assert_called_once_with(self.chips, *expected_params)
+        send_mock.assert_called_once_with(construct_mock.return_value)
+        self.assertEqual(0, self.e.lv)
+
+    def test_set_lv_state_raises(self, send_mock, _2):
+        send_mock.return_value = True
+
+        with self.assertRaises(ValueError):
+            self.e.set_lv_state(2)
+
+    def test_set_hv_state(self, send_mock, construct_mock):
+        send_mock.return_value = True
+        expected_params = ['--hvenable', '1']
+
+        self.e.set_hv_state(1)
+
+        construct_mock.assert_called_once_with(self.chips, *expected_params)
+        send_mock.assert_called_once_with(construct_mock.return_value)
+        self.assertEqual(1, self.e.hv)
+
+    def test_set_hv_state_fails(self, send_mock, construct_mock):
+        send_mock.return_value = False
+        expected_params = ['--hvenable', '1']
+
+        self.e.set_hv_state(1)
+
+        construct_mock.assert_called_once_with(self.chips, *expected_params)
+        send_mock.assert_called_once_with(construct_mock.return_value)
+        self.assertEqual(0, self.e.hv)
+
+    def test_set_hv_state_raises(self, send_mock, _2):
+        send_mock.return_value = True
+
+        with self.assertRaises(ValueError):
+            self.e.set_hv_state(2)
+
+    def test_set_hv_bias(self, send_mock, construct_mock):
+        send_mock.return_value = True
+        expected_params = ['--hvbias', '120']
+
+        self.e.set_hv_bias(120)
+
+        construct_mock.assert_called_once_with(self.chips, *expected_params)
+        send_mock.assert_called_once_with(construct_mock.return_value)
+        self.assertEqual(120, self.e.hv_bias)
+
+    def test_set_hv_bias_fails(self, send_mock, construct_mock):
+        send_mock.return_value = False
+        expected_params = ['--hvbias', '120']
+
+        self.e.set_hv_bias(120)
+
+        construct_mock.assert_called_once_with(self.chips, *expected_params)
+        send_mock.assert_called_once_with(construct_mock.return_value)
+        self.assertEqual(0, self.e.hv_bias)
+
+    def test_set_hv_bias_raises(self, send_mock, _2):
+        send_mock.return_value = True
+
+        with self.assertRaises(ValueError):
+            self.e.set_hv_bias(200)
 
     @patch('time.sleep')
     def test_sense(self, sleep_mock, send_mock, construct_mock):
@@ -197,7 +261,7 @@ class TestAPICalls(unittest.TestCase):
         self.assertEqual(construct_mock.return_value, send_mock.call_args_list[1][0][0])
 
     def test_perform_dac_scan(self, send_mock, construct_mock):
-        expected_params = ['--dacs', 'dac_file', '--dacscan', '2,0,10,1', '--hdffile', 'hdf_file']
+        expected_params = ['--dacs', 'dac_file', '--dacscan', '2,0,10,1', '--hdffile=hdf_file']
         scan_range = MagicMock()
         scan_range.start = 0
         scan_range.stop = 10
@@ -235,12 +299,24 @@ class TestAPICalls(unittest.TestCase):
         send_cmd_mock.assert_called_once_with(construct_mock.return_value)
 
     def test_load_dacs(self, send_cmd_mock, construct_mock):
-        expected_params = ['--dacs', 'test_file']
+        send_cmd_mock.return_value = True
+        expected_params = ['--dacs', 'test_path/test_file']
 
-        self.e.load_dacs(self.chips, "test_file")
+        self.e.load_dacs(self.chips, "test_path/test_file")
 
         construct_mock.assert_called_once_with(self.chips, *expected_params)
         send_cmd_mock.assert_called_once_with(construct_mock.return_value)
+        self.assertEqual("test_file", self.e.dacs_loaded)
+
+    def test_load_dacs_fails(self, send_cmd_mock, construct_mock):
+        send_cmd_mock.return_value = False
+        expected_params = ['--dacs', 'test_path/test_file']
+
+        self.e.load_dacs(self.chips, "test_path/test_file")
+
+        construct_mock.assert_called_once_with(self.chips, *expected_params)
+        send_cmd_mock.assert_called_once_with(construct_mock.return_value)
+        self.assertIsNone(self.e.dacs_loaded)
 
     def test_configure_test_pulse(self, send_cmd_mock, construct_mock):
         tp_mask = MagicMock()
@@ -267,23 +343,32 @@ class TestAPICalls(unittest.TestCase):
         construct_mock.assert_called_once_with(self.chips, *expected_params)
         send_cmd_mock.assert_called_once_with(construct_mock.return_value)
 
+    def test_load_tp_mask(self, send_cmd_mock, construct_mock):
+        tp_mask = MagicMock()
+        expected_params = ['--config', '--tpmask', tp_mask]
+
+        self.e.load_tp_mask(self.chips, tp_mask)
+
+        construct_mock.assert_called_once_with(self.chips, *expected_params)
+        send_cmd_mock.assert_called_once_with(construct_mock.return_value)
+
 
 class CheckArgumentValidTest(unittest.TestCase):
 
     def test_given_None_then_False(self):
 
-        response = ExcaliburTestAppInterface._check_argument_valid("Test", None, [])
+        response = ExcaliburTestAppInterface._arg_valid("Test", None, [])
 
         self.assertFalse(response)
 
     def test_given_invalid_then_raise(self):
 
         with self.assertRaises(ValueError):
-            ExcaliburTestAppInterface._check_argument_valid("Test", 10, [1, 2, 3, 4, 5])
+            ExcaliburTestAppInterface._arg_valid("Test", 10, [1, 2, 3, 4, 5])
 
     def test_given_valid_then_True(self):
 
-        response = ExcaliburTestAppInterface._check_argument_valid("Test", 5, [1, 2, 3, 4, 5])
+        response = ExcaliburTestAppInterface._arg_valid("Test", 5, [1, 2, 3, 4, 5])
 
         self.assertTrue(response)
 
@@ -291,7 +376,7 @@ class CheckArgumentValidTest(unittest.TestCase):
 class MaskTest(unittest.TestCase):
 
     def setUp(self):
-        self.e = ExcaliburTestAppInterface("test_ip", "test_port")
+        self.e = ExcaliburTestAppInterface(1, "test_ip", "test_port")
 
     def test_return_values(self):
 
@@ -323,7 +408,7 @@ class MaskTest(unittest.TestCase):
 class LoadConfigTest(unittest.TestCase):
 
     def setUp(self):
-        self.e = ExcaliburTestAppInterface("test_ip", "test_port")
+        self.e = ExcaliburTestAppInterface(1, "test_ip", "test_port")
         self.discl = "discl"
         self.disch = "disch"
         self.pixelmask = "pixelmask"
@@ -372,3 +457,35 @@ class LoadConfigTest(unittest.TestCase):
 
         self.assertFalse(construct_mock.call_count)
         self.assertFalse(send_mock.call_count)
+
+
+class SimpleWrappersTest(unittest.TestCase):
+
+    def setUp(self):
+        self.e = ExcaliburTestAppInterface(1, "test_ip", "test_port",
+                                           "test_server")
+        self.chips = range(8)
+
+    @patch(ETAI_patch_path + '.acquire')
+    def test_acquire_tp_image(self, acquire_mock):
+        expected_params = [1, 100]
+        expected_kwargs = dict(hdf_file='test.hdf5', path='/scratch',
+                               tp_count=1000)
+
+        self.e.acquire_tp_image(self.chips, 100, 1000, "/scratch", "test.hdf5")
+
+        acquire_mock.assert_called_once_with(self.chips, *expected_params,
+                                             **expected_kwargs)
+
+
+class GrabRemoteFile(unittest.TestCase):
+
+    @patch(ETAI_patch_path + '._send_command')
+    def test_correct_calls_made(self, send_mock):
+        e = ExcaliburTestAppInterface(1, "test_ip", "test_port", "test_server")
+
+        e.grab_remote_file("/tmp/test_file")
+
+        send_mock.assert_called_once_with(
+            ['scp', 'test_server.diamond.ac.uk:/tmp/test_file',
+             '/tmp/test_file_fem1'])
