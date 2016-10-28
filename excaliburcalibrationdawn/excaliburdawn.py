@@ -27,11 +27,8 @@ class ExcaliburDAWN(object):
             name: Name for plot
 
         """
-        plot_name = "{name} - {time_stamp}".format(
-            name=name, time_stamp=util.get_time_stamp())
-
-        self.plot.image(data_set, name=plot_name)
-        logging.info("Image plotted in DAWN as '%s'", plot_name)
+        self.plot.image(data_set, name=name)
+        logging.info("Image plotted in DAWN as '%s'", name)
 
     def load_image(self, path):
         """Load image data in given file into a numpy array.
@@ -151,6 +148,21 @@ class ExcaliburDAWN(object):
         """
         for chip_data in image_data:
             self._add_histogram(chip_data, name=name)
+
+    def plot_histogram_with_mask(self, chips, image_data, mask,
+                                 name="Histogram"):
+        """Plot a histogram for each of the given chips, after applying a mask.
+        Args:
+            chips: Chips to plot for
+            image_data: Data for full array
+            mask: Mask to apply before plotting data
+            name: Name of plot
+        """
+        for chip_idx in chips:
+            chip_mask = mask[0:256, chip_idx*256:(chip_idx + 1)*256]
+            chip_data = image_data[0:256, chip_idx*256:(chip_idx + 1)*256]
+            masked_data = chip_data[chip_mask.astype(bool)]
+            self._add_histogram(masked_data, name=name)
 
     def _add_histogram(self, data, name, bins=10):
         """Add a histogram of data to the given plot name.

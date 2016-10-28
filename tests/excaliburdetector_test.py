@@ -168,7 +168,7 @@ class FunctionsTest(unittest.TestCase):
         for node in self.e.Nodes:
             node.expose.assert_called_once_with()
 
-        plot_mock.assert_called_once_with(ANY, "Excalibur Detector Image")
+        plot_mock.assert_called_once_with(ANY, "Excalibur Detector Image - 2016-10-21_16:42:50")
         np.testing.assert_array_equal(expected_array, plot_mock.call_args[0][0])
 
 

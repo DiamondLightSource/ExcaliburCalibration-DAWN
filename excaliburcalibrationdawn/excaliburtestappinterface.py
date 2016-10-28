@@ -78,7 +78,7 @@ class ExcaliburTestAppInterface(object):
     HV = "--hvenable"  # --hvenable 1
     HV_BIAS = "--hvbias"  # --hvbias 120
     READ_EFUSE = "-e"
-    DAC_FILE = "--dacs"  # --dacs default_dac_values.txt
+    DAC_FILE = "--dacs="  # --dacs=default_dac_values.txt
     READ_SLOW_PARAMS = "-s"
     SENSE = "--sensedac"  # --sensedac 5
     SCAN = "--dacscan"  # --dacscan 0,10,1,5
@@ -94,14 +94,14 @@ class ExcaliburTestAppInterface(object):
     EQUALIZATION = "--equalization"  # --equalization 1
     READ_MODE = "--readmode"  # --readmode 1
     GAIN_MODE = "--gainmode"  # --gainmode 3
-    PATH = "--path"  # --path /scratch/excalibur_images
+    PATH = "--path="  # --path=/scratch/excalibur_images
     HDF_FILE = "--hdffile="  # --hdffile=image_1.hdf5
     TP_COUNT = "--tpcount"  # --tpcount 2
     CONFIG = "--config"
-    PIXEL_MASK = "--pixelmask"  # --pixelmask mask.txt
-    DISC_L = "--discl"  # --discl default_disc_L.txt
-    DISC_H = "--disch"  # --disch default_disc_H.txt
-    TP_MASK = "--tpmask"  # --tpmask logo_mask.txt
+    PIXEL_MASK = "--pixelmask="  # --pixelmask mask.txt
+    DISC_L = "--discl="  # --discl=default_disc_L.txt
+    DISC_H = "--disch="  # --disch=default_disc_H.txt
+    TP_MASK = "--tpmask="  # --tpmask=logo_mask.txt
 
     # Parameters representing detector specification
     num_chips = 8
@@ -320,7 +320,7 @@ class ExcaliburTestAppInterface(object):
             # TODO: What are the valid values for this?
             extra_params.extend([self.TP_COUNT, str(tp_count)])
         if path is not None:
-            extra_params.extend([self.PATH, str(path)])
+            extra_params.extend([self.PATH + str(path)])
         if hdf_file is not None:
             if path is None:
                 path = "/tmp"
@@ -372,7 +372,7 @@ class ExcaliburTestAppInterface(object):
         # Set up DAC for sensing
         command_1 = self._construct_command(chips,
                                             self.SENSE, self.dac_code[dac],
-                                            self.DAC_FILE, dac_file)
+                                            self.DAC_FILE + dac_file)
         self._send_command(command_1)
 
         time.sleep(1)  # TODO: Test and see if this is really necessary
@@ -384,7 +384,7 @@ class ExcaliburTestAppInterface(object):
         self._send_command(command_2)
 
     def perform_dac_scan(self, chips, dac, scan_range, dac_file,
-                         hdf_file):
+                         path, hdf_file):
         """Execute a DAC scan and save the results to the given file.
 
         Args:
@@ -392,16 +392,19 @@ class ExcaliburTestAppInterface(object):
             dac: Name of DAC to scan
             scan_range(Range): Start, stop and step of scan
             dac_file: File to load config from
+            path: Folder to save into
             hdf_file: File to save to
 
         """
         scan_command = "{dac},{start},{stop},{step}".format(
-            dac=self.dac_code[dac],
+            dac=int(self.dac_code[dac]) - 1,
             start=scan_range.start, stop=scan_range.stop, step=scan_range.step)
 
         command = self._construct_command(chips,
-                                          self.DAC_FILE, dac_file,
+                                          self.DAC_FILE + dac_file,
+                                          self.ACQ_TIME, "5",
                                           self.SCAN, scan_command,
+                                          self.PATH + path,
                                           self.HDF_FILE + hdf_file)
         self._send_command(command)
 
@@ -438,7 +441,7 @@ class ExcaliburTestAppInterface(object):
             dac_file(str): Path to file containing DAC values
 
         """
-        command = self._construct_command(chips, self.DAC_FILE, dac_file)
+        command = self._construct_command(chips, self.DAC_FILE + dac_file)
         success = self._send_command(command)
         if success:
             self.dacs_loaded = dac_file.split('/')[-1]
@@ -457,12 +460,12 @@ class ExcaliburTestAppInterface(object):
         # TODO: Check if this really needs to be coupled to loading DACs
         extra_params = []
         if config_files is not None:
-            extra_params.extend([self.DISC_L, config_files['discl'],
-                                 self.DISC_H, config_files['disch'],
-                                 self.PIXEL_MASK, config_files['pixelmask']])
+            extra_params.extend([self.DISC_L + config_files['discl'],
+                                 self.DISC_H + config_files['disch'],
+                                 self.PIXEL_MASK + config_files['pixelmask']])
         command = self._construct_command(chips,
-                                          self.DAC_FILE, dac_file,
-                                          self.TP_MASK, tp_mask,
+                                          self.DAC_FILE + dac_file,
+                                          self.TP_MASK + tp_mask,
                                           *extra_params)
         self._send_command(command)
 
@@ -476,7 +479,7 @@ class ExcaliburTestAppInterface(object):
         """
         command = self._construct_command(chips,
                                           self.CONFIG,
-                                          self.TP_MASK, tp_mask)
+                                          self.TP_MASK + tp_mask)
         self._send_command(command)
 
     def acquire_tp_image(self, chips=range(8), exposure=1000, tp_count=1000,
@@ -507,13 +510,13 @@ class ExcaliburTestAppInterface(object):
         extra_parameters = [self.CONFIG]
 
         if os.path.isfile(discl):
-            extra_parameters.extend([self.DISC_L, discl])
+            extra_parameters.extend([self.DISC_L + discl])
 
             if disch is not None and os.path.isfile(disch):
-                extra_parameters.extend([self.DISC_H, disch])
+                extra_parameters.extend([self.DISC_H + disch])
 
             if pixelmask is not None and os.path.isfile(pixelmask):
-                extra_parameters.extend([self.PIXEL_MASK, pixelmask])
+                extra_parameters.extend([self.PIXEL_MASK + pixelmask])
 
             command = self._construct_command(chips, *extra_parameters)
             self._send_command(command)

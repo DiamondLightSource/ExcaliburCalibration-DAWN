@@ -1,4 +1,6 @@
 """Utility functions for excaliburcalibrationdawn"""
+import os
+import time
 from datetime import datetime
 import numpy as np
 
@@ -67,3 +69,25 @@ def to_list(value):
         return value
     else:
         return [value]
+
+
+def wait_for_file(file_path, wait_time):
+    """
+    Wait for a file to appear on the file system.
+
+    Args:
+        file_path: Path to file to check for
+        wait_time: Time to wait before
+
+    """
+    loop_time = 0.1
+    loops = wait_time / loop_time
+
+    loop = 0
+    while loop < loops:
+        time.sleep(0.1)
+        if os.path.isfile(file_path):
+            return True
+        loop += 1
+
+    return False

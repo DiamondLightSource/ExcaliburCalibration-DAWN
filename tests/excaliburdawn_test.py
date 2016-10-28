@@ -43,7 +43,7 @@ class SimpleMethodsTest(unittest.TestCase):
         self.e.plot_image(mock_data, name="Test Plot")
 
         plot_mock.assert_called_once_with(mock_data,
-                                          name="Test Plot - 20161026~093547")
+                                          name="Test Plot")
 
     @patch('scisoftpy.plot.addline')
     @patch('numpy.histogram')
@@ -53,6 +53,21 @@ class SimpleMethodsTest(unittest.TestCase):
         self.e.plot_histogram(mock_data, name="Test Histogram")
 
         np.testing.assert_array_equal(mock_data[0],
+                                      histo_mock.call_args[0][0])
+        addline_mock.assert_called_once_with(histo_mock.return_value[1][0:-1],
+                                             histo_mock.return_value[0],
+                                             name="Test Histogram")
+
+    @patch('scisoftpy.plot.addline')
+    @patch('numpy.histogram')
+    def test_plot_histogram_with_mask(self, histo_mock, addline_mock):
+        mock_data = np.random.randint(10, size=[256, 256])
+        mock_mask = np.ones(shape=[256, 256], dtype=int)
+
+        self.e.plot_histogram_with_mask([0], mock_data, mock_mask,
+                                        name="Test Histogram")
+
+        np.testing.assert_array_equal(mock_data[mock_mask.astype(bool)],
                                       histo_mock.call_args[0][0])
         addline_mock.assert_called_once_with(histo_mock.return_value[1][0:-1],
                                              histo_mock.return_value[0],

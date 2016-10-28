@@ -126,7 +126,7 @@ class AcquireTest(unittest.TestCase):
                            '--depth', '1', '--counter', '1',
                            '--equalization', '1', '--gainmode', '3',
                            '--readmode', '1', '--trigmode', '2',
-                           '--tpcount', '10', '--path', '/scratch/RX_Images',
+                           '--tpcount', '10', '--path=/scratch/RX_Images',
                            '--hdffile=test.hdf5']
         frames = 100
         acquire_time = 10
@@ -249,7 +249,7 @@ class APICallsTest(unittest.TestCase):
 
     @patch('time.sleep')
     def test_sense(self, sleep_mock, send_mock, construct_mock):
-        expected_params_1 = ['--sensedac', '1', '--dacs', 'test_file']
+        expected_params_1 = ['--sensedac', '1', '--dacs=test_file']
         expected_params_2 = ['--sensedac', '1', '-s']
 
         self.e.sense(self.chips, "Threshold0", "test_file")
@@ -261,13 +261,15 @@ class APICallsTest(unittest.TestCase):
         self.assertEqual(construct_mock.return_value, send_mock.call_args_list[1][0][0])
 
     def test_perform_dac_scan(self, send_mock, construct_mock):
-        expected_params = ['--dacs', 'dac_file', '--dacscan', '2,0,10,1', '--hdffile=hdf_file']
+        expected_params = ['--dacs=dac_file', '-t', '5', '--dacscan',
+                           '1,0,10,1', '--path=path', '--hdffile=hdf_file']
         scan_range = MagicMock()
         scan_range.start = 0
         scan_range.stop = 10
         scan_range.step = 1
 
-        self.e.perform_dac_scan(self.chips, "Threshold1", scan_range, "dac_file", "hdf_file")
+        self.e.perform_dac_scan(self.chips, "Threshold1", scan_range,
+                                "dac_file", "path", "hdf_file")
 
         construct_mock.assert_called_once_with(self.chips, *expected_params)
         send_mock.assert_called_once_with(construct_mock.return_value)
@@ -300,7 +302,7 @@ class APICallsTest(unittest.TestCase):
 
     def test_load_dacs(self, send_cmd_mock, construct_mock):
         send_cmd_mock.return_value = True
-        expected_params = ['--dacs', 'test_path/test_file']
+        expected_params = ['--dacs=test_path/test_file']
 
         self.e.load_dacs(self.chips, "test_path/test_file")
 
@@ -310,7 +312,7 @@ class APICallsTest(unittest.TestCase):
 
     def test_load_dacs_fails(self, send_cmd_mock, construct_mock):
         send_cmd_mock.return_value = False
-        expected_params = ['--dacs', 'test_path/test_file']
+        expected_params = ['--dacs=test_path/test_file']
 
         self.e.load_dacs(self.chips, "test_path/test_file")
 
@@ -320,7 +322,7 @@ class APICallsTest(unittest.TestCase):
 
     def test_configure_test_pulse(self, send_cmd_mock, construct_mock):
         tp_mask = MagicMock()
-        expected_params = ['--dacs', 'test_file', '--tpmask', tp_mask]
+        expected_params = ['--dacs=test_file', '--tpmask=' + tp_mask]
 
         self.e.configure_test_pulse(self.chips, "test_file", tp_mask)
 
@@ -334,9 +336,9 @@ class APICallsTest(unittest.TestCase):
         mask_mock = MagicMock()
         disc_files = dict(discl=disc_l_mock, disch=disc_h_mock,
                           pixelmask=mask_mock)
-        expected_params = ['--dacs', 'test_file', '--tpmask', tp_mask,
-                           '--discl', disc_l_mock, '--disch', disc_h_mock,
-                           '--pixelmask', mask_mock]
+        expected_params = ['--dacs=test_file', '--tpmask=' + tp_mask,
+                           '--discl=' + disc_l_mock, '--disch=' + disc_h_mock,
+                           '--pixelmask=' + mask_mock]
 
         self.e.configure_test_pulse(self.chips, "test_file", tp_mask, disc_files)
 
@@ -345,7 +347,7 @@ class APICallsTest(unittest.TestCase):
 
     def test_load_tp_mask(self, send_cmd_mock, construct_mock):
         tp_mask = MagicMock()
-        expected_params = ['--config', '--tpmask', tp_mask]
+        expected_params = ['--config', '--tpmask=' + tp_mask]
 
         self.e.load_tp_mask(self.chips, tp_mask)
 
@@ -416,7 +418,7 @@ class LoadConfigTest(unittest.TestCase):
 
     @patch('os.path.isfile', return_value=True)
     def test_load_config_all_exist(self, _, construct_mock, send_mock):
-        expected_params = ['--config', '--discl', self.discl, '--disch', self.disch, '--pixelmask', self.pixelmask]
+        expected_params = ['--config', '--discl=' + self.discl, '--disch=' + self.disch, '--pixelmask=' + self.pixelmask]
 
         self.e.load_config(self.chips, self.discl, self.disch, self.pixelmask)
 
@@ -425,7 +427,7 @@ class LoadConfigTest(unittest.TestCase):
 
     @patch('os.path.isfile', side_effect=[True, True, False])
     def test_load_config_L_and_H(self, _, construct_mock, send_mock):
-        expected_params = ['--config', '--discl', self.discl, '--disch', self.disch]
+        expected_params = ['--config', '--discl=' + self.discl, '--disch=' + self.disch]
 
         self.e.load_config(self.chips, self.discl, self.disch, self.pixelmask)
 
@@ -434,7 +436,7 @@ class LoadConfigTest(unittest.TestCase):
 
     @patch('os.path.isfile', side_effect=[True, False, True])
     def test_load_config_L_and_pixel(self, _, construct_mock, send_mock):
-        expected_params = ['--config', '--discl', self.discl, '--pixelmask', self.pixelmask]
+        expected_params = ['--config', '--discl=' + self.discl, '--pixelmask=' + self.pixelmask]
 
         self.e.load_config(self.chips, self.discl, self.disch, self.pixelmask)
 
@@ -443,7 +445,7 @@ class LoadConfigTest(unittest.TestCase):
 
     @patch('os.path.isfile', side_effect=[True, False, False])
     def test_load_config_L(self, _, construct_mock, send_mock):
-        expected_params = ['--config', '--discl', self.discl]
+        expected_params = ['--config', '--discl=' + self.discl]
 
         self.e.load_config(self.chips, self.discl, self.disch, self.pixelmask)
 

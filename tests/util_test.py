@@ -72,3 +72,27 @@ class FunctionsTest(unittest.TestCase):
 
         self.assertEqual([1], response)
 
+    @patch(util_patch_path + '.time.sleep')
+    @patch(util_patch_path + '.os.path.isfile',
+           side_effect=[False, False, False, False, False, False, False, True])
+    def test_wait_for_file_appears(self, isfile_mock, sleep_mock):
+
+        response = util.wait_for_file("/path/to/file", 5)
+
+        self.assertTrue(response)
+        self.assertEqual([0.1] * 8,
+                         [call[0][0] for call in sleep_mock.call_args_list])
+        self.assertEqual(8, sleep_mock.call_count)
+        self.assertEqual(8, isfile_mock.call_count)
+
+    @patch(util_patch_path + '.time.sleep')
+    @patch(util_patch_path + '.os.path.isfile', return_value=False)
+    def test_wait_for_file_timeout(self, isfile_mock, sleep_mock):
+
+        response = util.wait_for_file("/path/to/file", 5)
+
+        self.assertFalse(response)
+        self.assertEqual([0.1] * 50,
+                         [call[0][0] for call in sleep_mock.call_args_list])
+        self.assertEqual(50, sleep_mock.call_count)
+        self.assertEqual(50, isfile_mock.call_count)
