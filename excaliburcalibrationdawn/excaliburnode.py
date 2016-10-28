@@ -658,7 +658,7 @@ class ExcaliburNode(object):
             name=self.settings['filename'],
             index=self.settings['filenameIndex'])
         dac_file = posixpath.join(self.calib_dir,
-                                  'fem'.format(fem=self.fem),
+                                  'fem{fem}'.format(fem=self.fem),
                                   self.settings['mode'],
                                   self.settings['gain'],
                                   'dacs')
