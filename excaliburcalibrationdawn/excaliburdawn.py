@@ -93,7 +93,7 @@ class ExcaliburDAWN(object):
 
         return offset, gain
 
-    def add_plot_line(self, x, y, name):
+    def add_plot_line(self, x, y, name, title=None):
         """Add a plot of x vs y to the given plot.
 
         Args:
@@ -102,7 +102,7 @@ class ExcaliburDAWN(object):
             name: Name of plot to add to
 
         """
-        self.plot.addline(x, y, name=name)
+        self.plot.addline(x, y, name=name, title=title)
 
     def plot_gaussian_fit(self, scan_data, plot_name, p0, bins):
         """Calculate the Gaussian least squares fit and plot the result.

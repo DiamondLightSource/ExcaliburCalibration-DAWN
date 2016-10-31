@@ -104,7 +104,7 @@ class SimpleMethodsTest(unittest.TestCase):
 
         self.e.add_plot_line(x, y, name)
 
-        add_mock.assert_called_once_with(x, y, name=name)
+        add_mock.assert_called_once_with(x, y, name=name, title=None)
 
     @patch('scisoftpy.plot.addline')
     @patch('numpy.histogram')

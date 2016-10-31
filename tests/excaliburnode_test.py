@@ -527,7 +527,7 @@ class TestAppCallsTest(unittest.TestCase):
         acquire_mock.assert_called_once_with(1, 200)
         plot_mock.assert_called_once_with(acquire_mock.return_value,
                                           "Node Image - 20161028~151003")
-    
+
     @patch(Node_patch_path + '._acquire')
     def test_burst(self, acquire_mock):
 
@@ -594,7 +594,7 @@ class TestAppCallsTest(unittest.TestCase):
         discHbits = MagicMock()
         maskbits = MagicMock()
 
-        self.e.load_config_bits(chips, discLbits, discHbits, maskbits)
+        self.e.load_temp_config(chips, discLbits, discHbits, maskbits)
 
         # Check first save call
         call_args = save_mock.call_args_list[0]
@@ -614,7 +614,7 @@ class TestAppCallsTest(unittest.TestCase):
     # Make sure we always get the same random numbers
     rand = np.random.RandomState(123)
 
-    @patch(Node_patch_path + '.load_config_bits')
+    @patch(Node_patch_path + '.load_temp_config')
     @patch(Node_patch_path + '._grab_chip_slice')
     @patch(Node_patch_path + '.open_discbits_file',
            side_effect=[rand.randint(2, size=[256, 256]),
@@ -634,7 +634,7 @@ class TestAppCallsTest(unittest.TestCase):
                                           grab_mock.return_value,
                                           grab_mock.return_value)
 
-    @patch(Node_patch_path + '.load_config_bits')
+    @patch(Node_patch_path + '.load_temp_config')
     @patch(Node_patch_path + '._grab_chip_slice')
     @patch(Node_patch_path + '.open_discbits_file')
     def test_load_all_discbits_H(self, open_mock, grab_mock, load_mock):
@@ -652,7 +652,7 @@ class TestAppCallsTest(unittest.TestCase):
                                           grab_mock.return_value,
                                           grab_mock.return_value)
 
-    @patch(Node_patch_path + '.load_config_bits')
+    @patch(Node_patch_path + '.load_temp_config')
     @patch(Node_patch_path + '._grab_chip_slice')
     @patch(Node_patch_path + '.open_discbits_file')
     def test_load_all_discbits_error(self, _, _1, _2):
@@ -1276,7 +1276,7 @@ class OptimizeDacDiscTest(unittest.TestCase):
 
         set_mock.assert_called_once_with(chips, "Threshold1", 0)
         self.assertEqual('discL', self.e.settings['disccsmspm'])
-        optimize_mock.assert_called_once_with(chips, "DACDiscL", roi_mock)
+        optimize_mock.assert_called_once_with(chips, "discL", roi_mock)
 
     @patch(Node_patch_path + '.set_dac')
     @patch(Node_patch_path + '._optimize_dac_disc')
@@ -1288,7 +1288,7 @@ class OptimizeDacDiscTest(unittest.TestCase):
 
         set_mock.assert_called_once_with(chips, "Threshold0", 60)
         self.assertEqual('discH', self.e.settings['disccsmspm'])
-        optimize_mock.assert_called_once_with(chips, "DACDiscH", roi_mock)
+        optimize_mock.assert_called_once_with(chips, "discH", roi_mock)
 
     @patch(Node_patch_path + '._display_optimization_results')
     @patch(Node_patch_path + '.set_dac')
@@ -1354,7 +1354,7 @@ class EqualizeDiscbitsTest(unittest.TestCase):
         self.e.equalize_disc_l([0], roi, "Method")
 
         set_mock.assert_called_once_with([0], "Threshold1", 0)
-        equalise_mock.assert_called_once_with([0], "DACDiscL", "Threshold0", roi, "Method")
+        equalise_mock.assert_called_once_with([0], "discL", "Threshold0", roi, "Method")
         self.assertEqual("discL", self.e.settings['disccsmspm'])
 
     @patch(Node_patch_path + '._equalise_discbits')
@@ -1364,7 +1364,7 @@ class EqualizeDiscbitsTest(unittest.TestCase):
         self.e.equalize_disc_h([0], roi, "Method")
 
         set_mock.assert_called_once_with([0], "Threshold0", 60)
-        equalise_mock.assert_called_once_with([0], "DACDiscH", "Threshold1", roi, "Method")
+        equalise_mock.assert_called_once_with([0], "discH", "Threshold1", roi, "Method")
         self.assertEqual("discH", self.e.settings['disccsmspm'])
 
     @patch(Node_patch_path + '.load_config')
@@ -1598,17 +1598,25 @@ class SliceGrabSetTest(unittest.TestCase):
         np.testing.assert_array_equal(expected_stop, stop)
 
 
-class DisplayMasksTest(unittest.TestCase):
+@patch("sys.stdout.write")
+@patch("os.listdir",
+       return_value=["diagonal.mask", "stfcinverted.mask", "triangle.mask",
+                     "zeros.mask", "Default_SPM.dacs", "noise.dacs"])
+class DisplayTest(unittest.TestCase):
 
-    @patch("sys.stdout.write")
-    @patch("os.listdir",
-           return_value=["diagonal.mask", "stfcinverted.mask",
-                         "triangle.mask", "zeros.mask", "test.notmask"])
     def test_display_masks(self, _, print_mock):
         expected_call = "Available masks: diagonal.mask, stfcinverted.mask, " \
                         "triangle.mask, zeros.mask"
         e = ExcaliburNode(1)
 
         e.display_masks()
+
+        self.assertEqual(expected_call, print_mock.call_args_list[0][0][0])
+
+    def test_display_dacs(self, _, print_mock):
+        expected_call = "Available DAC files: Default_SPM.dacs, noise.dacs"
+        e = ExcaliburNode(1)
+
+        e.display_dac_files()
 
         self.assertEqual(expected_call, print_mock.call_args_list[0][0][0])
