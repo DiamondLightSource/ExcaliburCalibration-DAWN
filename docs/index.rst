@@ -1,21 +1,34 @@
-.. ExcaliburCalibration-DAWN documentation master file, created by
-   sphinx-quickstart on Mon Oct 10 10:10:49 2016.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+.. include:: ../README.rst
 
-Welcome to ExcaliburCalibration-DAWN's documentation!
-=====================================================
+Quick Start Guide
+-----------------
 
-Contents:
+This is a brief overview of the script usage. For more extensive instructions, see the User Guide below.
+
+.. include:: quickstart.rst
+
+User Guide
+~~~~~~~~~~
 
 .. toctree::
    :maxdepth: 2
 
-   includeme
+   userguide
 
+Code Documentation
+------------------
+
+.. toctree::
+   :maxdepth: 2
+
+   arch/excalibur1M
+   arch/excaliburnode
+   arch/excaliburdawn
+   arch/excaliburtestappinterface
+   arch/arrayutil
 
 Indices and tables
-==================
+------------------
 
 * :ref:`genindex`
 * :ref:`modindex`

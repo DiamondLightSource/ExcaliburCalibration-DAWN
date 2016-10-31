@@ -4,3 +4,7 @@ pep8:
   full: true
 python-targets:
   - 2
+ignore-paths:
+  - docs
+ignore-patterns:
+  - *__init__*
