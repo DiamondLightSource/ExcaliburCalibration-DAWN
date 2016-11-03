@@ -1328,7 +1328,8 @@ class OptimizeDacDiscTest(unittest.TestCase):
         scan_mock.assert_called_once_with(chips, "discL", range)
         find_mock.assert_called_once_with(chips, scan_mock.return_value,
                                           range)
-        plot_mock.assert_called_once_with([find_mock.return_value.__getitem__.return_value], expected_message, [5000, 0, 30], 3)
+        plot_mock.assert_called_once_with([find_mock.return_value.__getitem__.return_value] + [None]*7,
+                                          expected_message, [5000, 0, 30], 3)
 
     def test_display_optimization_results(self):
         chips = [0]

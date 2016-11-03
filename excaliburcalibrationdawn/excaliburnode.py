@@ -111,7 +111,7 @@ class ExcaliburNode(object):
                          'filenameIndex': ''}  # Image file index (used to
         # avoid overwriting files)
 
-        # Commonly used file paths
+        # Commonly used file path template
         self.template_path = posixpath.join(self.calib_dir,
                                             'fem{fem}'.format(fem=self.fem),
                                             self.settings['mode'],
@@ -730,8 +730,8 @@ class ExcaliburNode(object):
         If the file doesn't exist then create it starting at 0.
 
         """
-        idx_filename = self.settings['imagepath'] + \
-            self.settings['filename'] + '.idx'
+        idx_filename = posixpath.join(self.settings['imagepath'],
+                                      self.settings['filename'] + '.idx')
 
         new_file = False
         if os.path.isfile(idx_filename):
@@ -762,6 +762,7 @@ class ExcaliburNode(object):
         if exposure is None:
             exposure = self.settings['acqtime']
 
+        logging.info("Capturing image with %sms exposure", exposure)
         image = self._acquire(1, exposure)
 
         plot_name = "Node Image - {time_stamp}".format(
@@ -996,8 +997,9 @@ class ExcaliburNode(object):
                          tp_count=str(pulses),
                          hdf_file=self.settings['fullFilename'])
 
-        image = self.dawn.load_image_data(self.settings['imagepath'] +
-                                          self.settings['fullFilename'])
+        image_path = posixpath.join(self.settings['imagepath'],
+                                    self.settings['fullFilename'])
+        image = self.dawn.load_image_data(image_path)
         self.dawn.plot_image(image, name="Image_{}".format(time.asctime()))
 
     def save_discbits(self, chips, discbits, discbitsFilename):
@@ -1010,7 +1012,6 @@ class ExcaliburNode(object):
 
         """
         for chip_idx in chips:
-
             discbits_file = posixpath.join(self.calib_dir,
                                            'fem{fem}',
                                            self.settings['mode'],
@@ -1020,6 +1021,7 @@ class ExcaliburNode(object):
                                                     disc=discbitsFilename,
                                                     chip=chip_idx)
 
+            logging.info("Saving discbits to %s", discbits_file)
             np.savetxt(discbits_file,
                        self._grab_chip_slice(discbits, chip_idx),
                        fmt='%.18g', delimiter=' ')
@@ -1249,6 +1251,7 @@ class ExcaliburNode(object):
         slgm and threshold equalization data is independent of the gain mode.
 
         """
+        logging.info("Copying SLGM calib to other gain modes")
         template_path = posixpath.join(self.calib_dir,
                                        'fem{fem}'.format(fem=self.fem),
                                        self.settings['mode'],
@@ -1438,7 +1441,7 @@ class ExcaliburNode(object):
         ######################################################################
 
         discbit = 0
-        calib_plot_name = "Mean edge shift in Threshold DACs as a function" \
+        calib_plot_name = "Mean edge shift in Threshold DACs as a function " \
                           "of DAC_disc for discbit =" + str(discbit)
 
         # Set discbits at 0
@@ -1490,8 +1493,8 @@ class ExcaliburNode(object):
                                         dac_range, discbit, p0)
 
         opt_dac_disc = np.zeros(self.num_chips)
-        for idx, chip_idx in enumerate(chips):
-            opt_value = int(self.num_sigma * sigma[idx] / gain[idx])
+        for chip_idx in chips:
+            opt_value = int(self.num_sigma * sigma[chip_idx] / gain[chip_idx])
             self.set_dac([chip_idx], threshold, opt_value)
             opt_dac_disc[chip_idx] = opt_value
 
@@ -1523,9 +1526,11 @@ class ExcaliburNode(object):
         # Find noise edges
         edge_dacs = self.find_max(chips, dac_scan_data, dac_range)
 
-        scan_data = []
-        for chip_idx in chips:
-            scan_data.append(self._grab_chip_slice(edge_dacs, chip_idx))
+        scan_data = [None]*8
+        for chip_idx in self.chip_range:
+            if chip_idx in chips:
+                scan_data[chip_idx] = self._grab_chip_slice(edge_dacs,
+                                                            chip_idx)
         x0, sigma = self.dawn.plot_gaussian_fit(scan_data, plot_name, p0, bins)
 
         return x0, sigma
