@@ -483,19 +483,18 @@ class ExcaliburTestAppInterface(object):
         self._send_command(command)
 
     def acquire_tp_image(self, chips=range(8), exposure=1000, tp_count=1000,
-                         path="/tmp", hdf_file="triangle.hdf5"):
+                         hdf_file="triangle.hdf5", **kwargs):
         """Acquire and plot a test pulse image.
 
         Args:
             chips: Chips to capture for
             tp_count: Test pulse count
             exposure: Exposure time
-            path: Folder to save into
             hdf_file: Name of image file to save
 
         """
-        self.acquire(chips, 1, exposure, tp_count=tp_count,
-                     path=path, hdf_file=hdf_file)
+        self.acquire(chips, 1, exposure, tp_count=tp_count, hdf_file=hdf_file,
+                     **kwargs)
 
     def load_config(self, chips, discl, disch=None, pixelmask=None):
         """Read the given config files and load them onto the given chips.

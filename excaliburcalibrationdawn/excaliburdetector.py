@@ -84,15 +84,34 @@ class ExcaliburDetector(object):
         """
         self.MasterNode.set_hv_bias(hv_bias)
 
+    def display_status(self):
+        """Display status of node."""
+        for node in self.Nodes:
+            node.display_status()
+
     def setup(self):
         """Perform necessary initialisation."""
+        self.MasterNode.initialise_lv()
+        self.MasterNode.set_hv_bias(120)
+        # self.MasterNode.enable_hv()
         for node in self.Nodes:
             node.setup()
+
+    def disable(self):
+        """Set HV bias to 0 and disable LV and HV."""
+        self.MasterNode.set_hv_bias(0)
+        self.MasterNode.disable_hv()
+        self.MasterNode.disable_lv()
 
     def monitor(self):
         """Monitor temperature, humidity, FEM voltage status and DAC out."""
         for node in self.Nodes:
             node.monitor()
+
+    def load_config(self):
+        """Load detector configuration files and default thresholds."""
+        for node in self.Nodes:
+            node.load_config()
 
     def threshold_equalization(self, chips):
         """Calibrate discriminator equalization for given chips in detector.
@@ -101,22 +120,13 @@ class ExcaliburDetector(object):
             chips: List of lists of chips for each node
 
         """
+        if not isinstance(chips[0], list):
+            raise ValueError("Argument chips must be a list of lists of chips "
+                             "for each node, got {}".format(chips))
+
         for node_idx, node in enumerate(self.Nodes):
             logging.info("Equalizing node %s", node_idx)
             node.threshold_equalization(chips[node_idx])
-
-    def optimize_dac_disc(self, chips, roi):
-        """Optimize discriminators for given chips in detector.
-
-        Args:
-            chips: List of lists of chips for each node
-            roi: Mask to apply during optimization
-
-        """
-        for node_idx, node in enumerate(self.Nodes):
-            node_roi = self._grab_node_slice(roi, node_idx)
-            node.optimize_disc_l(chips[node_idx], node_roi)
-            node.optimize_disc_h(chips[node_idx], node_roi)
 
     def expose(self, exposure_time):
         """Acquire single image.
@@ -131,9 +141,9 @@ class ExcaliburDetector(object):
         for node in self.Nodes:
             node.settings['acquire_time'] = exposure_time
 
-        image = self.Nodes[0].expose()
+        image = self.Nodes[0].expose(exposure_time)
         for node in self.Nodes[1:]:
-            image = np.concatenate((image, node.expose()), axis=0)
+            image = np.concatenate((image, node.expose(exposure_time)), axis=0)
 
         plot_name = "Excalibur Detector Image - {time_stamp}".format(
             time_stamp=util.get_time_stamp())

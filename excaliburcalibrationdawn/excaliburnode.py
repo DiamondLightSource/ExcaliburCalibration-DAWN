@@ -124,9 +124,6 @@ class ExcaliburNode(object):
 
     def setup(self):
         """Perform necessary initialisation."""
-        self.initialise_lv()
-        self.set_hv_bias(120)
-        # self.enable_hv()
         self.read_chip_ids()
         self.app.load_dacs(range(8), posixpath.join(self.config_dir,
                                                     "Default_SPM.dacs"))
@@ -167,6 +164,45 @@ class ExcaliburNode(object):
 
         """
         self.app.set_hv_bias(hv_bias)
+
+    def display_status(self):
+        """Display status of node."""
+        print("Status for Node {}".format(self.fem))
+        print("LV: {}".format(self.app.lv))
+        print("HV: {}".format(self.app.hv))
+        print("HV Bias: {}".format(self.app.hv_bias))
+        print("DACs Loaded: {}".format(self.app.dacs_loaded))
+        print("Initialised: {}".format(self.app.initialised))
+
+    def test_pulse_image(self, tp_mask):
+        """Load the given test mask.
+
+        Args:
+            tp_mask: Name of mask in config directory to load
+
+        """
+        file_path = posixpath.join(self.config_dir, tp_mask)
+        if os.path.isfile(file_path):
+            self.app.load_tp_mask(self.chip_range, file_path)
+        else:
+            raise IOError("Given mask {} does not exist in config "
+                          "directory".format(tp_mask))
+
+        image_name = "{}_image.hdf5".format(os.path.splitext(tp_mask)[0])
+        self.app.acquire_tp_image(self.chip_range, 100, 1000, image_name,
+                                  path=self.settings['imagepath'])
+
+        file_path = posixpath.join(self.settings['imagepath'], image_name)
+        if self.remote_node:
+            file_path = self.app.grab_remote_file(file_path)
+
+        util.wait_for_file(file_path, 5)
+        logging.debug("Loading %s", file_path)
+        image = self.dawn.load_image_data(file_path)
+
+        plot_name = "Test Pulse Image - {time_stamp}".format(
+            time_stamp=util.get_time_stamp())
+        self.dawn.plot_image(image, plot_name)
 
     def threshold_equalization(self, chips=range(8)):
         """Calibrate discriminator equalization.
@@ -722,7 +758,6 @@ class ExcaliburNode(object):
 
         self.set_dac(range(8), "Threshold1", 100)
         self.set_dac(range(8), "Threshold0", 40)
-        self.expose()  # TODO: This builds up a lot of images, is it useful?
 
     def update_filename_index(self):
         """Increment filename index in filename.idx file in image path.
