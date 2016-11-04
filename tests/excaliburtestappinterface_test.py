@@ -474,7 +474,8 @@ class SimpleWrappersTest(unittest.TestCase):
         expected_kwargs = dict(hdf_file='test.hdf5', path='/scratch',
                                tp_count=1000)
 
-        self.e.acquire_tp_image(self.chips, 100, 1000, "/scratch", "test.hdf5")
+        self.e.acquire_tp_image(self.chips, 100, 1000, "test.hdf5",
+                                path="/scratch")
 
         acquire_mock.assert_called_once_with(self.chips, *expected_params,
                                              **expected_kwargs)

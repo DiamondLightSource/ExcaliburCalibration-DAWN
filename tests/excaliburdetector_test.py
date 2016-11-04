@@ -102,6 +102,10 @@ class FunctionsTest(unittest.TestCase):
     def setUp(self):
         self.e = ExcaliburDetector("test-server", [1, 2, 3, 4, 5, 6], 1)
         self.e.Nodes = mock_list
+        self.e.MasterNode = self.e.Nodes[0]
+
+    def tearDown(self):
+        self.e.MasterNode.reset_mock()
 
     def test_read_chip_ids(self):
         self.e.read_chip_ids()
@@ -118,6 +122,9 @@ class FunctionsTest(unittest.TestCase):
     def test_setup(self):
         self.e.setup()
 
+        self.e.MasterNode.initialise_lv.assert_called_once_with()
+        self.e.MasterNode.set_hv_bias.assert_called_once_with(120)
+
         for node in self.e.Nodes:
             node.setup.assert_called_once_with()
 
@@ -126,19 +133,6 @@ class FunctionsTest(unittest.TestCase):
 
         for node in self.e.Nodes:
             node.threshold_equalization.assert_called_once_with([0])
-
-    @patch(Detector_patch_path + '._grab_node_slice')
-    def test_optimize_dac_disc(self, grab_mock):
-        roi_mock = MagicMock()
-        self.e.optimize_dac_disc([[0], [0], [0], [0], [0], [0]], roi_mock)
-
-        for idx, node in enumerate(self.e.Nodes):
-            self.assertEqual((roi_mock, idx),
-                             grab_mock.call_args_list[idx][0])
-            self.assertEqual(([0], grab_mock.return_value),
-                             node.optimize_disc_l.call_args_list[0][0])
-            self.assertEqual(([0], grab_mock.return_value),
-                             node.optimize_disc_h.call_args_list[0][0])
 
     @patch(util_patch_path + '.get_time_stamp',
            return_value="2016-10-21_16:42:50")
@@ -166,7 +160,7 @@ class FunctionsTest(unittest.TestCase):
         self.e.expose(100)
 
         for node in self.e.Nodes:
-            node.expose.assert_called_once_with()
+            node.expose.assert_called_once_with(100)
 
         plot_mock.assert_called_once_with(ANY, "Excalibur Detector Image - 2016-10-21_16:42:50")
         np.testing.assert_array_equal(expected_array, plot_mock.call_args[0][0])

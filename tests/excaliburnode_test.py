@@ -91,9 +91,6 @@ class InitTest(unittest.TestCase):
 
         self.e.setup()
 
-        init_mock.assert_called_once_with()
-        set_mock.assert_called_once_with(120)
-        # enable_mock.assert_called_once_with()
         read_mock.assert_called_once_with()
         load_mock.assert_called_once_with(range(8), '/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/config/Default_SPM.dacs')
 
@@ -492,7 +489,8 @@ class TestAppCallsTest(unittest.TestCase):
     @patch(ETAI_patch_path + '.acquire')
     @patch(util_patch_path + '.wait_for_file')
     @patch(Node_patch_path + '.update_filename_index')
-    def test_acquire(self, update_idx_mock, wait_mock, acquire_mock,
+    @patch(ETAI_patch_path + '.grab_remote_file')
+    def test_acquire(self, grab_mock, update_idx_mock, wait_mock, acquire_mock,
                      load_mock):
 
         self.e._acquire(10, 100, burst=True)
@@ -503,8 +501,30 @@ class TestAppCallsTest(unittest.TestCase):
             burst=True, pixel_mode='spm', counter=0, equalization=0,
             disc_mode='discL', hdf_file='image_.hdf5', path='/tmp/', depth=12,
             read_mode='sequential')
+        grab_mock.assert_not_called()
         wait_mock.assert_called_once_with('/tmp/image_.hdf5', 5)
         load_mock.assert_called_once_with('/tmp/image_.hdf5')
+
+    @patch(DAWN_patch_path + '.load_image_data')
+    @patch(ETAI_patch_path + '.acquire')
+    @patch(util_patch_path + '.wait_for_file')
+    @patch(Node_patch_path + '.update_filename_index')
+    @patch(ETAI_patch_path + '.grab_remote_file')
+    def test_acquire_with_remote_node(self, grab_mock, update_idx_mock,
+                                      wait_mock, acquire_mock, load_mock):
+        self.e.remote_node = True
+
+        self.e._acquire(10, 100, burst=True)
+
+        update_idx_mock.assert_called_once_with()
+        acquire_mock.assert_called_once_with(
+            [0, 1, 2, 3, 4, 5, 6, 7], 10, 100, trig_mode=0, gain_mode='shgm',
+            burst=True, pixel_mode='spm', counter=0, equalization=0,
+            disc_mode='discL', hdf_file='image_.hdf5', path='/tmp/', depth=12,
+            read_mode='sequential')
+        grab_mock.assert_called_once_with('/tmp/image_.hdf5')
+        wait_mock.assert_called_once_with(grab_mock.return_value, 5)
+        load_mock.assert_called_once_with(grab_mock.return_value)
 
     @patch(util_patch_path + '.get_time_stamp', return_value="20161028~151003")
     @patch(DAWN_patch_path + '.plot_image')
@@ -688,7 +708,6 @@ class LoadConfigTest(unittest.TestCase):
         self.assertEqual((range(8), "Threshold0", 40), call_args[0])
 
         load_mock.assert_called_once_with(self.chips, expected_file_1, expected_file_2, expected_file_3)
-        expose_mock.assert_called_once_with()
 
 
 @patch('time.sleep')
@@ -735,9 +754,10 @@ class Fe55ImageRX001Test(unittest.TestCase):
 @patch(Node_patch_path + '.update_filename_index')
 @patch(ETAI_patch_path + '.perform_dac_scan')
 @patch(util_patch_path + '.wait_for_file')
+@patch(ETAI_patch_path + '.grab_remote_file')
 class ScanDacTest(unittest.TestCase):
 
-    def test_given_start_lower_than_stop(self, wait_mock, scan_mock,
+    def test_given_start_lower_than_stop(self, grab_mock, wait_mock, scan_mock,
                                          update_mock, load_mock):
         dac_file = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem1/spm/shgm/dacs'
         save_file = 'image_dacscan.hdf5'
@@ -750,8 +770,28 @@ class ScanDacTest(unittest.TestCase):
         update_mock.assert_called_once_with()
         scan_mock.assert_called_once_with(chips, 'Threshold0', Range(1, 10, 1),
                                           dac_file, '/tmp/', save_file)
+        grab_mock.assert_not_called()
         wait_mock.assert_called_once_with('/tmp/image_dacscan.hdf5', 5)
         load_mock.assert_called_once_with('/tmp/' + save_file)
+
+    def test_given_remote_node_then_grab_file(self, grab_mock, wait_mock,
+                                              scan_mock, update_mock,
+                                              load_mock):
+        dac_file = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem1/spm/shgm/dacs'
+        save_file = 'image_dacscan.hdf5'
+        e = ExcaliburNode(1)
+        e.remote_node = True
+        chips = [0]
+        dac_range = Range(1, 10, 1)
+
+        e.scan_dac(chips, 'Threshold0', dac_range)
+
+        update_mock.assert_called_once_with()
+        scan_mock.assert_called_once_with(chips, 'Threshold0', Range(1, 10, 1),
+                                          dac_file, '/tmp/', save_file)
+        grab_mock.assert_called_once_with('/tmp/image_dacscan.hdf5')
+        wait_mock.assert_called_once_with(grab_mock.return_value, 5)
+        load_mock.assert_called_once_with(grab_mock.return_value)
 
 
 class UpdateFilenameIndexTest(unittest.TestCase):
@@ -1456,6 +1496,11 @@ class ROITest(unittest.TestCase):
 
         np.testing.assert_array_equal(expected_array, plot_mock.call_args[0][0])
         np.testing.assert_array_equal(expected_array, roi)
+
+    def test_given_invalid_method_then_error(self, _):
+
+        with self.assertRaises(NotImplementedError):
+            self.e.roi([0], 1, 1, 'not a method')
 
 
 class CalibrateDiscTest(unittest.TestCase):
