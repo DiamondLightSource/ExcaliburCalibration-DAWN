@@ -54,6 +54,9 @@ class ExcaliburNode(object):
     config_dir = posixpath.join(root_path, 'TestApplication_15012015/config')
     default_dacs = posixpath.join(config_dir, "Default_SPM.dacs")
 
+    output_folder = "/tmp"  # Location to save data files to
+    file_name = "image"  # Default base name for data files
+
     # Line number used when editing dac file with new dac values
     dac_number = dict(Threshold0=1, Threshold1=2, Threshold2=3, Threshold3=4,
                       Threshold4=5, Threshold5=6, Threshold6=7, Threshold7=8,
@@ -96,22 +99,21 @@ class ExcaliburNode(object):
         logging.debug("Creating ExcaliburNode with server %s and ip %s",
                       self.server_name, self.ipaddress)
 
-        # Detector default Settings
-        self.settings = {'mode': 'spm',  # 'spm' or 'csm'
-                         'gain': 'shgm',  # 'slgm', 'lgm', 'hgm' or 'shgm'
-                         'bitdepth': 12,  # '1', '8', '12' or '24'; 24 bits
-                         # needs disccsmspm set at 1 to use discL
-                         'readmode': 'sequential',  # '0' or '1'
-                         'counter': 0,  # '0' or '1'
-                         'disccsmspm': 'discL',  # '0' or '1'
-                         'equalization': 0,  # '0' or '1'
-                         'trigmode': 0,
-                         'acqtime': 100,  # in ms
-                         'frames': 1,  # Number of frames to acquire
-                         'imagepath': '/tmp/',  # Image path
-                         'filename': 'image',  # Image filename
-                         'filenameIndex': ''}  # Image file index (used to
-        # avoid overwriting files)
+        # Detector default settings - See excaliburtestappinterface for details
+        self.settings = dict(mode="spm",  # spm or csm
+                             gain="shgm",  # slgm, lgm, hgm or shgm
+                             bitdepth=12,  # 1, 8, 12 or 24; 24 bits needs
+                                           # disccsmspm set at 1 to use discL
+                             # TODO: Fix above comment
+                             readmode="sequential",  # 0 or 1
+                             counter=0,  # 0 or 1
+                             disccsmspm="discL",  # discL or discH
+                             equalization=0,  # 0 or 1
+                             trigmode=0,  # 0, 1 or 2
+                             exposure=100,  # In milliseconds
+                             frames=1)
+
+        self.file_index = None  # To be set when read from file system
 
         # Commonly used file path template
         self.template_path = posixpath.join(self.calib_dir,
@@ -313,7 +315,7 @@ class ExcaliburNode(object):
             numpy.array, list: DAC scan array, DAC values of scan
 
         """
-        self.settings['acqtime'] = 100
+        self.settings['exposure'] = 100
         if self.settings['gain'] == 'shgm':
             dac_range = Range(self.dac_target + 100, self.dac_target + 20, 2)
         else:
@@ -322,7 +324,7 @@ class ExcaliburNode(object):
         self.load_config(chips)
         filename = 'Threshold{threshold}Scan_{energy}keV'.format(
             threshold=threshold, energy=energy)
-        self.settings['filename'] = filename
+        self.file_name = filename
 
         dac_scan_data = self.scan_dac(chips, "Threshold" + str(threshold),
                                       dac_range)
@@ -404,8 +406,8 @@ class ExcaliburNode(object):
             threshold: Threshold to calibrate (0 or 1)
 
         """
-        self.settings['acqtime'] = 1000
-        self.settings['filename'] = 'Single_energy_threshold_scan'
+        self.settings['exposure'] = 1000
+        self.file_name = 'Single_energy_threshold_scan'
 
         # dacRange = (self.dacTarget + 80, self.dacTarget + 20, 2)
         # self.load_config(range(8))
@@ -425,7 +427,7 @@ class ExcaliburNode(object):
         self.save_kev2dac_calib(threshold, slope, offset)
         logging.debug("Slope: %s, Offset: %s", slope, offset)
 
-        self.settings['filename'] = 'image'
+        self.file_name = 'image'
 
     def multiple_energy_thresh_calib(self, chips=range(8), threshold="0"):
         """Plot multiple energy threshold calibration spectra.
@@ -444,8 +446,8 @@ class ExcaliburNode(object):
             threshold: Threshold to calibrate (0 or 1)
 
         """
-        self.settings['acqtime'] = 1000
-        self.settings['filename'] = 'Single_energy_threshold_scan'
+        self.settings['exposure'] = 1000
+        self.file_name = 'Single_energy_threshold_scan'
 
         # dacRange = (self.dacTarget + 80, self.dacTarget + 20, 2)
         # self.load_config(range(8))
@@ -531,7 +533,7 @@ class ExcaliburNode(object):
                          "Threshold" + str(threshold), thresh_DACs[chip])
 
         time.sleep(0.2)
-        self.settings['acqtime'] = 100
+        self.settings['exposure'] = 100
         self.expose()
         time.sleep(0.2)
         self.expose()
@@ -591,22 +593,21 @@ class ExcaliburNode(object):
         /dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/ DIRECTORY
 
         """
-        img_path = self.settings['imagepath']
+        img_path = self.output_folder
 
         self.settings['gain'] = 'shgm'
         self.load_config(chips)
         self.set_threshold0_dac(chips, 40)
-        self.settings['filename'] = 'Fe55_image_node_{fem}_{acqtime}s'.format(
-            fem=self.fem, acqtime=self.settings['acqtime'])
-        self.settings['imagepath'] = posixpath.join(self.root_path,
-                                                    'Fe55_images')
+        self.file_name = 'Fe55_image_node_{fem}_{acqtime}s'.format(
+            fem=self.fem, acqtime=self.settings['exposure'])
+        self.output_folder = posixpath.join(self.root_path, "Fe55_images")
         time.sleep(0.5)
 
         self.expose(acquire_time)
 
-        self.settings['imagepath'] = img_path
-        self.settings['filename'] = 'image'
-        self.settings['acqtime'] = 100
+        self.output_folder = img_path
+        self.file_name = 'image'
+        self.settings['exposure'] = 100
 
     def set_dac(self, chips, name="Threshold0", value=40):
         """Set any chip DAC at a given value.
@@ -671,19 +672,19 @@ class ExcaliburNode(object):
         """
         self.update_filename_index()
 
-        dac_scan_file = '{name}_dacscan{index}.hdf5'.format(
-            name=self.settings['filename'],
-            index=self.settings['filenameIndex'])
+        dac_scan_file = "dacscan_{index}.hdf5".format(
+            name=self.file_name,
+            index=self.file_index)
         dac_file = posixpath.join(self.calib_dir,
-                                  'fem{fem}'.format(fem=self.fem),
+                                  "fem{fem}".format(fem=self.fem),
                                   self.settings['mode'],
                                   self.settings['gain'],
-                                  'dacs')
+                                  "dacs")
 
         self.app.perform_dac_scan(chips, dac_name, dac_range, dac_file,
-                                  self.settings['imagepath'], dac_scan_file)
+                                  self.output_folder, dac_scan_file)
 
-        file_path = posixpath.join(self.settings['imagepath'], dac_scan_file)
+        file_path = posixpath.join(self.output_folder, dac_scan_file)
         if self.remote_node:
             file_path = self.app.grab_remote_file(file_path)
 
@@ -738,8 +739,8 @@ class ExcaliburNode(object):
         If the file doesn't exist then create it starting at 0.
 
         """
-        idx_filename = posixpath.join(self.settings['imagepath'],
-                                      self.settings['filename'] + '.idx')
+        idx_filename = posixpath.join(self.output_folder,
+                                      self.file_name + '.idx')
 
         new_file = False
         if os.path.isfile(idx_filename):
@@ -752,7 +753,7 @@ class ExcaliburNode(object):
         with open(idx_filename, 'w') as idx_file:
             idx_file.write(str(new_idx))
 
-        self.settings['filenameIndex'] = new_idx
+        self.file_index = new_idx
 
         if new_file:
             os.chmod(idx_filename, 0777)
@@ -768,7 +769,7 @@ class ExcaliburNode(object):
 
         """
         if exposure is None:
-            exposure = self.settings['acqtime']
+            exposure = self.settings['exposure']
 
         logging.info("Capturing image with %sms exposure", exposure)
         image = self._acquire(1, exposure)
@@ -829,9 +830,8 @@ class ExcaliburNode(object):
 
         """
         self.update_filename_index()
-        self.settings['fullFilename'] = '{name}_{index}.hdf5'.format(
-            name=self.settings['filename'],
-            index=self.settings['filenameIndex'])
+        file_name = '{name}_{index}.hdf5'.format(name=self.file_name,
+                                                 index=self.file_index)
 
         self.app.acquire(self.chip_range, frames, exposure,
                          burst=burst,
@@ -843,11 +843,10 @@ class ExcaliburNode(object):
                          gain_mode=self.settings['gain'],
                          read_mode=self.settings['readmode'],
                          trig_mode=self.settings['trigmode'],
-                         path=self.settings['imagepath'],
-                         hdf_file=self.settings['fullFilename'])
+                         path=self.output_folder,
+                         hdf_file=file_name)
 
-        file_path = posixpath.join(self.settings['imagepath'],
-                                   self.settings['fullFilename'])
+        file_path = posixpath.join(self.output_folder, file_name)
         if self.remote_node:
             file_path = self.app.grab_remote_file(file_path)
 
@@ -870,8 +869,8 @@ class ExcaliburNode(object):
             numpy.array: Flat-field coefficients
 
         """
-        self.settings['fullFilename'] = "FlatField.hdf5"
-        self.settings['acqtime'] = acquire_time
+        file_name = "FlatField.hdf5"
+        self.settings['exposure'] = acquire_time
 
         ff_image = 0
         for _ in range(num):
@@ -907,12 +906,12 @@ class ExcaliburNode(object):
         """
         # TODO: This just plots, but doesn't apply it
 
-        self.settings['fullFilename'] = '{name}_{index}.hdf5'.format(
-            name=self.settings['filename'],
-            index=self.settings['filenameIndex'])
+        self.update_filename_index()
+        file_name = '{name}_{index}.hdf5'.format(name=self.file_name,
+                                                 index=self.file_index)
 
-        images = self.dawn.load_image_data(self.settings['imagepath'] +
-                                           self.settings['fullFilename'])
+        image_path = posixpath.join(self.output_folder, file_name)
+        images = self.dawn.load_image_data(image_path)
 
         for image_idx in range(num_images):
             # TODO: Find better name than ff
@@ -920,8 +919,7 @@ class ExcaliburNode(object):
             ff[ff > 3000] = 0
             chip = 3
             self.dawn.plot_image(self._grab_chip_slice(ff, chip),
-                                 name='Image data Cor')  # TODO: 'Cor'?
-            time.sleep(1)
+                                 name='Image data Cor')
 
     def logo_test(self):
         """Test the detector using test pulses representing excalibur logo."""
@@ -930,8 +928,7 @@ class ExcaliburNode(object):
         self.expose(10)  # TODO: Why does it need to set* and expose here?
 
         logo_tp = np.ones([256, 8*256])
-        logo_file = posixpath.join(self.config_dir,
-                                   'logo.txt')
+        logo_file = posixpath.join(self.config_dir, "logo.txt")
         logo_small = np.loadtxt(logo_file)
         util.set_slice(logo_tp, [7, 225], [249, 1822], logo_small)
         logo_tp[logo_tp > 0] = 1
@@ -940,8 +937,9 @@ class ExcaliburNode(object):
         for chip in self.chip_range:
             dac_file = posixpath.join(self.calib_dir, 'dacs')
 
+            # TODO: Why is this done for each chip?
             test_bits_file = posixpath.join(self.calib_dir,
-                                            'Logo_chip{chip}_mask').format(
+                                            "Logo_chip{chip}_mask").format(
                                             chip=chip)
             np.savetxt(test_bits_file, self._grab_chip_slice(logo_tp, chip),
                        fmt='%.18g', delimiter=' ')
@@ -961,18 +959,18 @@ class ExcaliburNode(object):
 
         time.sleep(0.2)
 
-        self.settings['fullFilename'] = "{name}_{index}.hdf5".format(
-                                        name=self.settings['filename'],
-                                        index=self.settings['filenameIndex'])
+        self.update_filename_index()
+        file_name = "{name}_{index}.hdf5".format(name=self.file_name,
+                                                 index=self.file_index)
 
         self.app.acquire(self.chip_range,
-                         str(self.settings['frames']),
-                         str(self.settings['acqtime']),
-                         tp_count='100',
-                         hdf_file=self.settings['fullFilename'])
+                         self.settings['frames'],
+                         self.settings['exposure'],
+                         tp_count=100,
+                         hdf_file=file_name)
 
-        image = self.dawn.load_image_data(self.settings['imagepath'] +
-                                          self.settings['fullFilename'])
+        image_path = posixpath.join(self.output_folder, file_name)
+        image = self.dawn.load_image_data(image_path)
         self.dawn.plot_image(image, name="Image_{}".format(time.asctime()))
 
     def test_pulse(self, chips, test_bits, pulses):
@@ -986,22 +984,20 @@ class ExcaliburNode(object):
             np.savetxt(test_bits_file, test_bits, fmt='%.18g', delimiter=' ')
 
         self.update_filename_index()
-        self.settings['fullFilename'] = "{name}_{index}.hdf5".format(
-                                        name=self.settings['filename'],
-                                        index=self.settings['filenameIndex'])
+        file_name = "{name}_{index}.hdf5".format(name=self.file_name,
+                                                 index=self.file_index)
 
         for chip in chips:
             dac_file = posixpath.join(self.calib_dir, 'dacs')
             self.app.configure_test_pulse([chip], dac_file, test_bits_file)
 
         self.app.acquire(chips,
-                         str(self.settings['frames']),
-                         str(self.settings['acqtime']),
-                         tp_count=str(pulses),
-                         hdf_file=self.settings['fullFilename'])
+                         self.settings['frames'],
+                         self.settings['exposure'],
+                         tp_count=pulses,
+                         hdf_file=file_name)
 
-        image_path = posixpath.join(self.settings['imagepath'],
-                                    self.settings['fullFilename'])
+        image_path = posixpath.join(self.output_folder, file_name)
         image = self.dawn.load_image_data(image_path)
         self.dawn.plot_image(image, name="Image_{}".format(time.asctime()))
 
@@ -1113,7 +1109,7 @@ class ExcaliburNode(object):
         """
         max_counts = 1
         bad_pix_tot = np.zeros(8)
-        self.settings['acqtime'] = 100
+        self.settings['exposure'] = 100
         dac_scan_data = self.scan_dac(chips, threshold, dac_range)
         bad_pixels = dac_scan_data.sum(0) > max_counts
         self.dawn.plot_image(bad_pixels, name='Bad Pixels')
@@ -1383,7 +1379,7 @@ class ExcaliburNode(object):
         threshold = thresholds[disc_name]
 
         # Definition of parameters to be used for threshold scans
-        self.settings['acqtime'] = 5
+        self.settings['exposure'] = 5
         self.settings['counter'] = 0
         self.settings['equalization'] = 1  # Might not be necessary when
         # optimizing DAC Disc
@@ -1617,7 +1613,7 @@ class ExcaliburNode(object):
             numpy.array: Equalised discriminator bits
 
         """
-        self.settings['acqtime'] = 5
+        self.settings['exposure'] = 5
         self.settings['counter'] = 0
         self.settings['equalization'] = 1
 
@@ -1716,9 +1712,9 @@ class ExcaliburNode(object):
 
         self.load_config(chips)
         equ_pix_tot = np.zeros(self.num_chips)
-        self.settings['filename'] = 'dacscan'
+        self.file_name = 'dacscan'
         dac_scan_data = self.scan_dac(chips, "Threshold0", dac_range)
-        self.plot_name = self.settings['filename']
+        self.plot_name = self.file_name
         edge_dacs = self.find_max(chips, dac_scan_data, dac_range)
 
         # Display statistics on equalization and save discLbit files for each
