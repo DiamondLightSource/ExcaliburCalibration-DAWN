@@ -907,9 +907,9 @@ class LogoTestTest(unittest.TestCase):
                                    sleep_mock):
         expected_dac_file = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/dacs'
         mask_file = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/Logo_chip0_mask'
-        disc_files = dict(disch='/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem1/spm/shgm/discHbits.chip0',
-                          pixelmask='/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem1/spm/shgm/pixelmask.chip0',
-                          discl='/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem1/spm/shgm/discLbits.chip0')
+        disc_files = dict(discH='/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem1/spm/shgm/discHbits.chip0',
+                          pixel_mask='/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem1/spm/shgm/pixelmask.chip0',
+                          discL='/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem1/spm/shgm/discLbits.chip0')
         chips = [0]
 
         self.e.logo_test()
@@ -1101,13 +1101,13 @@ class MaskUnmaskTest(unittest.TestCase):
         load_mock.assert_called_once_with([0], expected_file_1, pixelmask=expected_file_2)
 
     def test_unequalize_pixels(self, load_mock, save_mock, _):
-        expected_file_1 = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem1/spm/shgm/discL_bits.chip0'
+        expected_file_1 = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem1/spm/shgm/discLbits.chip0'
         expected_file_2 = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem1/spm/shgm/pixelmask.chip0'
         expected_mask = np.zeros([256, 256])
 
         self.e.unequalize_all_pixels([0])
 
-        self.assertEqual(save_mock.call_args[0][0], '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem1/spm/shgm/discL_bits.chip0')
+        self.assertEqual(save_mock.call_args[0][0], '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem1/spm/shgm/discLbits.chip0')
         np.testing.assert_array_equal(expected_mask, save_mock.call_args[0][1])
         self.assertEqual(dict(fmt='%.18g', delimiter=' '), save_mock.call_args[1])
 
@@ -1644,12 +1644,12 @@ class SliceGrabSetTest(unittest.TestCase):
         np.testing.assert_array_equal(expected_stop, stop)
 
 
-@patch("sys.stdout.write")
-@patch("os.listdir",
-       return_value=["diagonal.mask", "stfcinverted.mask", "triangle.mask",
-                     "zeros.mask", "Default_SPM.dacs", "noise.dacs"])
+@patch('__builtin__.print')
 class DisplayTest(unittest.TestCase):
 
+    @patch("os.listdir",
+           return_value=["diagonal.mask", "stfcinverted.mask", "triangle.mask",
+                         "zeros.mask", "Default_SPM.dacs", "noise.dacs"])
     def test_display_masks(self, _, print_mock):
         expected_call = "Available masks: diagonal.mask, stfcinverted.mask, " \
                         "triangle.mask, zeros.mask"
@@ -1659,6 +1659,9 @@ class DisplayTest(unittest.TestCase):
 
         self.assertEqual(expected_call, print_mock.call_args_list[0][0][0])
 
+    @patch("os.listdir",
+           return_value=["diagonal.mask", "stfcinverted.mask", "triangle.mask",
+                         "zeros.mask", "Default_SPM.dacs", "noise.dacs"])
     def test_display_dacs(self, _, print_mock):
         expected_call = "Available DAC files: Default_SPM.dacs, noise.dacs"
         e = ExcaliburNode(1)
@@ -1666,3 +1669,17 @@ class DisplayTest(unittest.TestCase):
         e.display_dac_files()
 
         self.assertEqual(expected_call, print_mock.call_args_list[0][0][0])
+
+    def test_display_status(self, print_mock):
+        expected_calls = ['Status for Node 1',
+                          'LV: 0',
+                          'HV: 0',
+                          'HV Bias: 0',
+                          'DACs Loaded: None',
+                          'Initialised: False']
+        e = ExcaliburNode(1)
+
+        e.display_status()
+
+        calls = [call[0][0] for call in print_mock.call_args_list]
+        self.assertEqual(expected_calls, calls)

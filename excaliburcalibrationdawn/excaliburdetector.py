@@ -99,9 +99,7 @@ class ExcaliburDetector(object):
 
     def disable(self):
         """Set HV bias to 0 and disable LV and HV."""
-        self.MasterNode.set_hv_bias(0)
-        self.MasterNode.disable_hv()
-        self.MasterNode.disable_lv()
+        self.MasterNode.disable()
 
     def monitor(self):
         """Monitor temperature, humidity, FEM voltage status and DAC out."""

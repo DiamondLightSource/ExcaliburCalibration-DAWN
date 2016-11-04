@@ -1,4 +1,5 @@
 """Python library for MPX3RX-based detectors calibration and testing."""
+from __future__ import print_function  # To test what is printed
 import os
 import posixpath
 import shutil
@@ -51,6 +52,7 @@ class ExcaliburNode(object):
     root_path = '/dls/detectors/support/silicon_pixels/excaliburRX/'
     calib_dir = posixpath.join(root_path, '3M-RX001/calib')
     config_dir = posixpath.join(root_path, 'TestApplication_15012015/config')
+    default_dacs = posixpath.join(config_dir, "Default_SPM.dacs")
 
     # Line number used when editing dac file with new dac values
     dac_number = dict(Threshold0=1, Threshold1=2, Threshold2=3, Threshold3=4,
@@ -74,7 +76,7 @@ class ExcaliburNode(object):
             server_root: Server name root; add node number to get real server
             node: PC node number of 1/2 module (Between 1 and 6 for 3M)
 
-        """  # TODO: Check 'node 6' is correct
+        """
         if node not in [1, 2, 3, 4, 5, 6]:
             raise ValueError("Node {node} is invalid. Should be 1-6.".format(
                 node=node))
@@ -117,6 +119,14 @@ class ExcaliburNode(object):
                                             self.settings['mode'],
                                             self.settings['gain'])
 
+        tp = posixpath.join(self.template_path, '{disc}.chip{chip}')
+        self.discL_bits = [tp.format(disc="discLbits",
+                                     chip=chip) for chip in self.chip_range]
+        self.discH_bits = [tp.format(disc="discHbits",
+                                     chip=chip) for chip in self.chip_range]
+        self.pixel_mask = [tp.format(disc="pixelmask",
+                                     chip=chip) for chip in self.chip_range]
+
         # Helper classes
         self.app = ExcaliburTestAppInterface(self.fem, self.ipaddress, 6969,
                                              self.server_name)
@@ -125,8 +135,7 @@ class ExcaliburNode(object):
     def setup(self):
         """Perform necessary initialisation."""
         self.read_chip_ids()
-        self.app.load_dacs(range(8), posixpath.join(self.config_dir,
-                                                    "Default_SPM.dacs"))
+        self.app.load_dacs(range(8), self.default_dacs)
 
     def disable(self):
         """Set HV bias to 0 and disable LV and HV."""
@@ -173,36 +182,6 @@ class ExcaliburNode(object):
         print("HV Bias: {}".format(self.app.hv_bias))
         print("DACs Loaded: {}".format(self.app.dacs_loaded))
         print("Initialised: {}".format(self.app.initialised))
-
-    def test_pulse_image(self, tp_mask):
-        """Load the given test mask.
-
-        Args:
-            tp_mask: Name of mask in config directory to load
-
-        """
-        file_path = posixpath.join(self.config_dir, tp_mask)
-        if os.path.isfile(file_path):
-            self.app.load_tp_mask(self.chip_range, file_path)
-        else:
-            raise IOError("Given mask {} does not exist in config "
-                          "directory".format(tp_mask))
-
-        image_name = "{}_image.hdf5".format(os.path.splitext(tp_mask)[0])
-        self.app.acquire_tp_image(self.chip_range, 100, 1000, image_name,
-                                  path=self.settings['imagepath'])
-
-        file_path = posixpath.join(self.settings['imagepath'], image_name)
-        if self.remote_node:
-            file_path = self.app.grab_remote_file(file_path)
-
-        util.wait_for_file(file_path, 5)
-        logging.debug("Loading %s", file_path)
-        image = self.dawn.load_image_data(file_path)
-
-        plot_name = "Test Pulse Image - {time_stamp}".format(
-            time_stamp=util.get_time_stamp())
-        self.dawn.plot_image(image, plot_name)
 
     def threshold_equalization(self, chips=range(8)):
         """Calibrate discriminator equalization.
@@ -746,15 +725,9 @@ class ExcaliburNode(object):
             chips: Chips to load config for
 
         """
-        template_path = posixpath.join(self.template_path, '{disc}.chip{chip}')
-
         for chip in chips:
-            discHbits_file = template_path.format(disc='discHbits', chip=chip)
-            discLbits_file = template_path.format(disc='discLbits', chip=chip)
-            pixel_mask_file = template_path.format(disc='pixelmask', chip=chip)
-
-            self.app.load_config([chip], discLbits_file, discHbits_file,
-                                 pixel_mask_file)
+            self.app.load_config([chip], self.discL_bits[chip],
+                                 self.discH_bits[chip], self.pixel_mask[chip])
 
         self.set_dac(range(8), "Threshold1", 100)
         self.set_dac(range(8), "Threshold0", 40)
@@ -973,23 +946,18 @@ class ExcaliburNode(object):
             np.savetxt(test_bits_file, self._grab_chip_slice(logo_tp, chip),
                        fmt='%.18g', delimiter=' ')
 
-            template_path = posixpath.join(self.template_path,
-                                           '{disc}.chip{chip}')
-            discHbits_file = template_path.format(disc='discHbits', chip=chip)
-            discLbits_file = template_path.format(disc='discLbits', chip=chip)
-            pixel_mask_file = template_path.format(disc='pixelmask', chip=chip)
-
-            if os.path.isfile(discLbits_file) \
-                and os.path.isfile(discHbits_file)  \
-                    and os.path.isfile(pixel_mask_file):
-                disc_files = dict(discl=discLbits_file,
-                                  disch=discHbits_file,
-                                  pixelmask=pixel_mask_file)
+            # TODO: Do we really need to check these exist?
+            if os.path.isfile(self.discL_bits[chip]) \
+                and os.path.isfile(self.discH_bits[chip])  \
+                    and os.path.isfile(self.pixel_mask[chip]):
+                config_files = dict(discL=self.discL_bits[chip],
+                                    discH=self.discH_bits[chip],
+                                    pixel_mask=self.pixel_mask[chip])
             else:
-                disc_files = None
+                config_files = None
 
             self.app.configure_test_pulse([chip], dac_file, test_bits_file,
-                                          disc_files)
+                                          config_files)
 
         time.sleep(0.2)
 
@@ -1047,14 +1015,9 @@ class ExcaliburNode(object):
 
         """
         for chip_idx in chips:
-            discbits_file = posixpath.join(self.calib_dir,
-                                           'fem{fem}',
-                                           self.settings['mode'],
-                                           self.settings['gain'],
-                                           '{disc}.chip{chip}'
-                                           ).format(fem=self.fem,
-                                                    disc=discbitsFilename,
-                                                    chip=chip_idx)
+            discbits_file = posixpath.join(
+                self.template_path, '{disc}.chip{chip}'.format(
+                    disc=discbitsFilename, chip=chip_idx))
 
             logging.info("Saving discbits to %s", discbits_file)
             np.savetxt(discbits_file,
@@ -1073,13 +1036,11 @@ class ExcaliburNode(object):
         bad_pixels[:, chip*256 + super_column * 32:chip * 256 +
                    super_column * 32 + 64] = 1  # TODO: Should it be 64 wide?
 
-        template_path = posixpath.join(self.template_path, '{disc}.chip{chip}')
-        discLbits_file = template_path.format(disc='discLbits', chip=chip)
-        pixel_mask_file = template_path.format(disc='pixelmask', chip=chip)
-
+        pixel_mask_file = self.pixel_mask[chip]
         np.savetxt(pixel_mask_file, self._grab_chip_slice(bad_pixels, chip),
                    fmt='%.18g', delimiter=' ')
-        self.app.load_config([chip], discLbits_file, pixelmask=pixel_mask_file)
+        self.app.load_config([chip],
+                             self.discL_bits[chip], pixelmask=pixel_mask_file)
 
         self.dawn.plot_image(bad_pixels, name='Bad Pixels')
 
@@ -1094,15 +1055,12 @@ class ExcaliburNode(object):
         bad_pixels = np.zeros(self.full_array_shape)
         bad_pixels[:, column] = 1
 
-        template_path = posixpath.join(self.template_path, '{disc}.chip{chip}')
-
-        discLbits_file = template_path.format(disc='discLbits', chip=chip)
-        pixel_mask_file = template_path.format(disc='pixelmask', chip=chip)
-
+        pixel_mask_file = self.pixel_mask[chip]
         np.savetxt(pixel_mask_file, self._grab_chip_slice(bad_pixels, chip),
                    fmt='%.18g', delimiter=' ')
 
-        self.app.load_config([chip], discLbits_file, pixelmask=pixel_mask_file)
+        self.app.load_config([chip],
+                             self.discL_bits[chip], pixelmask=pixel_mask_file)
 
         self.dawn.plot_image(bad_pixels, name='Bad pixels')
 
@@ -1121,14 +1079,6 @@ class ExcaliburNode(object):
         bad_pixels = image_data > max_counts
         self.dawn.plot_image(bad_pixels, name='Bad pixels')
         for chip_idx in chips:
-            template_path = posixpath.join(self.template_path,
-                                           '{disc}.chip{chip}')
-
-            discLbits_file = template_path.format(disc='discLbits',
-                                                  chip=chip_idx)
-            pixel_mask_file = template_path.format(disc='pixelmask',
-                                                   chip=chip_idx)
-
             bad_pix_tot[chip_idx] = \
                 self._grab_chip_slice(bad_pixels, chip_idx).sum()
 
@@ -1137,10 +1087,11 @@ class ExcaliburNode(object):
                 chip=str(chip_idx),
                 tot=str(100 * bad_pix_tot[chip_idx] / (256**2))))
 
+            pixel_mask_file = self.pixel_mask[chip_idx]
             np.savetxt(pixel_mask_file,
                        self._grab_chip_slice(bad_pixels, chip_idx),
                        fmt='%.18g', delimiter=' ')
-            self.app.load_config([chip_idx], discLbits_file,
+            self.app.load_config([chip_idx], self.discL_bits[chip_idx],
                                  pixelmask=pixel_mask_file)
 
         print('####### {pix} noisy pixels in half module ({tot}%)'.format(
@@ -1176,14 +1127,7 @@ class ExcaliburNode(object):
                 chip=str(chip_idx),
                 tot=str(100 * bad_pix_tot[chip_idx] / (256**2))))
 
-            pixel_mask_file = posixpath.join(self.calib_dir,
-                                             'fem{fem}'.format(fem=self.fem),
-                                             self.settings['mode'],
-                                             self.settings['gain'],
-                                             '{disc}.chip{chip}').format(
-                disc='pixelmask',
-                chip=chip_idx)
-
+            pixel_mask_file = self.pixel_mask[chip_idx]
             np.savetxt(pixel_mask_file,
                        self._grab_chip_slice(bad_pixels, chip_idx),
                        fmt='%.18g', delimiter=' ')
@@ -1200,7 +1144,7 @@ class ExcaliburNode(object):
             tot=str(100 * bad_pix_tot.sum() / (8 * 256**2))))
 
     def unmask_all_pixels(self, chips):
-        """Unmask all pixels and update maskfile in calibration directory.
+        """Unmask all pixels and update mask file in calibration directory.
 
         Args:
             chips: Chips to unmask
@@ -1210,18 +1154,11 @@ class ExcaliburNode(object):
         bad_pixels = np.zeros(self.full_array_shape)
 
         for chip_idx in chips:
-            template_path = posixpath.join(self.template_path,
-                                           '{disc}.chip{chip}')
-
-            discLbits_file = template_path.format(disc='discLbits',
-                                                  chip=chip_idx)
-            pixel_mask_file = template_path.format(disc='pixelmask',
-                                                   chip=chip_idx)
-
+            pixel_mask_file = self.pixel_mask[chip_idx]
             np.savetxt(pixel_mask_file,
                        self._grab_chip_slice(bad_pixels, chip_idx),
                        fmt='%.18g', delimiter=' ')
-            self.app.load_config([chip_idx], discLbits_file,
+            self.app.load_config([chip_idx], self.discL_bits[chip_idx],
                                  pixelmask=pixel_mask_file)
 
     def unequalize_all_pixels(self, chips):
@@ -1231,27 +1168,16 @@ class ExcaliburNode(object):
             chips: Chips to unequalize
 
         """
-        # TODO: Unequalize discH as well?
-        # TODO: File path slightly different to above; discL_bits vs discLbits
-        # TODO: Are they supposed to be the same?
-
         discL_bits = 31 * np.zeros(self.full_array_shape)  # TODO: Not 32?
         # TODO: Just have a single 256*256 array and save to all???
         for chip_idx in chips:
-            template_path = posixpath.join(self.template_path,
-                                           '{disc}.chip{chip}')
-
-            discLbits_file = template_path.format(disc='discL_bits',
-                                                  chip=chip_idx)
-            pixel_mask_file = template_path.format(disc='pixelmask',
-                                                   chip=chip_idx)
-
-            np.savetxt(discLbits_file,
+            discL_bits_file = self.discL_bits[chip_idx]
+            np.savetxt(discL_bits_file,
                        self._grab_chip_slice(discL_bits, chip_idx),
                        fmt='%.18g', delimiter=' ')
             # TODO: Doesn't save pixelmask...
-            self.app.load_config([chip_idx], discLbits_file,
-                                 pixelmask=pixel_mask_file)
+            self.app.load_config([chip_idx], discL_bits_file,
+                                 pixelmask=self.pixel_mask[chip_idx])
 
     def check_calib_dir(self):
         """Check if calibration directory exists and backs it up."""
@@ -1321,12 +1247,9 @@ class ExcaliburNode(object):
         """
         discbits = np.zeros(self.full_array_shape)
         for chip_idx in chips:
-            discbits_file = posixpath.join(self.calib_dir,
-                                           'fem{fem}',
-                                           self.settings['mode'],
-                                           self.settings['gain'],
-                                           '{disc}.chip{chip}').format(
-                fem=self.fem, disc=discbits_filename, chip=chip_idx)
+            discbits_file = posixpath.join(
+                self.template_path, '{disc}.chip{chip}'.format(
+                    disc=discbits_filename, chip=chip_idx))
 
             self._set_chip_slice(discbits, chip_idx, np.loadtxt(discbits_file))
 

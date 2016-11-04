@@ -324,7 +324,7 @@ class APICallsTest(unittest.TestCase):
         tp_mask = MagicMock()
         expected_params = ['--dacs=test_file', '--tpmask=' + tp_mask]
 
-        self.e.configure_test_pulse(self.chips, "test_file", tp_mask)
+        self.e.configure_test_pulse(self.chips, tp_mask, "test_file")
 
         construct_mock.assert_called_once_with(self.chips, *expected_params)
         send_cmd_mock.assert_called_once_with(construct_mock.return_value)
@@ -334,13 +334,13 @@ class APICallsTest(unittest.TestCase):
         disc_l_mock = MagicMock()
         disc_h_mock = MagicMock()
         mask_mock = MagicMock()
-        disc_files = dict(discl=disc_l_mock, disch=disc_h_mock,
-                          pixelmask=mask_mock)
+        disc_files = dict(discL=disc_l_mock, discH=disc_h_mock,
+                          pixel_mask=mask_mock)
         expected_params = ['--dacs=test_file', '--tpmask=' + tp_mask,
                            '--discl=' + disc_l_mock, '--disch=' + disc_h_mock,
                            '--pixelmask=' + mask_mock]
 
-        self.e.configure_test_pulse(self.chips, "test_file", tp_mask, disc_files)
+        self.e.configure_test_pulse(self.chips, tp_mask, "test_file", disc_files)
 
         construct_mock.assert_called_once_with(self.chips, *expected_params)
         send_cmd_mock.assert_called_once_with(construct_mock.return_value)

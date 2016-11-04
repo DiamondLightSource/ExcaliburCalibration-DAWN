@@ -96,6 +96,14 @@ class SetVoltageTest(unittest.TestCase):
         for node in self.e.Nodes[1:]:
             self.assertFalse(node.set_hv_bias.call_count)
 
+    def test_disable(self):
+
+        self.e.disable()
+
+        self.e.Nodes[0].disable.assert_called_once_with()
+        for node in self.e.Nodes[1:]:
+            node.assert_not_called()
+
 
 class FunctionsTest(unittest.TestCase):
 
@@ -119,6 +127,18 @@ class FunctionsTest(unittest.TestCase):
         for node in self.e.Nodes:
             node.monitor.assert_called_once_with()
 
+    def test_load_config(self):
+        self.e.load_config()
+
+        for node in self.e.Nodes:
+            node.load_config.assert_called_once_with()
+
+    def test_display_status(self):
+        self.e.display_status()
+
+        for node in self.e.Nodes:
+            node.display_status.assert_called_once_with()
+
     def test_setup(self):
         self.e.setup()
 
@@ -133,6 +153,11 @@ class FunctionsTest(unittest.TestCase):
 
         for node in self.e.Nodes:
             node.threshold_equalization.assert_called_once_with([0])
+
+    def test_threshold_equalization_given_invalid_chips(self):
+
+        with self.assertRaises(ValueError):
+            self.e.threshold_equalization([0, 1, 2, 3, 4, 5, 6, 7])
 
     @patch(util_patch_path + '.get_time_stamp',
            return_value="2016-10-21_16:42:50")
