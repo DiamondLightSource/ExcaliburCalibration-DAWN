@@ -114,8 +114,6 @@ class ExcaliburNode(object):
                              exposure=100,  # In milliseconds
                              frames=1)
 
-        self.file_index = None  # To be set when read from file system
-
         # Commonly used file paths
         self.template_path = posixpath.join(self.calib_dir,
                                             'fem{fem}'.format(fem=self.fem),
@@ -668,11 +666,8 @@ class ExcaliburNode(object):
             numpy.array: DAC scan data
 
         """
-        self.update_filename_index()
+        dac_scan_file = util.generate_file_name("DACScan")
 
-        dac_scan_file = "dacscan_{index}.hdf5".format(
-            name=self.file_name,
-            index=self.file_index)
         dac_file = posixpath.join(self.calib_dir,
                                   "fem{fem}".format(fem=self.fem),
                                   self.settings['mode'],
@@ -731,31 +726,6 @@ class ExcaliburNode(object):
 
         self.set_dac(range(8), "Threshold1", 100)
         self.set_dac(range(8), "Threshold0", 40)
-
-    def update_filename_index(self):
-        """Increment filename index in filename.idx file in image path.
-
-        If the file doesn't exist then create it starting at 0.
-
-        """
-        idx_filename = posixpath.join(self.output_folder,
-                                      self.file_name + '.idx')
-
-        new_file = False
-        if os.path.isfile(idx_filename):
-            with open(idx_filename, 'r') as idx_file:
-                new_idx = int(idx_file.read()) + 1
-        else:
-            new_idx = 0
-            new_file = True
-
-        with open(idx_filename, 'w') as idx_file:
-            idx_file.write(str(new_idx))
-
-        self.file_index = new_idx
-
-        if new_file:
-            os.chmod(idx_filename, 0777)
 
     def expose(self, exposure=None):
         """Acquire single frame using current detector settings.
@@ -828,9 +798,7 @@ class ExcaliburNode(object):
             burst(bool): Set burst mode for acquisition
 
         """
-        self.update_filename_index()
-        file_name = '{name}_{index}.hdf5'.format(name=self.file_name,
-                                                 index=self.file_index)
+        file_name = util.generate_file_name("Image")
 
         self.app.acquire(self.chip_range, frames, exposure,
                          burst=burst,
@@ -904,10 +872,7 @@ class ExcaliburNode(object):
 
         """
         # TODO: This just plots, but doesn't apply it
-
-        self.update_filename_index()
-        file_name = '{name}_{index}.hdf5'.format(name=self.file_name,
-                                                 index=self.file_index)
+        file_name = util.generate_file_name("FFImage")
 
         image_path = posixpath.join(self.output_folder, file_name)
         images = self.dawn.load_image_data(image_path)
@@ -958,9 +923,7 @@ class ExcaliburNode(object):
 
         time.sleep(0.2)
 
-        self.update_filename_index()
-        file_name = "{name}_{index}.hdf5".format(name=self.file_name,
-                                                 index=self.file_index)
+        file_name = util.generate_file_name("TPImage")
 
         self.app.acquire(self.chip_range,
                          self.settings['frames'],
@@ -982,9 +945,7 @@ class ExcaliburNode(object):
                 '/' + self.settings['gain'] + '/' + 'testbits.tmp'
             np.savetxt(test_bits_file, test_bits, fmt='%.18g', delimiter=' ')
 
-        self.update_filename_index()
-        file_name = "{name}_{index}.hdf5".format(name=self.file_name,
-                                                 index=self.file_index)
+        file_name = util.generate_file_name("TPImage")
 
         for chip in chips:
             dac_file = posixpath.join(self.calib_dir, 'dacs')

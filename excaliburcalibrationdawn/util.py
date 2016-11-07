@@ -58,6 +58,20 @@ def get_time_stamp():
     return time_stamp
 
 
+def generate_file_name(base_name):
+    """Generate file name with a time stamp from a given base_name.
+
+    Args:
+        base_name(str): Base file name - e.g. Image, DAC Scan
+
+    Returns:
+        str: New file name
+
+    """
+    return "{tag}_{base_name}.hdf5".format(base_name=base_name,
+                                           tag=get_time_stamp())
+
+
 def to_list(value):
     """Return a list of value, or value if already a list.
 
