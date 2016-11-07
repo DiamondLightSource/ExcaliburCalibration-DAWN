@@ -9,9 +9,10 @@ from excaliburcalibrationdawn.excaliburtestappinterface import ExcaliburTestAppI
 ETAI_patch_path = "excaliburcalibrationdawn.excaliburtestappinterface.ExcaliburTestAppInterface"
 
 
+@patch('logging.info')
 class InitTest(unittest.TestCase):
 
-    def test_attributes_set(self):
+    def test_attributes_set(self, info_mock):
         e = ExcaliburTestAppInterface(1, "test_ip", "test_port")
         expected_path = "/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp"
 
@@ -26,8 +27,10 @@ class InitTest(unittest.TestCase):
         self.assertEqual(['/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
                           '-i', 'test_ip',
                           '-p', 'test_port'], e.base_cmd)
+        info_mock.assert_called_once_with("Set self.quiet to False to display "
+                                          "terminal output.")
 
-    def test_base_cmd_with_server_given(self):
+    def test_base_cmd_with_server_given(self, _):
         e = ExcaliburTestAppInterface(1, "test_ip", "test_port", "test_server")
         self.assertEqual(['ssh',
                           'test_server.diamond.ac.uk',
@@ -68,34 +71,70 @@ class ConstructCommandTest(unittest.TestCase):
         self.assertEqual(expected_command, command)
 
 
+@patch('logging.info')
 @patch('logging.debug')
+@patch('subprocess.check_output')
 @patch('subprocess.check_call')
 class SendCommandTest(unittest.TestCase):
 
-    def test_subp_called_and_logged(self, subp_mock, logging_mock):
-        e = ExcaliburTestAppInterface(1, "test_ip", "test_port")
-        expected_message = "Sending Command:\n'%s' with kwargs %s"
-        subp_mock.return_value = "Success"
+    def setUp(self):
+        self.e = ExcaliburTestAppInterface(1, "test_ip", "test_port")
 
-        e._send_command(["test_command"], test=True)
+    def test_quiet_subp_called_and_logged(self, call_mock, output_mock,
+                                          debug_mock, _):
+        expected_message = "Sending Command:\n'%s' with kwargs %s"
+        output_mock.return_value = "Success"
+
+        self.e._send_command(["test_command"], test=True)
 
         self.assertEqual((expected_message, "test_command", "{'test': True}"),
-                         logging_mock.call_args_list[0][0])
-        subp_mock.assert_called_once_with(["test_command"], test=True)
+                         debug_mock.call_args_list[0][0])
+        output_mock.assert_called_once_with(["test_command"], test=True)
+        call_mock.assert_not_called()
 
-    def test_error_raised_then_catch_and_log(self, subp_mock, logging_mock):
-        e = ExcaliburTestAppInterface(1, "test_ip", "test_port")
+    def test_quiet_error_raised_then_catch_and_log(self, call_mock, output_mock,
+                                                   debug_mock, info_mock):
         expected_message = "Sending Command:\n'%s' with kwargs %s"
-        subp_mock.side_effect = CalledProcessError(1, "test_command",
+        output_mock.side_effect = CalledProcessError(1, "test_command",
+                                                     output="Invalid command")
+
+        self.e._send_command(["test_command"], test=True)
+
+        self.assertEqual((expected_message, "test_command", "{'test': True}"),
+                         debug_mock.call_args_list[0][0])
+        output_mock.assert_called_once_with(["test_command"], test=True)
+        call_mock.assert_not_called()
+        self.assertEqual(("Error Output:\n%s", "Invalid command"),
+                         debug_mock.call_args_list[1][0])
+        info_mock.assert_called_once_with("Set self.quiet to False to display "
+                                          "terminal output.")
+
+    def test_subp_called_and_logged(self, call_mock, output_mock,
+                                    debug_mock, _):
+        expected_message = "Sending Command:\n'%s' with kwargs %s"
+        call_mock.return_value = "Success"
+
+        self.e.quiet = False
+        self.e._send_command(["test_command"], test=True)
+
+        self.assertEqual((expected_message, "test_command", "{'test': True}"),
+                         debug_mock.call_args_list[0][0])
+        call_mock.assert_called_once_with(["test_command"], test=True)
+
+    def test_error_raised_then_catch_and_log(self, call_mock, output_mock,
+                                             debug_mock, _):
+        expected_message = "Sending Command:\n'%s' with kwargs %s"
+        call_mock.side_effect = CalledProcessError(1, "test_command",
                                                    output="Invalid command")
 
-        e._send_command(["test_command"], test=True)
+        self.e.quiet = False
+        self.e._send_command(["test_command"], test=True)
 
         self.assertEqual((expected_message, "test_command", "{'test': True}"),
-                         logging_mock.call_args_list[0][0])
-        subp_mock.assert_called_once_with(["test_command"], test=True)
+                         debug_mock.call_args_list[0][0])
+        call_mock.assert_called_once_with(["test_command"], test=True)
         self.assertEqual(("Error Output:\n%s", "Invalid command"),
-                         logging_mock.call_args_list[1][0])
+                         debug_mock.call_args_list[1][0])
 
 
 @patch(ETAI_patch_path + '._construct_command')

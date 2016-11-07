@@ -142,6 +142,9 @@ class ExcaliburTestAppInterface(object):
         self.dacs_loaded = None
         self.initialised = False
 
+        self.quiet = True  # Flag to stop printing of terminal output
+        logging.info("Set self.quiet to False to display terminal output.")
+
     def _construct_command(self, chips, *cmd_args):
         """Construct a command from the base_cmd, given chips and any cmd_args.
 
@@ -181,8 +184,7 @@ class ExcaliburTestAppInterface(object):
 
         return str(hex(mask_hex))
 
-    @staticmethod
-    def _send_command(command, **cmd_kwargs):
+    def _send_command(self, command, **cmd_kwargs):
         """Send a command line call and handle any subprocess.CallProcessError.
 
         Will catch any exception and log the error message. If successful, just
@@ -196,12 +198,18 @@ class ExcaliburTestAppInterface(object):
 
         """
         logging.debug("Sending Command:\n'%s' with kwargs %s",
-                      ' '.join(command), str(cmd_kwargs))
+                      " ".join(command), str(cmd_kwargs))
 
         try:
-            subprocess.check_call(command, **cmd_kwargs)
+            if self.quiet:
+                subprocess.check_output(command, **cmd_kwargs)
+            else:
+                subprocess.check_call(command, **cmd_kwargs)
         except subprocess.CalledProcessError as error:
             logging.debug("Error Output:\n%s", error.output)
+            if self.quiet:
+                logging.info("Set self.quiet to False to display terminal "
+                             "output.")
             return False
 
         return True
