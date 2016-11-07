@@ -748,6 +748,7 @@ class Fe55ImageRX001Test(unittest.TestCase):
         expose_mock.assert_called_once_with(exposure_time)
 
 
+@patch(DAWN_patch_path + '.plot_dac_scan')
 @patch(DAWN_patch_path + '.load_image_data')
 @patch(Node_patch_path + '.update_filename_index')
 @patch(ETAI_patch_path + '.perform_dac_scan')
@@ -764,28 +765,34 @@ class ScanDacTest(unittest.TestCase):
         self.e.file_index = 5
 
     def test_given_start_lower_than_stop(self, grab_mock, wait_mock, scan_mock,
-                                         update_mock, load_mock):
+                                         update_mock, load_mock, plot_mock):
         self.e.scan_dac(self.chips, 'Threshold0', self.dac_range)
 
         update_mock.assert_called_once_with()
-        scan_mock.assert_called_once_with(self.chips, 'Threshold0', Range(1, 10, 1),
-                                          self.dac_file, '/tmp', self.save_file)
+        scan_mock.assert_called_once_with(self.chips, 'Threshold0',
+                                          self.dac_range, self.dac_file,
+                                          '/tmp', self.save_file)
         grab_mock.assert_not_called()
         wait_mock.assert_called_once_with('/tmp/dacscan_5.hdf5', 5)
         load_mock.assert_called_once_with('/tmp/' + self.save_file)
+        plot_mock.assert_called_once_with(self.chips, load_mock.return_value,
+                                          self.dac_range)
 
     def test_given_remote_node_then_grab_file(self, grab_mock, wait_mock,
                                               scan_mock, update_mock,
-                                              load_mock):
+                                              load_mock, plot_mock):
         self.e.remote_node = True
         self.e.scan_dac(self.chips, 'Threshold0', self.dac_range)
 
         update_mock.assert_called_once_with()
-        scan_mock.assert_called_once_with(self.chips, 'Threshold0', Range(1, 10, 1),
-                                          self.dac_file, '/tmp', self.save_file)
+        scan_mock.assert_called_once_with(self.chips, 'Threshold0',
+                                          self.dac_range, self.dac_file,
+                                          '/tmp', self.save_file)
         grab_mock.assert_called_once_with('/tmp/dacscan_5.hdf5')
         wait_mock.assert_called_once_with(grab_mock.return_value, 5)
         load_mock.assert_called_once_with(grab_mock.return_value)
+        plot_mock.assert_called_once_with(self.chips, load_mock.return_value,
+                                          self.dac_range)
 
 
 class UpdateFilenameIndexTest(unittest.TestCase):

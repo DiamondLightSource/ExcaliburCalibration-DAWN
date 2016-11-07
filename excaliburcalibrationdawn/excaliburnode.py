@@ -689,7 +689,8 @@ class ExcaliburNode(object):
         util.wait_for_file(file_path, 5)
         logging.debug("Loading %s", file_path)
         scan_data = self.dawn.load_image_data(file_path)
-        return scan_data
+
+        self.dawn.plot_dac_scan(chips, scan_data, dac_range)
 
     def load_temp_config(self, chips, discLbits, discHbits, mask_bits):
         """Save the given disc configs to temporary files and load them.
