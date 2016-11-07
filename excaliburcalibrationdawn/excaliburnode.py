@@ -76,8 +76,9 @@ class ExcaliburNode(object):
         (i13-1-excalibur06).
 
         Args:
-            server_root: Server name root; add node number to get real server
-            node: PC node number of 1/2 module (Between 1 and 6 for 3M)
+            server_root(str): Server name root; add node number to get
+            real server
+            node(int): PC node number of 1/2 module (Between 1 and 6 for 3M)
 
         """
         if node not in [1, 2, 3, 4, 5, 6]:
@@ -115,12 +116,11 @@ class ExcaliburNode(object):
 
         self.file_index = None  # To be set when read from file system
 
-        # Commonly used file path template
+        # Commonly used file paths
         self.template_path = posixpath.join(self.calib_dir,
                                             'fem{fem}'.format(fem=self.fem),
                                             self.settings['mode'],
                                             self.settings['gain'])
-
         tp = posixpath.join(self.template_path, '{disc}.chip{chip}')
         self.discL_bits = [tp.format(disc="discLbits",
                                      chip=chip) for chip in self.chip_range]
@@ -171,7 +171,7 @@ class ExcaliburNode(object):
         """Set HV bias.
 
         Args:
-            hv_bias: Voltage to set
+            hv_bias(int): Voltage to set
 
         """
         self.app.set_hv_bias(hv_bias)
@@ -193,7 +193,7 @@ class ExcaliburNode(object):
         sequence
 
         Args:
-            chips: Chip or list of chips to calibrate
+            chips(list(int)): Chip or list of chips to calibrate
 
         """
         chips = util.to_list(chips)
@@ -228,7 +228,7 @@ class ExcaliburNode(object):
         sub-folder.
 
         Args:
-            threshold: Threshold to calibrate (0 or 1)
+            threshold(int): Threshold to calibrate (0 or 1)
 
         """
         self.settings['gain'] = 'shgm'
@@ -240,7 +240,7 @@ class ExcaliburNode(object):
         self.settings['gain'] = 'slgm'
         self.threshold_calibration(threshold)
 
-    def threshold_calibration(self, threshold="0"):
+    def threshold_calibration(self, threshold=0):
         """Calculate keV to DAC unit conversion for given threshold.
 
         This function produces threshold calibration data required to convert
@@ -252,7 +252,7 @@ class ExcaliburNode(object):
         (dacTarget = 10 and nbOfSigma = 3.2).
 
         Args:
-            threshold: Threshold to calibrate (0 or 1)
+            threshold(int): Threshold to calibrate (0 or 1)
 
         """
         gain_values = dict(shgm=1.0, hgm=0.75, lgm=0.5, slgm=0.25)
@@ -281,9 +281,9 @@ class ExcaliburNode(object):
         """Save KeV conversion data to file.
 
         Args:
-            threshold: Threshold calibration to save (0 or 1)
-            gain: Conversion scale factor
-            offset: Conversion offset
+            threshold(int): Threshold calibration to save (0 or 1)
+            gain(int/float): Conversion scale factor
+            offset(int/float): Conversion offset
 
         """
         thresh_coeff = np.array([gain, offset])
@@ -300,16 +300,16 @@ class ExcaliburNode(object):
         np.savetxt(thresh_filename, thresh_coeff, fmt='%.2f')
         os.chmod(thresh_filename, 0777)  # Allow anyone to overwrite
 
-    def find_xray_energy_dac(self, chips=range(8), threshold="0", energy=5.9):
+    def find_xray_energy_dac(self, chips=range(8), threshold=0, energy=5.9):
         """############## NOT TESTED
 
         Perform a DAC scan and fit monochromatic spectra in order to find the
         DAC value corresponding to the X-ray energy
 
         Args:
-            chips: Chips to scan
-            threshold: Threshold to scan (0 or 1)
-            energy: Xray energy for scan
+            chips(list(int)): Chips to scan
+            threshold(int): Threshold to scan (0 or 1)
+            energy(float): X-ray energy for scan
 
         Returns:
             numpy.array, list: DAC scan array, DAC values of scan
@@ -384,7 +384,7 @@ class ExcaliburNode(object):
 
         return bad_pixels
 
-    def one_energy_thresh_calib(self, threshold="0"):
+    def one_energy_thresh_calib(self, threshold=0):
         """Plot single energy threshold calibration spectra.
 
         This function produces threshold calibration files using DAC scans
@@ -403,7 +403,7 @@ class ExcaliburNode(object):
         oneE_DAC array (cf fit dac scan)
 
         Args:
-            threshold: Threshold to calibrate (0 or 1)
+            threshold(int): Threshold to calibrate (0 or 1)
 
         """
         self.settings['exposure'] = 1000
@@ -429,7 +429,7 @@ class ExcaliburNode(object):
 
         self.file_name = 'image'
 
-    def multiple_energy_thresh_calib(self, chips=range(8), threshold="0"):
+    def multiple_energy_thresh_calib(self, chips=range(8), threshold=0):
         """Plot multiple energy threshold calibration spectra.
 
         This functions produces threshold calibration files using DAC scans
@@ -442,8 +442,8 @@ class ExcaliburNode(object):
         conversion coefficients:
 
         Args:
-            chips: Chips to calibrate
-            threshold: Threshold to calibrate (0 or 1)
+            chips(list(int)): Chips to calibrate
+            threshold(int): Threshold to calibrate (0 or 1)
 
         """
         self.settings['exposure'] = 1000
@@ -488,9 +488,9 @@ class ExcaliburNode(object):
         self.save_kev2dac_calib(threshold, gain, offset)
 
         logging.debug("Gain: %s, Offset: %s", gain, offset)
-        logging.debug("Self.settngs gain: %s", self.settings['gain'])
+        logging.debug("Self.settings gain: %s", self.settings['gain'])
 
-    def set_threshold0(self, thresh_energy='5'):
+    def set_threshold0(self, thresh_energy=5.0):
         """Set threshold0 energy in keV.
 
         Threshold0 DACs are calculated using threshold0 calibration file
@@ -498,12 +498,12 @@ class ExcaliburNode(object):
         and gain setting
 
         Args:
-            thresh_energy: Energy to set
+            thresh_energy(float): Energy to set
 
         """  # TODO: Move docstring body somewhere more relevant
-        self.set_thresh_energy('0', float(thresh_energy))
+        self.set_thresh_energy(0, float(thresh_energy))
 
-    def set_thresh_energy(self, threshold="0", thresh_energy=5.0):
+    def set_thresh_energy(self, threshold=0, thresh_energy=5.0):
         """Set given threshold in keV.
 
         ThresholdX DACs are calculated using thresholdX calibration file
@@ -511,8 +511,8 @@ class ExcaliburNode(object):
         and gain setting
 
         Args:
-            threshold: Threshold to set (0 or 1)
-            thresh_energy: Energy to set
+            threshold(int): Threshold to set (0 or 1)
+            thresh_energy(float): Energy to set
 
         """  # TODO: Move docstring body somewhere more relevant
         fname = posixpath.join(self.calib_dir,
@@ -547,7 +547,7 @@ class ExcaliburNode(object):
         """Set dacs to values recommended by MEDIPIX3-RX designers.
 
         Args:
-            chips: Chips to set DACs for
+            chips(list(int)): Chips to set DACs for
 
         """
         for dac, value in MPX3RX.DACS.items():
@@ -586,8 +586,8 @@ class ExcaliburNode(object):
         """Save FE55 image.
 
         Args:
-            chips: Chips to use
-            acquire_time: Exposure time of image
+            chips(list(int)): Chips to use
+            acquire_time(int): Exposure time of image
 
         Will save to:
         /dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/ DIRECTORY
@@ -613,9 +613,9 @@ class ExcaliburNode(object):
         """Set any chip DAC at a given value.
 
         Args:
-            chips: Chips to set DACs for
-            name: DAC to set
-            value: Value to set DAC to
+            chips(list(int)): Chips to set DACs for
+            name(str): DAC to set (Any from self.dac_number keys)
+            value(int): Value to set DAC to
 
         """
         logging.info("Setting DAC %s to %s", name, value)
@@ -643,8 +643,8 @@ class ExcaliburNode(object):
         """Read back DAC analogue voltage using chip sense DAC (DAC out).
 
         Args:
-            chips: Chips to read
-            dac_name: DAC value to read
+            chips(list(int)): Chips to read
+            dac_name(str): DAC value to read (Any from self.dac_number keys)
 
         """
         dac_file = posixpath.join(self.calib_dir,
@@ -656,15 +656,13 @@ class ExcaliburNode(object):
 
         self.app.sense(chips, dac_name, dac_file)
 
-    def scan_dac(self, chips, dac_name, dac_range):
+    def scan_dac(self, chips, threshold, dac_range):
         """Perform a dac scan and plot the result (mean counts vs DAC values).
 
-        Only use on ThresholdX DACs.
-
         Args:
-            chips: Chips to scan
-            dac_name: DAC to scan
-            dac_range: Range of DAC values to scan over
+            chips(Any from self.dac_number keys): Chips to scan
+            threshold(str): Threshold to scan (ThresholdX DACs - X: 0-7)
+            dac_range(Range): Range of DAC values to scan over
 
         Returns:
             numpy.array: DAC scan data
@@ -681,7 +679,7 @@ class ExcaliburNode(object):
                                   self.settings['gain'],
                                   "dacs")
 
-        self.app.perform_dac_scan(chips, dac_name, dac_range, dac_file,
+        self.app.perform_dac_scan(chips, threshold, dac_range, dac_file,
                                   self.output_folder, dac_scan_file)
 
         file_path = posixpath.join(self.output_folder, dac_scan_file)
@@ -697,10 +695,10 @@ class ExcaliburNode(object):
         """Save the given disc configs to temporary files and load them.
 
         Args:
-            chips: Chips to load config for
-            discLbits: DiscL pixel config (256 x 256 : 0 to 31)
-            discHbits: DiscH pixel config (256 x 256 : 0 to 31)
-            mask_bits: Pixel mask (256 x 256 : 0 or 1)
+            chips(list(int)): Chips to load config for
+            discLbits(numpy.array): DiscL pixel config (256 x 256 : 0 to 31)
+            discHbits(numpy.array): DiscH pixel config (256 x 256 : 0 to 31)
+            mask_bits(numpy.array): Pixel mask (256 x 256 : 0 or 1)
 
         """
         template_path = posixpath.join(self.template_path,
@@ -723,7 +721,7 @@ class ExcaliburNode(object):
         From calibration directory corresponding to selected mode and gain.
 
         Args:
-            chips: Chips to load config for
+            chips(list(int)): Chips to load config for
 
         """
         for chip in chips:
@@ -762,7 +760,7 @@ class ExcaliburNode(object):
         """Acquire single frame using current detector settings.
 
         Args:
-            exposure: Exposure time of image
+            exposure(int): Exposure time of image
 
         Returns:
             numpy.array: Image data
@@ -784,8 +782,8 @@ class ExcaliburNode(object):
         """Acquire images in burst mode.
 
         Args:
-            frames: Number of images to capture
-            acquire_time: Exposure time for images
+            frames(int): Number of images to capture
+            acquire_time(int): Exposure time for images
 
         """
         self._acquire(frames, acquire_time, burst=True)
@@ -794,8 +792,8 @@ class ExcaliburNode(object):
         """Acquire images in continuous mode.
 
         Args:
-            frames: Number of images to capture
-            acquire_time: Exposure time for images
+            frames(int): Number of images to capture
+            acquire_time(int): Exposure time for images
 
         """
         self.settings['readmode'] = "continuous"
@@ -813,8 +811,8 @@ class ExcaliburNode(object):
         """Acquire images in continuous burst mode.
 
         Args:
-            frames: Number of images to capture
-            acquire_time: Exposure time for images
+            frames(int): Number of images to capture
+            acquire_time(int): Exposure time for images
 
         """
         self.settings['readmode'] = "continuous"
@@ -824,9 +822,9 @@ class ExcaliburNode(object):
         """Acquire image(s) with given exposure and current settings.
 
         Args:
-            frames: Number of frames to acquire
-            exposure: Exposure time of each image
-            burst: Set burst mode for acquisition
+            frames(int): Number of frames to acquire
+            exposure(int): Exposure time of each image
+            burst(bool): Set burst mode for acquisition
 
         """
         self.update_filename_index()
@@ -862,8 +860,8 @@ class ExcaliburNode(object):
         Produces flat-field correction coefficients
 
         Args:
-            num: Number of images to sum
-            acquire_time: Exposure time for images
+            num(int): Number of images to sum
+            acquire_time(int): Exposure time for images
 
         Returns:
             numpy.array: Flat-field coefficients
@@ -900,8 +898,8 @@ class ExcaliburNode(object):
         NOT TESTED
 
         Args:
-            num_images: Number of images to plot (?)
-            ff_coeff: Numpy array with calculated correction
+            num_images(int): Number of images to plot (?)
+            ff_coeff(numpy.array): Numpy array with calculated correction
 
         """
         # TODO: This just plots, but doesn't apply it
@@ -1005,9 +1003,9 @@ class ExcaliburNode(object):
         """Save discbit array into file in the calibration directory.
 
         Args:
-            chips: Chips to save for
-            discbits: Numpy array to save
-            discbitsFilename: File name to save to
+            chips(list(int)): Chips to save for
+            discbits(numpy.array): Numpy array to save
+            discbitsFilename(str): File name to save to (discL or discH)
 
         """
         for chip_idx in chips:
@@ -1024,8 +1022,8 @@ class ExcaliburNode(object):
         """Mask a super column (32 bits?) in a chip and update the maskfile.
 
         Args:
-            chip: Chip to mask
-            super_column: Super column to mask (0 to 7)
+            chip(list(int)): Chip to mask
+            super_column(int): Super column to mask (0 to 7)
 
         """
         bad_pixels = np.zeros(self.full_array_shape)
@@ -1044,8 +1042,8 @@ class ExcaliburNode(object):
         """Mask a column in a chip and update the maskfile.
 
         Args:
-            chip: Chip to mask
-            column: Column to mask (0 to 255)
+            chip(list(int)): Chip to mask
+            column(int): Column to mask (0 to 255)
 
         """
         bad_pixels = np.zeros(self.full_array_shape)
@@ -1066,9 +1064,9 @@ class ExcaliburNode(object):
         Also updates the corresponding maskfile in the calibration directory
 
         Args:
-            chips: Chips to mask
-            image_data: Numpy array image
-            max_counts: Mask threshold
+            chips(list(int)): Chips to mask
+            image_data(numpy.array): Numpy array image
+            max_counts(int): Mask threshold
 
         """
         bad_pix_tot = np.zeros(8)
@@ -1102,9 +1100,9 @@ class ExcaliburNode(object):
         Also updates the corresponding maskfile in the calibration directory
 
         Args:
-            chips: Chips to scan
-            threshold: Threshold to scan (0 or 1)
-            dac_range: Range to scan over
+            chips(list(int)): Chips to scan
+            threshold(str): Threshold to scan (0 or 1)
+            dac_range(Range): Range to scan over
 
         """
         max_counts = 1
@@ -1143,7 +1141,7 @@ class ExcaliburNode(object):
         """Unmask all pixels and update mask file in calibration directory.
 
         Args:
-            chips: Chips to unmask
+            chips(list(int)): Chips to unmask
 
         """
 
@@ -1161,7 +1159,7 @@ class ExcaliburNode(object):
         """Reset discL_bits and pixel_mask bits to 0.
 
         Args:
-            chips: Chips to unequalize
+            chips(list(int)): Chips to unequalize
 
         """
         discL_bits = 31 * np.zeros(self.full_array_shape)  # TODO: Not 32?
@@ -1234,8 +1232,8 @@ class ExcaliburNode(object):
         """Open discriminator bit array stored in current calibration folder.
 
         Args:
-            chips: Chips to load
-            discbits_filename: File to grab data from
+            chips(list(int)): Chips to load
+            discbits_filename(str): File to grab data from (discL or discH)
 
         Returns:
             numpy.array: Discbits array
@@ -1258,10 +1256,11 @@ class ExcaliburNode(object):
         equalizing various ROIs into one discbits file
 
         Args:
-            chips: Chips to make ROIs for
-            disc_name: Discriminator config file to edit ('DiscL' or 'DiscH')
-            steps: Number of of ROIs to combine (steps during equalization)
-            roi_type: Type of ROI ('rect' or 'spacing')
+            chips(list(int)): Chips to make ROIs for
+            disc_name: Discriminator config file to edit (discL or discH)
+            steps(int): Number of of ROIs to combine (steps during
+                equalization)
+            roi_type(str): Type of ROI (rect or spacing)
 
         """
         # TODO: Get rid of this if it isn't necessary anymore
@@ -1284,13 +1283,13 @@ class ExcaliburNode(object):
         """Find noise or X-ray edge in threshold DAC scan.
 
         Args:
-            chips: Chips search
-            dac_scan_data: Data from DAC scan
+            chips(list(int)): Chips search
+            dac_scan_data(numpy.array): Data from DAC scan
             dac_range(Range): Range DAC scan performed over
-            edge_val: Threshold for edge
+            edge_val(int): Threshold for edge
 
         Returns:
-            numpy.array(?): Noise edge data
+            numpy.array: Noise edge data
 
         """
         # Reverse data for high to low scan
@@ -1314,7 +1313,7 @@ class ExcaliburNode(object):
         """Find noise max in threshold dac scan.
 
         Returns:
-            numpy.array(?): Max noise data
+            numpy.array: Max noise data
 
         """
         max_dacs = dac_range.stop - dac_range.step * np.argmax(
@@ -1328,8 +1327,8 @@ class ExcaliburNode(object):
         """Plot an image and a histogram of edge_dacs data.
 
         Args:
-            chips: Chips to plot for
-            edge_dacs: Data to analyse
+            chips(list(int)): Chips to plot for
+            edge_dacs(numpy.array): Data to analyse
 
         """
         self.dawn.plot_image(edge_dacs, name="noise edges")
@@ -1343,8 +1342,8 @@ class ExcaliburNode(object):
         """Optimize discriminator L for the given chips.
 
         Args:
-            chips: Chips to optimize
-            roi_full_mask: Mask to apply during process
+            chips(list(int)): Chips to optimize
+            roi_full_mask(numpy.array): Mask to apply during process
 
         """
         self.set_dac(chips, "Threshold1", 0)
@@ -1355,8 +1354,8 @@ class ExcaliburNode(object):
         """Optimize discriminator H for the given chips.
 
         Args:
-            chips: Chips to optimize
-            roi_full_mask: Mask to apply during process
+            chips(list(int)): Chips to optimize
+            roi_full_mask(numpy.array): Mask to apply during process
 
         """
         self.set_dac(chips, "Threshold0", 60)  # To be above the noise
@@ -1367,9 +1366,10 @@ class ExcaliburNode(object):
         """Calculate optimum DAC disc values for given chips.
 
         Args:
-            chips: Chips to optimize
-            disc_name: Discriminator to optimize ('DiscL' or 'DiscH')
-            roi_full_mask: Mask to exclude pixels from optimization calculation
+            chips(list(int)): Chips to optimize
+            disc_name(str): Discriminator to optimize (discL or discH)
+            roi_full_mask(numpy.array): Mask to exclude pixels from
+                optimization calculation
 
         Returns:
             numpy.array: Optimum DAC discriminator value for each chip
@@ -1460,12 +1460,12 @@ class ExcaliburNode(object):
         """Scan given DAC for given chips and perform a gaussian fit.
 
         Args:
-            chips: Chips to scan
-            threshold: DAC to scan
-            dac_value: Initial value to set dac to
-            dac_range: Range to scan over
-            discbit: Current discbit value (for plot name)
-            p0: Initial estimate for gaussian fit parameters
+            chips(list(int)): Chips to scan
+            threshold(str): DAC to scan
+            dac_value(int): Initial value to set dac to
+            dac_range(Range): Range to scan over
+            discbit(int): Current discbit value (for plot name)
+            p0(list(int)): Initial estimate for gaussian fit parameters
 
         Returns:
             np.array, np.array: x0 and sigma values for fit
@@ -1491,7 +1491,7 @@ class ExcaliburNode(object):
 
     def _display_optimization_results(self, chips, x0, sigma, gain,
                                       opt_dac_disc):
-
+        """Print out results of _chip_dac_scan."""
         print("Edge shift (in Threshold DAC units) produced by 1 DACdisc DAC"
               "unit for discbits=15:")
         for chip in chips:
@@ -1564,9 +1564,9 @@ class ExcaliburNode(object):
         """Equalize discriminator L for the given chips.
 
         Args:
-            chips: Chips to equalize
-            roi_full_mask: Mask to use during process
-            method: Equalization method to use
+            chips(list(int)): Chips to equalize
+            roi_full_mask(numpy.array): Mask to use during process
+            method(str): Equalization method to use (stripes)
 
         Returns:
             numpy.array: Equalised discriminator bits
@@ -1581,9 +1581,9 @@ class ExcaliburNode(object):
         """Equalize discriminator H for the given chips.
 
         Args:
-            chips: Chips to equalize
-            roi_full_mask: Mask to use during process
-            method: Equalization method to use
+            chips(list(int)): Chips to equalize
+            roi_full_mask(numpy.array): Mask to use during process
+            method(str): Equalization method to use (stripes)
 
         Returns:
             numpy.array: Equalised discriminator bits
@@ -1603,11 +1603,12 @@ class ExcaliburNode(object):
         the noise at the same time)
 
         Args:
-            chips: Chips to equalize
-            disc_name: Discriminator to equalize ("discL" or "discH")
-            threshold: Threshold to scan
-            roi_full_mask: Mask to exclude pixels from equalization calculation
-            method: Method to use ('dacscan', 'bitscan' or 'stripes')
+            chips(list(int)): Chips to equalize
+            disc_name(str): Discriminator to equalize (discL or discH)
+            threshold(str): Threshold to scan
+            roi_full_mask(numpy.array): Mask to exclude pixels from
+                equalization calculation
+            method(str): Method to use (stripes)
 
         Returns:
             numpy.array: Equalised discriminator bits
@@ -1675,10 +1676,11 @@ class ExcaliburNode(object):
         """Load the appropriate discriminator bits to calibrate the given disc.
 
         Args:
-            chips: Chips to load for
-            disc_name: Discriminator that will be calibrated
-            temp_bits: Temporary array to be used for the non-calibratee
-            mask: Pixel mask to load
+            chips(list(int)): Chips to load for
+            disc_name(str): Discriminator being calibrated (discL or discH)
+            temp_bits(numpy.array): Temporary array to be used for the
+                non-calibratee
+            mask(numpy.array): Pixel mask to load
 
         """
         for chip in chips:
@@ -1704,8 +1706,8 @@ class ExcaliburNode(object):
         NOT TESTED
 
         Args:
-            chips: Chips to check
-            dac_range: Range to scan DAC over (?)
+            chips(list(int)): Chips to check
+            dac_range(Range): Range to scan DAC over (?)
 
         """
         pass  # TODO: Function doesn't work, what is `roi`?
@@ -1745,21 +1747,21 @@ class ExcaliburNode(object):
         always: roi = x.roi(range(8), 0, 1, 'rect')
 
         Args:
-            chips: Chips to create ROI for
-            step: Current step in the equalization process
-            steps: Total number of steps
-            roi_type: ROI type to create
-                "rect": contiguous rectangles
-                "spacing": arrays of equally-spaced pixels distributed across
+            chips(list(int)): Chips to create ROI for
+            step(int): Current step in the equalization process
+            steps(int): Total number of steps
+            roi_type(str): ROI type to create
+                rect: contiguous rectangles
+                spacing: arrays of equally-spaced pixels distributed across
                 the chip
 
         """
-        if roi_type == 'rect':
+        if roi_type == "rect":
             roi_full_mask = np.zeros(self.full_array_shape)
             for chip in chips:
                 roi_full_mask[step*256/steps:step*256/steps + 256/steps,
                               chip*256:chip*256 + 256] = 1
-        elif roi_type == 'spacing':
+        elif roi_type == "spacing":
             spacing = steps**0.5
             roi_full_mask = np.zeros(self.full_array_shape)
             bin_repr = np.binary_repr(step, 2)
@@ -1782,10 +1784,10 @@ class ExcaliburNode(object):
         """Calibrate given discriminator for given chips.
 
         Args:
-            chips: Chips to calibrate
-            disc_name: Discriminator to equalize ('DiscL' or 'DiscH')
-            steps: Total number of steps for equalization
-            roi_type: ROI type to use (see roi)
+            chips(list(int)): Chips to calibrate
+            disc_name(str): Discriminator to equalize (discL or discH)
+            steps(int): Total number of steps for equalization
+            roi_type(str): ROI type to use (rect or spacing - see roi)
 
         """
         thresholds = dict(discL="Threshold0", discH="Threshold1")
@@ -1812,26 +1814,27 @@ class ExcaliburNode(object):
         """Acquire images and plot the sum.
 
         Args:
-            num: Number of images to acquire
+            num(int): Number of images to acquire
 
         """
         tmp = 0
         for _ in range(num):
             tmp = self.expose() + tmp
-            self.dawn.plot_image(tmp, name='Sum')
+            self.dawn.plot_image(tmp, name="Sum")
 
             return  # TODO: This will always stop after first loop
 
-    def csm(self, chips=range(8), gain='slgm'):
+    def csm(self, chips=range(8), gain="slgm"):
         """Set charge summing mode and associated default settings.
 
         Args:
-            chips: Chips to load
-            gain: Gain mode to set ('slgm', 'lgm', 'hgm', 'shgm')
+            chips(list(int)): Chips to load
+            gain9str): Gain mode to set (slgm, lgm, hgm, shgm)
 
         """
         # TODO: Why does it have to call expose to set these??
         self.settings['mode'] = 'csm'
+        # TODO: Get rid of gain or take away arg; not default if user provided
         self.settings['gain'] = gain
         self.settings['counter'] = 1
         # Make sure that unused have also Th0 and Th1 well above the noise
@@ -1848,8 +1851,8 @@ class ExcaliburNode(object):
         """Set GND, FBK and CAS values.
 
         Args:
-            chips: Chips to set
-            fem: FEM to set
+            chips(list(int)): Chips to set
+            fem(int): FEM to set
 
         """
         for chip in chips:
@@ -1907,8 +1910,8 @@ class ExcaliburNode(object):
         """Grab a chip from a full array.
 
         Args:
-            array: Array to grab from
-            chip_idx: Index of section of array to grab
+            array(numpy.array): Array to grab from
+            chip_idx(int): Index of section of array to grab
 
         Returns:
             numpy.array: Sub array
@@ -1921,12 +1924,9 @@ class ExcaliburNode(object):
         """Grab a section of a 2D numpy array.
 
         Args:
-            array: Array to grab from
-            chip_idx: Index of section of array to grab
-            value: Value to set slice to
-
-        Returns:
-            numpy.array: Sub array
+            array(numpy.array): Array to grab from
+            chip_idx(int): Index of section of array to grab
+            value(numpy.array/int/float): Value to set slice to
 
         """
         start, stop = self._generate_chip_range(chip_idx)
@@ -1936,7 +1936,7 @@ class ExcaliburNode(object):
         """Calculate start and stop coordinates of given chip.
 
         Args:
-            chip_idx: Chip to calculate range for
+            chip_idx(int): Chip to calculate range for
 
         """
         start = [0, chip_idx * self.chip_size]
@@ -1957,7 +1957,7 @@ class ExcaliburNode(object):
         """Print list of files with given extension in config directory.
 
         Args:
-            suffix: File type to list
+            suffix(str): File type to list
 
         """
         files = os.listdir(self.config_dir)

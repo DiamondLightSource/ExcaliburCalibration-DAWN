@@ -56,7 +56,8 @@ class SimpleMethodsTest(unittest.TestCase):
                                       histo_mock.call_args[0][0])
         addline_mock.assert_called_once_with(histo_mock.return_value[1][0:-1],
                                              histo_mock.return_value[0],
-                                             name="Test Histogram")
+                                             name="Test Histogram",
+                                             title=None)
 
     @patch('scisoftpy.plot.addline')
     @patch('numpy.histogram')
@@ -71,7 +72,8 @@ class SimpleMethodsTest(unittest.TestCase):
                                       histo_mock.call_args[0][0])
         addline_mock.assert_called_once_with(histo_mock.return_value[1][0:-1],
                                              histo_mock.return_value[0],
-                                             name="Test Histogram")
+                                             name="Test Histogram",
+                                             title=None)
 
     @patch('scisoftpy.io.load')
     def test_load_image(self, load_mock):
@@ -117,7 +119,7 @@ class SimpleMethodsTest(unittest.TestCase):
         histo_mock.assert_called_once_with(x, bins=5)
         add_mock.assert_called_once_with(histo_mock.return_value[1][0:-1],
                                          histo_mock.return_value[0],
-                                         name=name)
+                                         name=name, title=None)
 
 
 @patch('scisoftpy.plot.addline')
@@ -184,13 +186,13 @@ class PlotLinearFitTest(unittest.TestCase):
         self.assertEqual("Test fits", clear_mock.call_args_list[1][0][0])
         # Check first addline call
         self.assertEqual((x, y), addline_mock.call_args_list[0][0])
-        self.assertEqual(dict(name="Test"), addline_mock.call_args_list[0][1])
+        self.assertEqual(dict(name="Test", title=None), addline_mock.call_args_list[0][1])
         # Check fit calls
         curve_fit.assert_called_once_with(lin_mock, x, y, [0, 1])
         lin_mock.assert_called_once_with(x, curve_fit.return_value[0][0], curve_fit.return_value[0][1])
         # Check second addline call
         self.assertEqual((x, lin_mock.return_value), addline_mock.call_args_list[1][0])
-        self.assertEqual(dict(name="Test fits"), addline_mock.call_args_list[1][1])
+        self.assertEqual(dict(name="Test fits", title=None), addline_mock.call_args_list[1][1])
 
 
 @patch('numpy.histogram', return_value=[MagicMock(), MagicMock()])

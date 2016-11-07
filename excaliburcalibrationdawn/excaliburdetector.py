@@ -79,7 +79,7 @@ class ExcaliburDetector(object):
         """Set HV bias.
 
         Args:
-            hv_bias: Voltage to set
+            hv_bias(int): Voltage to set
 
         """
         self.MasterNode.set_hv_bias(hv_bias)
@@ -115,7 +115,7 @@ class ExcaliburDetector(object):
         """Calibrate discriminator equalization for given chips in detector.
 
         Args:
-            chips: List of lists of chips for each node
+            chips(list(list(int))): List of lists of chips for each node
 
         """
         if not isinstance(chips[0], list):
@@ -130,7 +130,7 @@ class ExcaliburDetector(object):
         """Acquire single image.
 
         Args:
-            exposure_time: Acquire time for image
+            exposure_time(int): Acquire time for image
 
         Returns:
             numpy.array: Image data
@@ -151,8 +151,8 @@ class ExcaliburDetector(object):
         """Grab a node from a full array.
 
         Args:
-            array: Array to grab from
-            node_idx: Index of section of array to grab
+            array(numpy.array): Array to grab from
+            node_idx(int): Index of section of array to grab
 
         Returns:
             numpy.array: Sub array
@@ -165,7 +165,7 @@ class ExcaliburDetector(object):
         """Calculate start and stop coordinates of given node.
 
         Args:
-            node_idx: Chip to calculate range for
+            node_idx(int): Chip to calculate range for
 
         """
         height = self.node_shape[0]

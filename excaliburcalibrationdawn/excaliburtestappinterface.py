@@ -207,10 +207,10 @@ class ExcaliburTestAppInterface(object):
         return True
 
     def set_lv_state(self, lv_state):
-        """Set LV to given state; 0 - Off, 1 - On.
+        """Set LV to given state.
 
         Args:
-            lv_state: State to set
+            lv_state(int): State to set (0 - Off, 1 - On)
 
         """
         if lv_state not in [0, 1]:
@@ -227,7 +227,7 @@ class ExcaliburTestAppInterface(object):
         """Set HV to given state; 0 - Off, 1 - On.
 
         Args:
-            hv_state: State to set
+            hv_state(int): State to set (0 - Off, 1 - On)
 
         """
         if hv_state not in [0, 1]:
@@ -243,7 +243,7 @@ class ExcaliburTestAppInterface(object):
         """Set HV bias to given value.
 
         Args:
-            hv_bias: Voltage to set
+            hv_bias(int): Voltage to set
 
         """
         if hv_bias < 0 or hv_bias > 120:
@@ -265,20 +265,20 @@ class ExcaliburTestAppInterface(object):
 
         Args:
             chips(list(int)): Chips to enable for command process
-            frames: Number of frames to acquire
-            acq_time: Exposure time for each frame
-            burst: Enable burst mode capture
-            pixel_mode: Pixel mode (SPM*, CSM = 0*, 1)
-            disc_mode: Discriminator mode (DiscL*, DiscH = 0*, 1)
-            depth: Counter depth (1, 6, 12*, 24)
-            counter: Counter to read (0* or 1)
-            equalization: Enable equalization (0*, 1 = off*, on)
-            gain_mode: Gain mode (SHGM*, HGM, LGM, SLGM = 0*, 1, 2, 3)
-            read_mode: Readout mode (0*, 1 = sequential, continuous)
-            trig_mode: Trigger mode (internal*, shutter, sync = 0*, 1, 2
-            tp_count: Set test pulse count (0*)
-            path: Path to image folder (/tmp*)
-            hdf_file: Name of file to save (excalibur-YYMMDD-HHMMSS*)
+            frames(int): Number of frames to acquire
+            acq_time(int): Exposure time for each frame
+            burst(bool): Enable burst mode capture
+            pixel_mode(str): Pixel mode (SPM*, CSM = 0*, 1)
+            disc_mode(int): Discriminator mode (DiscL*, DiscH = 0*, 1)
+            depth(int): Counter depth (1, 6, 12*, 24)
+            counter(int): Counter to read (0* or 1)
+            equalization(int): Enable equalization (0*, 1 = off*, on)
+            gain_mode(str): Gain mode (SHGM*, HGM, LGM, SLGM = 0*, 1, 2, 3)
+            read_mode(str): Readout mode (0*, 1 = sequential, continuous)
+            trig_mode(int): Trigger mode (internal*, shutter, sync = 0*, 1, 2)
+            tp_count(int): Set test pulse count (0*)
+            path(str): Path to image folder (/tmp*)
+            hdf_file(str): Name of file to save (excalibur-YYMMDD-HHMMSS*)
 
         Returns:
             list(str): Full acquire command to send to subprocess call
@@ -339,9 +339,9 @@ class ExcaliburTestAppInterface(object):
         """Check if given argument is not None and is a valid value.
 
         Args:
-            name: Name of argument (for error message)
-            value: Value to check
-            valid_values: Allowed values
+            name(str): Name of argument (for error message)
+            value(int): Value to check
+            valid_values(list(int)): Allowed values
 
         Returns:
             bool: True if valid, False if None
@@ -363,9 +363,9 @@ class ExcaliburTestAppInterface(object):
         """Read the given DAC analogue voltage.
 
         Args:
-            chips: Chips to read for
-            dac: Name of DAC to read
-            dac_file: File to load DAC values from
+            chips(list(int)): Chips to read for
+            dac(str): Name of DAC to read
+            dac_file(str): File to load DAC values from
 
         """
         # TODO: Check is command_2 'Requires DAC LOAD to take effect'?
@@ -383,21 +383,21 @@ class ExcaliburTestAppInterface(object):
                                             self.READ_SLOW_PARAMS)
         self._send_command(command_2)
 
-    def perform_dac_scan(self, chips, dac, scan_range, dac_file,
+    def perform_dac_scan(self, chips, threshold, scan_range, dac_file,
                          path, hdf_file):
         """Execute a DAC scan and save the results to the given file.
 
         Args:
-            chips: Chips to scan
-            dac: Name of DAC to scan
+            chips(list(int)): Chips to scan
+            threshold(str): Threshold to scan
             scan_range(Range): Start, stop and step of scan
-            dac_file: File to load config from
-            path: Folder to save into
-            hdf_file: File to save to
+            dac_file(str): File to load config from
+            path(str): Folder to save into
+            hdf_file(str): File to save to
 
         """
         scan_command = "{dac},{start},{stop},{step}".format(
-            dac=int(self.dac_code[dac]) - 1,
+            dac=int(self.dac_code[threshold]) - 1,
             start=scan_range.start, stop=scan_range.stop, step=scan_range.step)
 
         command = self._construct_command(chips,
@@ -451,9 +451,9 @@ class ExcaliburTestAppInterface(object):
         """Load DAC file and test mask ready acquire test.
 
         Args:
-            chips: List of chips to configure
-            tp_mask: Test pulse mask to load for test pulses
-            dac_file: Path to file containing DAC values
+            chips(list(int)): List of chips to configure
+            tp_mask(numpy.array): Test pulse mask to load for test pulses
+            dac_file(str): Path to file containing DAC values
             config_files(dict): Config files for discL, discH and pixel mask
 
         """
@@ -473,8 +473,8 @@ class ExcaliburTestAppInterface(object):
         """Load the given mask onto the given chips.
 
         Args:
-            chips: Chips to load for
-            tp_mask: Path to tp_mask file
+            chips(numpy.array): Chips to load for
+            tp_mask(str): Path to tp_mask file
 
         """
         command = self._construct_command(chips,
@@ -487,10 +487,10 @@ class ExcaliburTestAppInterface(object):
         """Acquire and plot a test pulse image.
 
         Args:
-            chips: Chips to capture for
-            tp_count: Test pulse count
-            exposure: Exposure time
-            hdf_file: Name of image file to save
+            chips(list(int)): Chips to capture for
+            tp_count(int): Test pulse count
+            exposure(int): Exposure time
+            hdf_file(str): Name of image file to save
 
         """
         self.acquire(chips, 1, exposure, tp_count=tp_count, hdf_file=hdf_file,
@@ -528,7 +528,7 @@ class ExcaliburTestAppInterface(object):
         """Use scp to copy the given file from the server to the local host.
 
         Args:
-            server_source: File path on server
+            server_source(str): File path on server
 
         Returns:
             str: File path to local copied file

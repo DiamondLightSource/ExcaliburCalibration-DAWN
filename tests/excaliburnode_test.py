@@ -242,7 +242,7 @@ class ThresholdCalibrationTest(unittest.TestCase):
         self.e.settings['gain'] = 'slgm'
         self.e.one_energy_thresh_calib()
 
-        self.assertEqual(save_mock.call_args[0][0], '0')
+        self.assertEqual(save_mock.call_args[0][0], 0)
         np.testing.assert_array_almost_equal(expected_slope, save_mock.call_args[0][1][0])
         self.assertTrue((save_mock.call_args[0][2] == expected_offset).all())
 
@@ -363,9 +363,9 @@ class SetThreshold0Test(unittest.TestCase):
     def test_correct_calls_made(self, set_thresh_energy_mock):
         e = ExcaliburNode(1)
 
-        e.set_threshold0('7')
+        e.set_threshold0(7)
 
-        set_thresh_energy_mock.assert_called_once_with('0', 7.0)
+        set_thresh_energy_mock.assert_called_once_with(0, 7.0)
 
     def test_correct_calls_made_with_default_param(self,
                                                    set_thresh_energy_mock):
@@ -373,7 +373,7 @@ class SetThreshold0Test(unittest.TestCase):
 
         e.set_threshold0()
 
-        set_thresh_energy_mock.assert_called_once_with('0', 5.0)
+        set_thresh_energy_mock.assert_called_once_with(0, 5.0)
 
 
 @patch(Node_patch_path + '.expose')

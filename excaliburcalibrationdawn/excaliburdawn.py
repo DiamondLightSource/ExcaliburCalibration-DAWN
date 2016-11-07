@@ -23,8 +23,8 @@ class ExcaliburDAWN(object):
         """Plot the given data set as a 2D image.
 
         Args:
-            data_set: 2D numpy array
-            name: Name for plot
+            data_set(numpy.array): 2D numpy array
+            name(str): Name for plot
 
         """
         self.plot.image(data_set, name=name)
@@ -34,10 +34,10 @@ class ExcaliburDAWN(object):
         """Load image data in given file into a numpy array.
 
         Args:
-            path: Path to file to load from
+            path(str): Path to file to load from
 
         Returns:
-            Numpy array containing image data
+            numpy.array: Image data
 
         """
         return self.io.load(path).image[...]
@@ -46,7 +46,7 @@ class ExcaliburDAWN(object):
         """Load and squeeze an image or set of images from the given file.
 
         Args:
-            path: Image to load
+            path(str): Image to load
 
         """
         image_raw = self.load_image(path)
@@ -57,7 +57,7 @@ class ExcaliburDAWN(object):
         """Clear given plot.
 
         Args:
-            name: Name of plot to clear
+            name(str): Name of plot to clear
 
         """
         self.plot.clear(name)
@@ -67,12 +67,12 @@ class ExcaliburDAWN(object):
         """Plot the given 2D data with a linear least squares fit.
 
         Args:
-            x_data: Independent variable data
-            y_data: Dependent variable data
-            estimate: Starting estimate for offset and gain
-            name: Name of plot
-            fit_name: Name of fit plot
-            clear: Option to clear given plot before adding new one
+            x_data(list): Independent variable data
+            y_data(list): Dependent variable data
+            estimate(list(int/float): Starting estimate for offset and gain
+            name(str): Name of plot
+            fit_name(str): Name of fit plot
+            clear(bool): Option to clear given plot before adding new one
 
         Returns:
             Optimal offset and gain values for least squares fit
@@ -82,14 +82,14 @@ class ExcaliburDAWN(object):
             self.clear_plot(name)
             self.clear_plot(fit_name)
 
-        self.plot.addline(x_data, y_data, name=name)
+        self.add_plot_line(x_data, y_data, name=name)
 
         popt, _ = curve_fit(self.lin_function, x_data, y_data, estimate)
         offset = popt[0]
         gain = popt[1]
 
-        self.plot.addline(x_data, self.lin_function(x_data, offset, gain),
-                          name=fit_name)
+        self.add_plot_line(x_data, self.lin_function(x_data, offset, gain),
+                           name=fit_name)
 
         return offset, gain
 
@@ -97,9 +97,10 @@ class ExcaliburDAWN(object):
         """Add a plot of x vs y to the given plot.
 
         Args:
-            x: X axis data
-            y: Y axis data
-            name: Name of plot to add to
+            x(list): X axis data
+            y(list): Y axis data
+            name(str): Name of plot to add to
+            title(str): Name of data line
 
         """
         self.plot.addline(x, y, name=name, title=title)
@@ -108,10 +109,10 @@ class ExcaliburDAWN(object):
         """Calculate the Gaussian least squares fit and plot the result.
 
         Args:
-            scan_data: Data to fit
-            plot_name: Name of resulting plot
-            p0: Initial guess for gaussian curve parameters
-            bins: Bins to plot in histogram
+            scan_data(numpy.array): Data to fit
+            plot_name(str): Name of resulting plot
+            p0(list(int)): Initial guess for gaussian curve parameters
+            bins(int): Bins to plot in histogram
 
         """
         fit_plot_name = plot_name + " (fitted)"
@@ -143,8 +144,8 @@ class ExcaliburDAWN(object):
         """Plot a histogram for each of the given chips.
 
         Args:
-            image_data: Data for full array
-            name: Name of plot
+            image_data(numpy.array): Data for full array
+            name(str): Name of plot
 
         """
         for chip_data in image_data:
@@ -154,10 +155,11 @@ class ExcaliburDAWN(object):
                                  name="Histogram"):
         """Plot a histogram for each of the given chips, after applying a mask.
         Args:
-            chips: Chips to plot for
-            image_data: Data for full array
-            mask: Mask to apply before plotting data
-            name: Name of plot
+            chips(list(int)): Chips to plot for
+            image_data(numpy.array): Data for full array
+            mask(numpy.array): Mask to apply before plotting data
+            name(str): Name of plot
+
         """
         for chip_idx in chips:
             chip_mask = mask[0:256, chip_idx*256:(chip_idx + 1)*256]
@@ -169,13 +171,13 @@ class ExcaliburDAWN(object):
         """Add a histogram of data to the given plot name.
 
         Args:
-            data: Data to plot
-            name: Name of plot to add to
-            bins: Bins to plot over
+            data(numpy.array): Data to plot
+            name(str): Name of plot to add to
+            bins(int): Bins to plot over
 
         """
         histogram = np.histogram(data, bins=bins)
-        self.plot.addline(histogram[1][0:-1], histogram[0], name=name)
+        self.add_plot_line(histogram[1][0:-1], histogram[0], name=name)
 
     def fit_dac_scan(self, scan_data, dac_axis):
         """############## NOT TESTED"""
@@ -198,12 +200,12 @@ class ExcaliburDAWN(object):
         differential spectrum (spectrum)
 
         Args:
-            chips: Chips to plot for
-            dac_scan_data: Data from dac scan to plot
-            dac_range: Scan range used for dac scan
+            chips(list(int)): Chips to plot for
+            dac_scan_data(numpy.array): Data from dac scan to plot
+            dac_range(Range): Scan range used for dac scan
 
         Returns:
-            np.array, list: Averaged scan data, DAC values of scan
+            numpy.array, list: Averaged scan data, DAC values of scan
         """
         self.clear_plot("DAC Scan")
         self.clear_plot("Spectrum")
@@ -249,9 +251,9 @@ class ExcaliburDAWN(object):
         """Plot dac scan for an individual pixel.
 
         Args:
-            dac_scan_data: Data from dac scan to plot
-            dac_range: Scan range used for dac scan
-            pixel: X, Y coordinates for pixel
+            dac_scan_data(numpy.array): Data from dac scan to plot
+            dac_range(list(int)): Scan range used for dac scan
+            pixel(list(int)): X, Y coordinates for pixel
 
         """
         # TODO: Combine with plot_dac_scan if possible
@@ -273,27 +275,20 @@ class ExcaliburDAWN(object):
     @staticmethod
     def myerf(x_val, a, mu, sigma):
         """Function required to express S-curve."""
-
         return a/2. * (1 + m.erf((x_val - mu) / (m.sqrt(2) * sigma)))
 
     @staticmethod
     def lin_function(x_val, offset, gain):
         """Function definition for linear fits."""
-
         return offset + gain * x_val
 
     @staticmethod
     def gauss_function(x_val, a, x0, sigma):
         """Function definition for Gaussian fits."""
-
         return a * np.exp(-(x_val - x0) ** 2 / (2 * sigma ** 2))
 
     @classmethod
     def s_curve_function(cls, x_val, k, delta, e, sigma):
-        """Function required to fit integral spectra.
-
-        Used during threshold calibration
-        """
+        """Function required to fit integral spectra."""
         erf = cls.myerf(x_val, k, e, sigma)
-
         return k * ((1 - 2 * delta * (x_val / e - 0.5)) ** 2) * (1 - erf)
