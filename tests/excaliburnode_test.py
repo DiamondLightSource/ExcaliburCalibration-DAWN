@@ -4,7 +4,9 @@ from pkg_resources import require
 require("mock")
 from mock import patch, MagicMock, ANY
 
-from excaliburcalibrationdawn.excaliburnode import ExcaliburNode, np, Range
+import numpy as np
+
+from excaliburcalibrationdawn import ExcaliburNode, Range
 Node_patch_path = "excaliburcalibrationdawn.excaliburnode.ExcaliburNode"
 ETAI_patch_path = "excaliburcalibrationdawn.excaliburnode.ExcaliburTestAppInterface"
 DAWN_patch_path = "excaliburcalibrationdawn.excaliburnode.ExcaliburDAWN"

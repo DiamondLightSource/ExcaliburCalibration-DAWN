@@ -14,7 +14,7 @@ from excaliburcalibrationdawn.excaliburtestappinterface import \
     ExcaliburTestAppInterface
 from excaliburcalibrationdawn.excaliburdawn import ExcaliburDAWN
 from config import MPX3RX
-from excaliburcalibrationdawn import util as util
+from excaliburcalibrationdawn import util
 
 logging.basicConfig(level=logging.DEBUG)
 # logging.basicConfig(level=logging.INFO)

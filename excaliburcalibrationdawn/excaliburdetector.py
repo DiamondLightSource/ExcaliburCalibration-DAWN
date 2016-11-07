@@ -1,9 +1,9 @@
 """An Excalibur RX detector."""
+import numpy as np
+
 from excaliburcalibrationdawn.excaliburnode import ExcaliburNode
 from excaliburcalibrationdawn.excaliburdawn import ExcaliburDAWN
 from excaliburcalibrationdawn import util
-
-import numpy as np
 
 import logging
 logging.basicConfig(level=logging.DEBUG)

@@ -4,7 +4,7 @@ from pkg_resources import require
 require("mock")
 from mock import patch, MagicMock, ANY
 
-from excaliburcalibrationdawn.excalibur3M import Excalibur3M
+from excaliburcalibrationdawn import Excalibur3M
 Detector_patch_path = "excaliburcalibrationdawn.excaliburdetector" \
                       ".ExcaliburDetector"
 

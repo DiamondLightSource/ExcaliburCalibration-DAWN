@@ -8,7 +8,7 @@ util_patch_path = "excaliburcalibrationdawn.util"
 
 import numpy as np
 
-from excaliburcalibrationdawn.excaliburdawn import ExcaliburDAWN
+from excaliburcalibrationdawn import ExcaliburDAWN
 
 
 class FunctionsTest(unittest.TestCase):

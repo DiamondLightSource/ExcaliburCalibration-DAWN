@@ -4,8 +4,9 @@ from pkg_resources import require
 require("mock")
 from mock import patch, MagicMock, ANY
 
-from excaliburcalibrationdawn.excaliburdetector import ExcaliburDetector
-from excaliburcalibrationdawn.excaliburnode import ExcaliburNode, np
+import numpy as np
+
+from excaliburcalibrationdawn import ExcaliburDetector, ExcaliburNode
 Detector_patch_path = "excaliburcalibrationdawn.excaliburdetector" \
                       ".ExcaliburDetector"
 Node_patch_path = "excaliburcalibrationdawn.excalibur1M.ExcaliburNode"

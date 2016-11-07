@@ -6,8 +6,6 @@ import numpy as np
 from scipy.optimize import curve_fit
 import scisoftpy
 
-import util
-
 logging.basicConfig(level=logging.DEBUG)
 
 

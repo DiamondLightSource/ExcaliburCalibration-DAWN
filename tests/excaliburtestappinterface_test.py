@@ -5,7 +5,7 @@ from pkg_resources import require
 require("mock")
 from mock import patch, MagicMock, ANY
 
-from excaliburcalibrationdawn.excaliburtestappinterface import ExcaliburTestAppInterface
+from excaliburcalibrationdawn import ExcaliburTestAppInterface
 ETAI_patch_path = "excaliburcalibrationdawn.excaliburtestappinterface.ExcaliburTestAppInterface"
 
 
