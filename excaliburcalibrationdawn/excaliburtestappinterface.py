@@ -221,6 +221,7 @@ class ExcaliburTestAppInterface(object):
             lv_state(int): State to set (0 - Off, 1 - On)
 
         """
+        logging.debug("Setting LV to %s", lv_state)
         if lv_state not in [0, 1]:
             raise ValueError("LV can only be on (0) or off (1), got "
                              "{value}".format(value=lv_state))
@@ -238,6 +239,7 @@ class ExcaliburTestAppInterface(object):
             hv_state(int): State to set (0 - Off, 1 - On)
 
         """
+        logging.debug("Setting HV to %s", hv_state)
         if hv_state not in [0, 1]:
             raise ValueError("HV can only be on (0) or off (1), got "
                              "{value}".format(value=hv_state))
@@ -254,6 +256,7 @@ class ExcaliburTestAppInterface(object):
             hv_bias(int): Voltage to set
 
         """
+        logging.debug("Setting HV bias to %s", hv_bias)
         if hv_bias < 0 or hv_bias > 120:
             raise ValueError("HV bias must be between 0 and 120 volts, got "
                              "{value}".format(value=hv_bias))
@@ -292,6 +295,7 @@ class ExcaliburTestAppInterface(object):
             list(str): Full acquire command to send to subprocess call
 
         """
+        logging.debug("Sending acquire command")
         # Check detector has been initialised correctly
         if self.dacs_loaded is None:
             raise ValueError("No DAC file loaded to FEM. Call setup().")
@@ -348,7 +352,7 @@ class ExcaliburTestAppInterface(object):
 
         Args:
             name(str): Name of argument (for error message)
-            value(int): Value to check
+            value(int/str): Value to check
             valid_values(list(int)): Allowed values
 
         Returns:
@@ -376,6 +380,7 @@ class ExcaliburTestAppInterface(object):
             dac_file(str): File to load DAC values from
 
         """
+        logging.debug("Sending sense command")
         # TODO: Check is command_2 'Requires DAC LOAD to take effect'?
         # Set up DAC for sensing
         command_1 = self._construct_command(chips,
@@ -404,6 +409,7 @@ class ExcaliburTestAppInterface(object):
             hdf_file(str): File to save to
 
         """
+        logging.debug("Sending DAC scan command")
         scan_command = "{dac},{start},{stop},{step}".format(
             dac=int(self.dac_code[threshold]) - 1,
             start=scan_range.start, stop=scan_range.stop, step=scan_range.step)
@@ -423,6 +429,7 @@ class ExcaliburTestAppInterface(object):
             chips(list(int): Chips to read
 
         """
+        logging.debug("Sending read chip IDs command")
         command = self._construct_command(chips,
                                           self.RESET,
                                           self.READ_EFUSE)
@@ -437,6 +444,7 @@ class ExcaliburTestAppInterface(object):
         and DAC Out
 
         """
+        logging.debug("Sending read slow command")
         command = self._construct_command(self.chip_range,
                                           self.READ_SLOW_PARAMS)
         self._send_command(command, **cmd_kwargs)
@@ -449,6 +457,7 @@ class ExcaliburTestAppInterface(object):
             dac_file(str): Path to file containing DAC values
 
         """
+        logging.debug("Sending load DACs command")
         command = self._construct_command(chips, self.DAC_FILE + dac_file)
         success = self._send_command(command)
         if success:
@@ -465,6 +474,7 @@ class ExcaliburTestAppInterface(object):
             config_files(dict): Config files for discL, discH and pixel mask
 
         """
+        logging.debug("Sending configure test pulse command")
         # TODO: Check if this really needs to be coupled to loading DACs
         extra_params = []
         if config_files is not None:
@@ -485,6 +495,7 @@ class ExcaliburTestAppInterface(object):
             tp_mask(str): Path to tp_mask file
 
         """
+        logging.debug("Sending load TP mask command")
         command = self._construct_command(chips,
                                           self.CONFIG,
                                           self.TP_MASK + tp_mask)
@@ -542,6 +553,7 @@ class ExcaliburTestAppInterface(object):
             str: File path to local copied file
 
         """
+        logging.debug("Fetching remote file")
         file_name, extension = posixpath.splitext(server_source)
         full_source = "{server}:{source}".format(server=self.server_path,
                                                  source=server_source)

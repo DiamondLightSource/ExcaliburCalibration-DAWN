@@ -97,7 +97,7 @@ class ExcaliburNode(object):
             self.server_name = None
             self.remote_node = False
 
-        logging.debug("Creating ExcaliburNode with server %s and ip %s",
+        logging.info("Creating ExcaliburNode with server %s and ip %s",
                       self.server_name, self.ipaddress)
 
         # Detector default settings - See excaliburtestappinterface for details
@@ -294,7 +294,7 @@ class ExcaliburNode(object):
                                          ).format(fem=self.fem,
                                                   threshold=threshold)
 
-        logging.debug("Saving calibration to: %s", thresh_filename)
+        logging.info("Saving calibration to: %s", thresh_filename)
         np.savetxt(thresh_filename, thresh_coeff, fmt='%.2f')
         os.chmod(thresh_filename, 0777)  # Allow anyone to overwrite
 
@@ -488,19 +488,6 @@ class ExcaliburNode(object):
         logging.debug("Gain: %s, Offset: %s", gain, offset)
         logging.debug("Self.settings gain: %s", self.settings['gain'])
 
-    def set_threshold0(self, thresh_energy=5.0):
-        """Set threshold0 energy in keV.
-
-        Threshold0 DACs are calculated using threshold0 calibration file
-        located in the calibration directory corresponding to the current mode
-        and gain setting
-
-        Args:
-            thresh_energy(float): Energy to set
-
-        """  # TODO: Move docstring body somewhere more relevant
-        self.set_thresh_energy(0, float(thresh_energy))
-
     def set_thresh_energy(self, threshold=0, thresh_energy=5.0):
         """Set given threshold in keV.
 
@@ -666,6 +653,9 @@ class ExcaliburNode(object):
             numpy.array: DAC scan data
 
         """
+        logging.info("Performing DAC Scan of %s; Start: %s, Stop: %s, "
+                     "Step: %s", threshold, *dac_range.__dict__.values())
+
         dac_scan_file = util.generate_file_name("DACScan")
 
         dac_file = posixpath.join(self.calib_dir,
@@ -682,7 +672,6 @@ class ExcaliburNode(object):
             file_path = self.app.grab_remote_file(file_path)
 
         util.wait_for_file(file_path, 5)
-        logging.debug("Loading %s", file_path)
         scan_data = self.dawn.load_image_data(file_path)
 
         self.dawn.plot_dac_scan(chips, scan_data, dac_range)
@@ -697,6 +686,8 @@ class ExcaliburNode(object):
             mask_bits(numpy.array): Pixel mask (256 x 256 : 0 or 1)
 
         """
+        logging.info("Loading numpy arrays as temporary config.")
+
         template_path = posixpath.join(self.template_path,
                                        '{disc}.tmp')
         discH_bits_file = template_path.format(disc='discHbits')
@@ -720,6 +711,8 @@ class ExcaliburNode(object):
             chips(list(int)): Chips to load config for
 
         """
+        logging.info("Loading discriminator bits from config directory.")
+
         for chip in chips:
             self.app.load_config([chip], self.discL_bits[chip],
                                  self.discH_bits[chip], self.pixel_mask[chip])
@@ -818,7 +811,6 @@ class ExcaliburNode(object):
             file_path = self.app.grab_remote_file(file_path)
 
         util.wait_for_file(file_path, 5)
-        logging.debug("Loading %s", file_path)
         image = self.dawn.load_image_data(file_path)
         return image
 
@@ -1147,9 +1139,9 @@ class ExcaliburNode(object):
             os.makedirs(calib_dir)
         else:
             logging.info("Backing up calib directory.")
-            backup_dir = self.calib_dir + '_backup_' + util.get_time_stamp()
+            backup_dir = "{calib}_backup_{time_stamp}".format(
+                calib=self.calib_dir, time_stamp=util.get_time_stamp())
             shutil.copytree(self.calib_dir, backup_dir)
-
             logging.debug("Backup directory: %s", backup_dir)
 
         dac_file = posixpath.join(calib_dir, 'dacs')
@@ -1201,6 +1193,7 @@ class ExcaliburNode(object):
             numpy.array: Discbits array
 
         """
+        logging.info("Reading discriminator bits from file.")
         discbits = np.zeros(self.full_array_shape)
         for chip_idx in chips:
             discbits_file = posixpath.join(
@@ -1254,6 +1247,7 @@ class ExcaliburNode(object):
             numpy.array: Noise edge data
 
         """
+        logging.info("Finding noise edges in DAC scan data.")
         # Reverse data for high to low scan
         if dac_range.stop > dac_range.start:
             is_reverse_scan = True
@@ -1278,6 +1272,7 @@ class ExcaliburNode(object):
             numpy.array: Max noise data
 
         """
+        logging.info("Finding max noise in DAC scan data.")
         max_dacs = dac_range.stop - dac_range.step * np.argmax(
             (dac_scan_data[::-1, :, :]), 0)
         # TODO: Assumes low to high scan? Does it matter?
@@ -1337,6 +1332,8 @@ class ExcaliburNode(object):
             numpy.array: Optimum DAC discriminator value for each chip
 
         """
+        logging.info("Optimizing %s", disc_name)
+
         thresholds = dict(discL="Threshold0", discH="Threshold1")
         threshold = thresholds[disc_name]
 
@@ -1576,6 +1573,8 @@ class ExcaliburNode(object):
             numpy.array: Equalised discriminator bits
 
         """
+        logging.info("Equalising %s", disc_name)
+
         self.settings['exposure'] = 5
         self.settings['counter'] = 0
         self.settings['equalization'] = 1
@@ -1817,6 +1816,7 @@ class ExcaliburNode(object):
             fem(int): FEM to set
 
         """
+        logging.info("Setting GND, FBK and Cas values from ECD config.")
         for chip in chips:
             self.set_dac([chip], 'GND', MPX3RX.GND_DAC[fem - 1, chip])
             self.set_dac([chip], 'FBK', MPX3RX.FBK_DAC[fem - 1, chip])

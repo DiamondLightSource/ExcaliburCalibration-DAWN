@@ -359,25 +359,6 @@ class MaskRowBlockTest(unittest.TestCase):
         load_mock.assert_called_once_with(chips)
 
 
-@patch(Node_patch_path + '.set_thresh_energy')
-class SetThreshold0Test(unittest.TestCase):
-
-    def test_correct_calls_made(self, set_thresh_energy_mock):
-        e = ExcaliburNode(1)
-
-        e.set_threshold0(7)
-
-        set_thresh_energy_mock.assert_called_once_with(0, 7.0)
-
-    def test_correct_calls_made_with_default_param(self,
-                                                   set_thresh_energy_mock):
-        e = ExcaliburNode(1)
-
-        e.set_threshold0()
-
-        set_thresh_energy_mock.assert_called_once_with(0, 5.0)
-
-
 @patch(Node_patch_path + '.expose')
 @patch(Node_patch_path + '.set_dac')
 class SetThreshold0DacTest(unittest.TestCase):

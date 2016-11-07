@@ -38,6 +38,7 @@ class ExcaliburDAWN(object):
             numpy.array: Image data
 
         """
+        logging.info("Loading HDF5 file; %s", path)
         return self.io.load(path).image[...]
 
     def load_image_data(self, path):
@@ -76,6 +77,7 @@ class ExcaliburDAWN(object):
             Optimal offset and gain values for least squares fit
 
         """
+        logging.info("Performing linear fit")
         if clear:
             self.clear_plot(name)
             self.clear_plot(fit_name)
@@ -113,6 +115,7 @@ class ExcaliburDAWN(object):
             bins(int): Bins to plot in histogram
 
         """
+        logging.info("Performing Gaussian fit")
         fit_plot_name = plot_name + " (fitted)"
         a = np.zeros([8])
         x0 = np.zeros([8])
