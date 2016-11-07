@@ -567,12 +567,12 @@ class ExcaliburNode(object):
         self.set_dac(chips, 'Threshold0', dac_value)
         self.expose()
 
-    def fe55_image_rx001(self, chips=range(8), acquire_time=60000):
+    def fe55_image_rx001(self, chips=range(8), exposure=60000):
         """Save FE55 image.
 
         Args:
             chips(list(int)): Chips to use
-            acquire_time(int): Exposure time of image
+            exposure(int): Exposure time of image
 
         Will save to:
         /dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/ DIRECTORY
@@ -583,12 +583,12 @@ class ExcaliburNode(object):
         self.settings['gain'] = 'shgm'
         self.load_config(chips)
         self.set_threshold0_dac(chips, 40)
-        self.file_name = 'Fe55_image_node_{fem}_{acqtime}s'.format(
-            fem=self.fem, acqtime=self.settings['exposure'])
+        self.file_name = 'Fe55_image_node_{fem}_{exposure}s'.format(
+            fem=self.fem, exposure=self.settings['exposure'])
         self.output_folder = posixpath.join(self.root_path, "Fe55_images")
         time.sleep(0.5)
 
-        self.expose(acquire_time)
+        self.expose(exposure)
 
         self.output_folder = img_path
         self.file_name = 'image'
@@ -742,27 +742,27 @@ class ExcaliburNode(object):
 
         return image
 
-    def burst(self, frames, acquire_time):
+    def burst(self, frames, exposure):
         """Acquire images in burst mode.
 
         Args:
             frames(int): Number of images to capture
-            acquire_time(int): Exposure time for images
+            exposure(int): Exposure time for images
 
         """
-        self._acquire(frames, acquire_time, burst=True)
+        self._acquire(frames, exposure, burst=True)
 
-    def cont(self, frames, acquire_time):
+    def cont(self, frames, exposure):
         """Acquire images in continuous mode.
 
         Args:
             frames(int): Number of images to capture
-            acquire_time(int): Exposure time for images
+            exposure(int): Exposure time for images
 
         """
         self.settings['readmode'] = "continuous"
 
-        image = self._acquire(frames, acquire_time)
+        image = self._acquire(frames, exposure)
 
         plots = min(frames, 5)  # Limit to 5 frames
         plot_tag = time.asctime()
@@ -771,16 +771,16 @@ class ExcaliburNode(object):
                                  name="Image_{tag}_{plot}".format(
                                  tag=plot_tag, plot=plot))
 
-    def cont_burst(self, frames, acquire_time):
+    def cont_burst(self, frames, exposure):
         """Acquire images in continuous burst mode.
 
         Args:
             frames(int): Number of images to capture
-            acquire_time(int): Exposure time for images
+            exposure(int): Exposure time for images
 
         """
         self.settings['readmode'] = "continuous"
-        self._acquire(frames, acquire_time, burst=True)
+        self._acquire(frames, exposure, burst=True)
 
     def _acquire(self, frames, exposure, burst=False):
         """Acquire image(s) with given exposure and current settings.
@@ -814,7 +814,7 @@ class ExcaliburNode(object):
         image = self.dawn.load_image_data(file_path)
         return image
 
-    def acquire_ff(self, num, acquire_time):
+    def acquire_ff(self, num, exposure):
         """Acquire and sum flat-field images.
 
         NOT TESTED
@@ -822,14 +822,14 @@ class ExcaliburNode(object):
 
         Args:
             num(int): Number of images to sum
-            acquire_time(int): Exposure time for images
+            exposure(int): Exposure time for images
 
         Returns:
             numpy.array: Flat-field coefficients
 
         """
         file_name = "FlatField.hdf5"
-        self.settings['exposure'] = acquire_time
+        self.settings['exposure'] = exposure
 
         ff_image = 0
         for _ in range(num):
