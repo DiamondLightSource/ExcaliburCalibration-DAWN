@@ -98,7 +98,7 @@ class ExcaliburNode(object):
             self.remote_node = False
 
         logging.info("Creating ExcaliburNode with server %s and ip %s",
-                      self.server_name, self.ipaddress)
+                     self.server_name, self.ipaddress)
 
         # Detector default settings - See excaliburtestappinterface for details
         self.settings = dict(mode="spm",  # spm or csm
@@ -1790,7 +1790,7 @@ class ExcaliburNode(object):
 
         Args:
             chips(list(int)): Chips to load
-            gain9str): Gain mode to set (slgm, lgm, hgm, shgm)
+            gain(str): Gain mode to set (slgm, lgm, hgm, shgm)
 
         """
         # TODO: Why does it have to call expose to set these??
