@@ -59,35 +59,34 @@ class ExcaliburDAWN(object):
             name(str): Name of plot to clear
 
         """
+        logging.debug("Clearing plot '%s'", name)
         self.plot.clear(name)
 
     def plot_linear_fit(self, x_data, y_data, estimate,
-                        name="Linear", fit_name="Linear Fit", clear=False):
+                        name="Linear", fit_name="Linear Fit"):
         """Plot the given 2D data with a linear least squares fit.
 
         Args:
-            x_data(list): Independent variable data
-            y_data(list): Dependent variable data
+            x_data(list/np.array): Independent variable data
+            y_data(list/np.array): Dependent variable data
             estimate(list(int/float): Starting estimate for offset and gain
             name(str): Name of plot
             fit_name(str): Name of fit plot
-            clear(bool): Option to clear given plot before adding new one
 
         Returns:
             Optimal offset and gain values for least squares fit
 
         """
         logging.info("Performing linear fit")
-        if clear:
-            self.clear_plot(name)
-            self.clear_plot(fit_name)
 
+        self.clear_plot(name)
         self.add_plot_line(x_data, y_data, name=name)
 
         popt, _ = curve_fit(self.lin_function, x_data, y_data, estimate)
         offset = popt[0]
         gain = popt[1]
 
+        self.clear_plot(fit_name)
         self.add_plot_line(x_data, self.lin_function(x_data, offset, gain),
                            name=fit_name)
 
@@ -219,7 +218,7 @@ class ExcaliburDAWN(object):
 
         """
         self.clear_plot("DAC Scan")
-        self.clear_plot("Spectrum")
+        self.clear_plot("DAC Scan Differential")
 
         x_axis = np.array(dac_axis)
         for chip_idx, chip_data in enumerate(scan_data):

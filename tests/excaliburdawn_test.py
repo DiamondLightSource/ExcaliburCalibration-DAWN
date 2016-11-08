@@ -184,7 +184,7 @@ class PlotLinearFitTest(unittest.TestCase):
         x = MagicMock()
         y = MagicMock()
 
-        e.plot_linear_fit(x, y, [0, 1], name="Test", fit_name="Test fits", clear=True)
+        e.plot_linear_fit(x, y, [0, 1], name="Test", fit_name="Test fits")
 
         # Check clear calls
         self.assertEqual("Test", clear_mock.call_args_list[0][0][0])
@@ -258,7 +258,8 @@ class PlotDacScanTest(unittest.TestCase):
 
         # Check clear calls
         self.assertEqual("DAC Scan", clear_mock.call_args_list[0][0][0])
-        self.assertEqual("Spectrum", clear_mock.call_args_list[1][0][0])
+        self.assertEqual("DAC Scan Differential",
+                         clear_mock.call_args_list[1][0][0])
         # Check first addline call
         np.testing.assert_array_equal(dac_axis,
                                       addline_mock.call_args_list[0][0][0])
@@ -272,5 +273,5 @@ class PlotDacScanTest(unittest.TestCase):
                                       addline_mock.call_args_list[1][0][0])
         self.assertEqual(diff_mock.return_value.__neg__.return_value[1:],
                          addline_mock.call_args_list[1][0][1])
-        self.assertEqual(dict(name="Spectrum", title="Chip 0"),
+        self.assertEqual(dict(name="DAC Scan Differential", title="Chip 0"),
                          addline_mock.call_args_list[1][1])

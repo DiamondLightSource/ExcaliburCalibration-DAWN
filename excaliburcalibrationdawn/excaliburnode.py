@@ -483,8 +483,7 @@ class ExcaliburNode(object):
                           E3_Dac[self.fem - 1, chip]])
 
             p1, p2 = self.dawn.plot_linear_fit(x, y, [0, 1],
-                                               name='DAC vs Energy',
-                                               clear=clear)
+                                               name="DAC vs Energy")
             offset[chip] = p1
             gain[chip] = p2
 
@@ -1314,7 +1313,7 @@ class ExcaliburNode(object):
         # TODO: Assumes low to high scan? Does it matter?
 
         self.dawn.plot_image(max_dacs, name="Noise Max")
-        self._display_histogram(chips, max_dacs, "Noise Max Histogram")
+        self._display_histogram(chips, max_dacs, "Histogram of Noise Max")
         return max_dacs
 
     def _display_histogram(self, chips, data, name):
@@ -1469,7 +1468,7 @@ class ExcaliburNode(object):
         plot_name = "Histogram of edges when scanning DAC_disc for " \
                     "discbit = {discbit}".format(discbit=discbit)
 
-        self.set_dac(chips, threshold, dac_value)  # TODO: Why set this first?
+        self.set_dac(chips, threshold, dac_value)
         # Scan threshold
         dac_scan_data = self.scan_dac(chips, threshold, dac_range)
         # Find noise edges
@@ -1650,7 +1649,7 @@ class ExcaliburNode(object):
                             discbits[x, y] = \
                                 discbits_stack[scan_nb[x, y], x, y]
 
-                self.dawn.plot_image(discbits, name='discbits')
+                self.dawn.plot_image(discbits, name="Discriminator Bits")
 
                 plot_name = "Histogram of Final Discbits"
                 self.dawn.clear_plot(plot_name)
@@ -1801,6 +1800,8 @@ class ExcaliburNode(object):
             self.save_discbits(chips, discbits,
                                disc_name + 'bits_roi_' + str(step))
         discbits = self.combine_rois(chips, disc_name, steps, roi_type)
+
+        # TODO: Why does it save discbits 3 times, because of old method?
 
         self.save_discbits(chips, discbits, disc_name + 'bits')
         self.load_config(chips)  # Load threshold_equalization files created

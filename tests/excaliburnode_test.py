@@ -272,7 +272,7 @@ class ThresholdCalibrationTest(unittest.TestCase):
         self.e.settings['gain'] = 'slgm'
         self.e.multiple_energy_thresh_calib([0])
 
-        plot_mock.assert_called_once_with(ANY, ANY, [0, 1], name='DAC vs Energy', clear=True)
+        plot_mock.assert_called_once_with(ANY, ANY, [0, 1], name='DAC vs Energy')
         np.testing.assert_array_equal(expected_array_1, plot_mock.call_args[0][0])
         np.testing.assert_array_equal(expected_array_2, plot_mock.call_args[0][1])
 
@@ -1285,7 +1285,7 @@ class FindTest(unittest.TestCase):  # TODO: Improve
 
         value = self.e.find_max([0], dac_scan_data, dac_range)
 
-        display_mock.assert_called_once_with([0], ANY, "Noise Max Histogram")
+        display_mock.assert_called_once_with([0], ANY, "Histogram of Noise Max")
         np.testing.assert_array_equal(expected_array, display_mock.call_args[0][1])
         np.testing.assert_array_equal(expected_array, value)
 
@@ -1436,7 +1436,8 @@ class EqualizeDiscbitsTest(unittest.TestCase):
         self.assertEqual(([0], scan_mock.return_value, Range(0, 20, 2)),
                          find_mock.call_args_list[0][0])
         self.assertEqual((ANY,), plot_mock.call_args_list[0][0])
-        self.assertEqual(dict(name="discbits"), plot_mock.call_args_list[0][1])
+        self.assertEqual(dict(name="Discriminator Bits"),
+                         plot_mock.call_args_list[0][1])
         self.assertEqual(("Histogram of Final Discbits",),
                          clear_mock.call_args_list[0][0])
         self.assertEqual(("Histogram of Final Discbits",),
