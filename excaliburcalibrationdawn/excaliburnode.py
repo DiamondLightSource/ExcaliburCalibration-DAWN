@@ -174,6 +174,17 @@ class ExcaliburNode(object):
         """
         self.app.set_hv_bias(hv_bias)
 
+    def set_quiet(self, state):
+        """Set the quiet state for calls to the ExcaliburTestApp.
+
+        Args:
+            state(bool): True or False for whether terminal output silenced
+
+        """
+        if state not in [True, False]:
+            raise ValueError("Quiet state can be either True or False.")
+        self.app.quiet = state
+
     def display_status(self):
         """Display status of node."""
         print("Status for Node {}".format(self.fem))
@@ -327,16 +338,12 @@ class ExcaliburNode(object):
         dac_scan_data = self.scan_dac(chips, "Threshold" + str(threshold),
                                       dac_range)
         dac_scan_data[dac_scan_data > 200] = 0  # Set elements > 200 to 0
-        [chip_dac_scan, dac_axis] = self.dawn.plot_dac_scan(chips,
-                                                            dac_scan_data,
-                                                            dac_range)
+        [chip_dac_scan, dac_axis] = self.display_dac_scan(chips, dac_scan_data,
+                                                          dac_range)
         scan_data = []
         for chip_idx in chips:
             scan_data.append(chip_dac_scan[chip_idx, :])
         self.dawn.fit_dac_scan(scan_data, dac_axis)
-
-        #  TODO: Do we really need a plot_dac_scan AND a fit_dac_scan?
-        #  TODO: Both are only called here...
 
         # edge_dacs = self.find_edge(chips, dac_scan_data, dac_range, 2)
         # chip_edge_dacs = np.zeros(range(8))
@@ -595,7 +602,7 @@ class ExcaliburNode(object):
         self.settings['exposure'] = 100
 
     def set_dac(self, chips, name="Threshold0", value=40):
-        """Set any chip DAC at a given value.
+        """Set any chip DAC at a given value in config file and then load.
 
         Args:
             chips(list(int)): Chips to set DACs for
@@ -622,13 +629,12 @@ class ExcaliburNode(object):
             with open(dac_file_path, 'w') as dac_file:
                 dac_file.writelines(f_content)
 
-            self.app.load_dacs([chip], dac_file_path)  # TODO: Do this once?
+        self.app.load_dacs(chips, dac_file_path)
 
-    def read_dac(self, chips, dac_name):
+    def read_dac(self, dac_name):
         """Read back DAC analogue voltage using chip sense DAC (DAC out).
 
         Args:
-            chips(list(int)): Chips to read
             dac_name(str): DAC value to read (Any from self.dac_number keys)
 
         """
@@ -639,7 +645,7 @@ class ExcaliburNode(object):
                                   'dacs'
                                   ).format(fem=self.fem)
 
-        self.app.sense(chips, dac_name, dac_file)
+        self.app.sense(self.chip_range, dac_name, dac_file)
 
     def scan_dac(self, chips, threshold, dac_range):
         """Perform a dac scan and plot the result (mean counts vs DAC values).
@@ -674,7 +680,37 @@ class ExcaliburNode(object):
         util.wait_for_file(file_path, 5)
         scan_data = self.dawn.load_image_data(file_path)
 
-        self.dawn.plot_dac_scan(chips, scan_data, dac_range)
+        self.display_dac_scan(chips, scan_data, dac_range)
+        return scan_data
+
+    def display_dac_scan(self, chips, scan_data, dac_range):
+        """Analyse and plot the results of threshold dac scan.
+
+        Args:
+            chips(list(int)): Chips to plot for
+            scan_data(numpy.array): Data from dac scan
+            dac_range(Range): Scan range used for dac scan
+
+        Returns:
+            numpy.array, list: Averaged scan data, DAC values of scan
+
+        """
+        if dac_range.start > dac_range.stop:
+            dac_axis = np.array(range(dac_range.start,
+                                      dac_range.stop - dac_range.step,
+                                      -dac_range.step))
+        else:
+            dac_axis = np.array(range(dac_range.start,
+                                      dac_range.stop + dac_range.step,
+                                      dac_range.step))
+
+        plot_data = np.zeros([len(chips), dac_axis.size])
+        for chip_idx in chips:
+            chip = scan_data[:, 0:256, chip_idx * 256:(chip_idx + 1) * 256]
+            plot_data[chip_idx, :] = chip.mean(2).mean(1)
+
+        self.dawn.plot_dac_scan(plot_data, dac_axis)
+        return plot_data, dac_axis
 
     def load_temp_config(self, chips, discLbits, discHbits, mask_bits):
         """Save the given disc configs to temporary files and load them.
@@ -698,9 +734,8 @@ class ExcaliburNode(object):
         np.savetxt(discH_bits_file, discHbits, fmt='%.18g', delimiter=' ')
         np.savetxt(mask_bits_file, mask_bits, fmt='%.18g', delimiter=' ')
 
-        for chip in chips:  # TODO: Do all at once
-            self.app.load_config([chip], discL_bits_file, discH_bits_file,
-                                 mask_bits_file)
+        self.app.load_config(chips,
+                             discL_bits_file, discH_bits_file, mask_bits_file)
 
     def load_config(self, chips=range(8)):
         """Load detector configuration files and default thresholds.
@@ -1262,7 +1297,8 @@ class ExcaliburNode(object):
         else:
             edge_dacs = dac_range.start - dac_range.step * threshold_edge
 
-        self._display_histogram(chips, edge_dacs)
+        self.dawn.plot_image(edge_dacs, name="Noise Edges")
+        self._display_histogram(chips, edge_dacs, "Noise Edges Histogram")
         return edge_dacs
 
     def find_max(self, chips, dac_scan_data, dac_range):
@@ -1277,23 +1313,22 @@ class ExcaliburNode(object):
             (dac_scan_data[::-1, :, :]), 0)
         # TODO: Assumes low to high scan? Does it matter?
 
-        self._display_histogram(chips, max_dacs)
+        self.dawn.plot_image(max_dacs, name="Noise Max")
+        self._display_histogram(chips, max_dacs, "Noise Max Histogram")
         return max_dacs
 
-    def _display_histogram(self, chips, edge_dacs):
-        """Plot an image and a histogram of edge_dacs data.
+    def _display_histogram(self, chips, data, name):
+        """Plot an image and a histogram of given data.
 
         Args:
             chips(list(int)): Chips to plot for
-            edge_dacs(numpy.array): Data to analyse
+            data(numpy.array): Data to analyse
 
         """
-        self.dawn.plot_image(edge_dacs, name="noise edges")
-
         image_data = []
         for chip_idx in chips:
-            image_data.append(self._grab_chip_slice(edge_dacs, chip_idx))
-        self.dawn.plot_histogram(image_data)
+            image_data.append(self._grab_chip_slice(data, chip_idx))
+        self.dawn.plot_histogram(image_data, name)
 
     def optimize_disc_l(self, chips, roi_full_mask):
         """Optimize discriminator L for the given chips.
@@ -1381,9 +1416,10 @@ class ExcaliburNode(object):
         offset = np.zeros(8)
         gain = np.zeros(8)
         for chip_idx in chips:
-            offset[chip_idx], gain[chip_idx] = self.dawn.plot_linear_fit(
-                np.asarray(dac_disc_range), x0[chip_idx, :], [0, -1],
-                fit_name=calib_plot_name)
+            results = self.dawn.plot_linear_fit(np.asarray(dac_disc_range),
+                                                x0[chip_idx, :], [0, -1],
+                                                fit_name=calib_plot_name)
+            offset[chip_idx], gain[chip_idx] = results[0], results[1]
 
         # Fit range should be adjusted to remove outliers at 0 and max DAC 150
 

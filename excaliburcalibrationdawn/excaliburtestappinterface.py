@@ -184,7 +184,7 @@ class ExcaliburTestAppInterface(object):
 
         return str(hex(mask_hex))
 
-    def _send_command(self, command, **cmd_kwargs):
+    def _send_command(self, command, loud_call=False, **cmd_kwargs):
         """Send a command line call and handle any subprocess.CallProcessError.
 
         Will catch any exception and log the error message. If successful, just
@@ -201,7 +201,7 @@ class ExcaliburTestAppInterface(object):
                       " ".join(command), str(cmd_kwargs))
 
         try:
-            if self.quiet:
+            if self.quiet and not loud_call:
                 subprocess.check_output(command, **cmd_kwargs)
             else:
                 subprocess.check_call(command, **cmd_kwargs)
@@ -295,7 +295,7 @@ class ExcaliburTestAppInterface(object):
             list(str): Full acquire command to send to subprocess call
 
         """
-        logging.debug("Sending acquire command")
+        logging.debug("Sending acquire command for chips %s", chips)
         # Check detector has been initialised correctly
         if self.dacs_loaded is None:
             raise ValueError("No DAC file loaded to FEM. Call setup().")
@@ -380,7 +380,7 @@ class ExcaliburTestAppInterface(object):
             dac_file(str): File to load DAC values from
 
         """
-        logging.debug("Sending sense command")
+        logging.debug("Sending sense command for chips %s", chips)
         # TODO: Check is command_2 'Requires DAC LOAD to take effect'?
         # Set up DAC for sensing
         command_1 = self._construct_command(chips,
@@ -433,7 +433,7 @@ class ExcaliburTestAppInterface(object):
         command = self._construct_command(chips,
                                           self.RESET,
                                           self.READ_EFUSE)
-        success = self._send_command(command, **cmd_kwargs)
+        success = self._send_command(command, loud_call=True, **cmd_kwargs)
         if success and not self.initialised:
             self.initialised = True
 
@@ -447,7 +447,7 @@ class ExcaliburTestAppInterface(object):
         logging.debug("Sending read slow command")
         command = self._construct_command(self.chip_range,
                                           self.READ_SLOW_PARAMS)
-        self._send_command(command, **cmd_kwargs)
+        self._send_command(command, loud_call=True, **cmd_kwargs)
 
     def load_dacs(self, chips, dac_file):
         """Read DAC values from the given file and set them on the given chips.
@@ -457,7 +457,7 @@ class ExcaliburTestAppInterface(object):
             dac_file(str): Path to file containing DAC values
 
         """
-        logging.debug("Sending load DACs command")
+        logging.debug("Sending load DACs command for chips %s", chips)
         command = self._construct_command(chips, self.DAC_FILE + dac_file)
         success = self._send_command(command)
         if success:
@@ -474,7 +474,8 @@ class ExcaliburTestAppInterface(object):
             config_files(dict): Config files for discL, discH and pixel mask
 
         """
-        logging.debug("Sending configure test pulse command")
+        logging.debug("Sending configure test pulse command for chips %s",
+                      chips)
         # TODO: Check if this really needs to be coupled to loading DACs
         extra_params = []
         if config_files is not None:
@@ -495,7 +496,7 @@ class ExcaliburTestAppInterface(object):
             tp_mask(str): Path to tp_mask file
 
         """
-        logging.debug("Sending load TP mask command")
+        logging.debug("Sending load TP mask command for chips %s", chips)
         command = self._construct_command(chips,
                                           self.CONFIG,
                                           self.TP_MASK + tp_mask)

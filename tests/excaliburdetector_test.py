@@ -122,6 +122,12 @@ class FunctionsTest(unittest.TestCase):
         for node in self.e.Nodes:
             node.read_chip_ids.assert_called_once_with()
 
+    def test_set_quiet(self):
+        self.e.set_quiet(True)
+
+        for node in self.e.Nodes:
+            node.set_quiet.assert_called_once_with(True)
+
     def test_monitor(self):
         self.e.monitor()
 

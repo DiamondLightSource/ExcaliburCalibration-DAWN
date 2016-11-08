@@ -152,6 +152,20 @@ class SetVoltageTest(unittest.TestCase):
         lv_mock.assert_called_once_with()
 
 
+class SimpleFunctionsTest(unittest.TestCase):
+
+    def setUp(self):
+        self.e = ExcaliburNode(1)
+        self.app_mock = MagicMock()
+        self.e.app = self.app_mock
+
+    def test_set_quiet(self):
+        self.e.set_quiet(True)
+        self.assertTrue(self.app_mock.quiet)
+        self.e.set_quiet(False)
+        self.assertFalse(self.app_mock.quiet)
+
+
 @patch(Node_patch_path + '.check_calib_dir')
 @patch(Node_patch_path + '.log_chip_ids')
 @patch(Node_patch_path + '.set_dacs')
@@ -295,11 +309,11 @@ class FindXrayEnergyDacTest(unittest.TestCase):
     mock_scan_range = Range(110, 30, 2)
 
     @patch(DAWN_patch_path + '.fit_dac_scan')
-    @patch(DAWN_patch_path + '.plot_dac_scan',
+    @patch(Node_patch_path + '.display_dac_scan',
            return_value=[MagicMock(), MagicMock()])
     @patch(Node_patch_path + '.scan_dac',
            return_value=mock_scan_data.copy())
-    def test_correct_calls_made(self, scan_mock, plot_mock, fit_mock,
+    def test_correct_calls_made(self, scan_mock, display_mock, fit_mock,
                                 load_mock):
         e = ExcaliburNode(1)
         chips = [0]
@@ -311,14 +325,14 @@ class FindXrayEnergyDacTest(unittest.TestCase):
         load_mock.assert_called_once_with(chips)
         scan_mock.assert_called_once_with(chips, "Threshold0", (110, 30, 2))
 
-        plot_mock.assert_called_once_with(chips, ANY, self.mock_scan_range)
+        display_mock.assert_called_once_with(chips, ANY, self.mock_scan_range)
         np.testing.assert_array_equal(expected_array,
-                                      plot_mock.call_args[0][1])
+                                      display_mock.call_args[0][1])
 
         fit_mock.assert_called_once_with(
-            [plot_mock.return_value[0].__getitem__.return_value],
-            plot_mock.return_value[1])
-        self.assertEqual(tuple(plot_mock.return_value), values)
+            [display_mock.return_value[0].__getitem__.return_value],
+            display_mock.return_value[1])
+        self.assertEqual(tuple(display_mock.return_value), values)
 
 
 class MaskRowBlockTest(unittest.TestCase):
@@ -576,9 +590,9 @@ class TestAppCallsTest(unittest.TestCase):
     @patch(ETAI_patch_path + '.sense')
     def test_read_dac(self, sense_mock):
         expected_file = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem1/spm/shgm/dacs'
-        chips = [0]
+        chips = range(8)
 
-        self.e.read_dac(chips, 'Threshold0')
+        self.e.read_dac('Threshold0')
 
         sense_mock.assert_called_once_with(chips, 'Threshold0', expected_file)
 
@@ -731,7 +745,7 @@ class Fe55ImageRX001Test(unittest.TestCase):
         expose_mock.assert_called_once_with(exposure_time)
 
 
-@patch(DAWN_patch_path + '.plot_dac_scan')
+@patch(Node_patch_path + '.display_dac_scan')
 @patch(DAWN_patch_path + '.load_image_data')
 @patch(util_patch_path + '.generate_file_name',
        return_value="20161020~154548_TestImage.hdf5")
@@ -748,7 +762,7 @@ class ScanDacTest(unittest.TestCase):
         self.e.file_index = 5
 
     def test_given_start_lower_than_stop(self, grab_mock, wait_mock, scan_mock,
-                                         gen_mock, load_mock, plot_mock):
+                                         gen_mock, load_mock, display_mock):
         self.e.scan_dac(self.chips, 'Threshold0', self.dac_range)
 
         gen_mock.assert_called_once_with("DACScan")
@@ -756,14 +770,17 @@ class ScanDacTest(unittest.TestCase):
                                           self.dac_range, self.dac_file,
                                           '/tmp', gen_mock.return_value)
         grab_mock.assert_not_called()
-        wait_mock.assert_called_once_with("/tmp/20161020~154548_TestImage.hdf5", 5)
-        load_mock.assert_called_once_with("/tmp/20161020~154548_TestImage.hdf5")
-        plot_mock.assert_called_once_with(self.chips, load_mock.return_value,
-                                          self.dac_range)
+        wait_mock.assert_called_once_with(
+            "/tmp/20161020~154548_TestImage.hdf5", 5)
+        load_mock.assert_called_once_with(
+            "/tmp/20161020~154548_TestImage.hdf5")
+        display_mock.assert_called_once_with(self.chips,
+                                             load_mock.return_value,
+                                             self.dac_range)
 
     def test_given_remote_node_then_grab_file(self, grab_mock, wait_mock,
                                               scan_mock, gen_mock,
-                                              load_mock, plot_mock):
+                                              load_mock, display_mock):
         self.e.remote_node = True
         self.e.scan_dac(self.chips, 'Threshold0', self.dac_range)
 
@@ -774,8 +791,28 @@ class ScanDacTest(unittest.TestCase):
         grab_mock.assert_called_once_with("/tmp/20161020~154548_TestImage.hdf5")
         wait_mock.assert_called_once_with(grab_mock.return_value, 5)
         load_mock.assert_called_once_with(grab_mock.return_value)
-        plot_mock.assert_called_once_with(self.chips, load_mock.return_value,
-                                          self.dac_range)
+        display_mock.assert_called_once_with(self.chips,
+                                             load_mock.return_value,
+                                             self.dac_range)
+
+
+class DisplayDacScanTest(unittest.TestCase):
+
+    @patch(DAWN_patch_path + '.plot_dac_scan')
+    def test_display_dac_scan_low_to_high(self, plot_mock):
+        e = ExcaliburNode(1)
+        chips = [0]
+        mock_array = np.random.randint(10, size=(10, 256, 8 * 256))
+        expected_plot_data = [mock_array[:, 0:256, 0:256].mean(2).mean(1)]
+        expected_dac_axis = range(1, 11)
+
+        plot_data, dac_axis = e.display_dac_scan(chips, mock_array,
+                                                 Range(1, 10, 1))
+
+        np.testing.assert_array_equal(expected_plot_data, plot_mock.call_args[0][0])
+        np.testing.assert_array_equal(dac_axis, plot_mock.call_args[0][1])
+        np.testing.assert_array_equal(expected_dac_axis, dac_axis)
+        np.testing.assert_array_equal(expected_plot_data, plot_data)
 
 
 class AcquireFFTest(unittest.TestCase):
@@ -1205,6 +1242,7 @@ class CombineROIsTest(unittest.TestCase):
         # TODO: Finish once sure what function should do
 
 
+@patch(DAWN_patch_path + '.plot_image')
 class FindTest(unittest.TestCase):  # TODO: Improve
 
     def setUp(self):
@@ -1216,52 +1254,50 @@ class FindTest(unittest.TestCase):  # TODO: Improve
     # TODO: Why do these get the same expected array?
 
     @patch(Node_patch_path + '._display_histogram')
-    def test_find_edge_low_to_high(self, display_mock):
+    def test_find_edge_low_to_high(self, display_mock, plot_mock):
         dac_scan_data = self.rand.randint(10, size=(3, 3, 3))
         dac_range = MagicMock(start=1, stop=10, step=1)
         expected_array = [[10, 9, 10], [10, 9, 8], [10, 10, 10]]
 
         value = self.e.find_edge([0], dac_scan_data, dac_range, 7)
 
-        display_mock.assert_called_once_with([0], ANY)
+        display_mock.assert_called_once_with([0], ANY, "Noise Edges Histogram")
         np.testing.assert_array_equal(expected_array, display_mock.call_args[0][1])
         np.testing.assert_array_equal(expected_array, value)
 
     @patch(Node_patch_path + '._display_histogram')
-    def test_find_edge_high_to_low(self, display_mock):
+    def test_find_edge_high_to_low(self, display_mock, plot_mock):
         dac_scan_data = self.rand.randint(10, size=(3, 3, 3))
         dac_range = MagicMock(start=10, stop=1, step=1)
         expected_array = [[10, 9, 10], [10, 9, 10], [10, 10, 10]]
 
         value = self.e.find_edge([0], dac_scan_data, dac_range, 7)
 
-        display_mock.assert_called_once_with([0], ANY)
+        display_mock.assert_called_once_with([0], ANY, "Noise Edges Histogram")
         np.testing.assert_array_equal(expected_array, display_mock.call_args[0][1])
         np.testing.assert_array_equal(expected_array, value)
 
     @patch(Node_patch_path + '._display_histogram')
-    def test_find_max(self, display_mock):
+    def test_find_max(self, display_mock, plot_mock):
         dac_scan_data = self.rand.randint(10, size=(3, 3, 3))
         dac_range = MagicMock(start=1, stop=10, step=1)
         expected_array = [[10, 9, 10], [10, 9, 8], [10, 10, 10]]
 
         value = self.e.find_max([0], dac_scan_data, dac_range)
 
-        display_mock.assert_called_once_with([0], ANY)
+        display_mock.assert_called_once_with([0], ANY, "Noise Max Histogram")
         np.testing.assert_array_equal(expected_array, display_mock.call_args[0][1])
         np.testing.assert_array_equal(expected_array, value)
 
     @patch(Node_patch_path + '._grab_chip_slice')
     @patch(DAWN_patch_path + '.plot_histogram')
-    @patch(DAWN_patch_path + '.plot_image')
-    def test_display_histogram(self, plot_mock, plot_histo_mock, grab_mock):
+    def test_display_histogram(self, plot_histo_mock, grab_mock, _):
         mock_array = MagicMock()
 
-        self.e._display_histogram([0], mock_array)
+        self.e._display_histogram([0], mock_array, "test")
 
-        np.testing.assert_array_equal(mock_array, plot_mock.call_args[0][0])
-        self.assertEqual(dict(name="noise edges"), plot_mock.call_args[1])
-        self.assertEqual([grab_mock.return_value], plot_histo_mock.call_args[0][0])
+        self.assertEqual([grab_mock.return_value],
+                         plot_histo_mock.call_args[0][0])
 
 
 class OptimizeDacDiscTest(unittest.TestCase):

@@ -319,7 +319,8 @@ class APICallsTest(unittest.TestCase):
         self.e.read_chip_ids()
 
         construct_mock.assert_called_once_with(self.chips, *expected_params)
-        send_cmd_mock.assert_called_once_with(construct_mock.return_value)
+        send_cmd_mock.assert_called_once_with(construct_mock.return_value,
+                                              loud_call=True)
 
     def test_read_chip_id_with_outfile(self, send_cmd_mock, construct_mock):
         expected_params = ['-r', '-e']
@@ -329,6 +330,7 @@ class APICallsTest(unittest.TestCase):
 
         construct_mock.assert_called_once_with(self.chips, *expected_params)
         send_cmd_mock.assert_called_once_with(construct_mock.return_value,
+                                              loud_call=True,
                                               stdout=mock_outfile)
 
     def test_read_slow_params(self, send_cmd_mock, construct_mock):
@@ -337,7 +339,8 @@ class APICallsTest(unittest.TestCase):
         self.e.read_slow_control_parameters()
 
         construct_mock.assert_called_once_with(self.chips, *expected_params)
-        send_cmd_mock.assert_called_once_with(construct_mock.return_value)
+        send_cmd_mock.assert_called_once_with(construct_mock.return_value,
+                                              loud_call=True)
 
     def test_load_dacs(self, send_cmd_mock, construct_mock):
         send_cmd_mock.return_value = True

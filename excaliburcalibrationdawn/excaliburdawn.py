@@ -120,24 +120,29 @@ class ExcaliburDAWN(object):
         a = np.zeros([8])
         x0 = np.zeros([8])
         sigma = np.zeros([8])
+
         self.clear_plot(plot_name)
         self.clear_plot(fit_plot_name)
-
-        for idx, chip_data in enumerate(scan_data):
+        for chip_idx, chip_data in enumerate(scan_data):
             if chip_data is not None:
                 bin_counts, bin_edges = np.histogram(chip_data, bins=bins)
     
-                self.plot.addline(bin_edges[0:-1], bin_counts, name=plot_name)
+                self.plot.addline(bin_edges[0:-1], bin_counts,
+                                  name=plot_name,
+                                  title="Chip {}".format(chip_idx))
                 popt, _ = curve_fit(self.gauss_function, bin_edges[0:-2],
                                     bin_counts[0:-1], p0)
     
-                a[idx] = popt[0]
-                x0[idx] = popt[1]
-                sigma[idx] = popt[2]
+                a[chip_idx] = popt[0]
+                x0[chip_idx] = popt[1]
+                sigma[chip_idx] = popt[2]
                 self.plot.addline(bin_edges[0:-1],
-                                  self.gauss_function(bin_edges[0:-1], a[idx],
-                                                      x0[idx], sigma[idx]),
-                                  name=fit_plot_name)
+                                  self.gauss_function(bin_edges[0:-1],
+                                                      a[chip_idx],
+                                                      x0[chip_idx],
+                                                      sigma[chip_idx]),
+                                  name=fit_plot_name,
+                                  title="Chip {}".format(chip_idx))
 
         return x0, sigma
 
@@ -149,8 +154,10 @@ class ExcaliburDAWN(object):
             name(str): Name of plot
 
         """
-        for chip_data in image_data:
-            self._add_histogram(chip_data, name=name)
+        self.clear_plot(name)
+        for chip_idx, chip_data in enumerate(image_data):
+            self._add_histogram(chip_data,
+                                name=name, title="Chip {}".format(chip_idx))
 
     def plot_histogram_with_mask(self, chips, image_data, mask,
                                  name="Histogram"):
@@ -162,13 +169,15 @@ class ExcaliburDAWN(object):
             name(str): Name of plot
 
         """
+        self.clear_plot(name)
         for chip_idx in chips:
             chip_mask = mask[0:256, chip_idx*256:(chip_idx + 1)*256]
             chip_data = image_data[0:256, chip_idx*256:(chip_idx + 1)*256]
             masked_data = chip_data[chip_mask.astype(bool)]
-            self._add_histogram(masked_data, name=name)
+            self._add_histogram(masked_data,
+                                name=name, title="Chip {}".format(chip_idx))
 
-    def _add_histogram(self, data, name, bins=10):
+    def _add_histogram(self, data, name, bins=10, title=None):
         """Add a histogram of data to the given plot name.
 
         Args:
@@ -178,7 +187,8 @@ class ExcaliburDAWN(object):
 
         """
         histogram = np.histogram(data, bins=bins)
-        self.add_plot_line(histogram[1][0:-1], histogram[0], name=name)
+        self.add_plot_line(histogram[1][0:-1], histogram[0],
+                           name=name, title=title)
 
     def fit_dac_scan(self, scan_data, dac_axis):
         """############## NOT TESTED"""
@@ -194,59 +204,31 @@ class ExcaliburDAWN(object):
 
         return dac_axis
 
-    def plot_dac_scan(self, chips, dac_scan_data, dac_range):
+    def plot_dac_scan(self, scan_data, dac_axis):
         """Plot the results of threshold dac scan.
 
-        Display in an integrated spectrum plot window (dac scan) and a
-        differential spectrum (spectrum)
+        Displays an integral plot (DAC Scan) and a differential plot
+        (DAC Scan Differential)
 
         Args:
-            chips(list(int)): Chips to plot for
-            dac_scan_data(numpy.array): Data from dac scan to plot
-            dac_range(Range): Scan range used for dac scan
+            scan_data(list(numpy.array)): Data from dac scan to plot
+            dac_axis(list(int)): X-axis data for plots
 
         Returns:
-            numpy.array, list: Averaged scan data, DAC values of scan
+            numpy.array: Averaged scan data
+
         """
         self.clear_plot("DAC Scan")
         self.clear_plot("Spectrum")
 
-        # TODO: Refactor to use Range() and grab*()
-        if dac_range[0] > dac_range[1]:
-            # TODO: Remove brackets if unnecessary
-            dac_axis = (np.array(range(dac_range[0],
-                                       dac_range[1] - dac_range[2],
-                                       -dac_range[2])))
-        else:
-            dac_axis = (np.array(range(dac_range[0],
-                                       dac_range[1] + dac_range[2],
-                                       dac_range[2])))
-
-        chip_dac_scan = np.zeros([8])
-        for chip in chips:
-            # TODO: Should this be reset every loop?
-            chip_dac_scan = np.zeros([8, dac_axis.size])
-
-            # Store mean chip for each dac scan value
-            chip_dac_scan[chip, :] = (dac_scan_data[:, 0:256,
-                                      chip*256:chip*256 + 256].mean(2).mean(1))
-
-            self.plot.addline(
-                np.array(dac_axis),
-                np.squeeze(dac_scan_data[:, 0:256,
-                           chip*256:chip*256 + 256].mean(2).mean(1)),
-                name="DAC Scan")
-
-            spectrum = -np.diff(
-                np.squeeze(dac_scan_data[:, 0:256,
-                           chip*256:chip*256 + 256].mean(2).mean(1)))
-
-            self.plot.addline(
-                np.array(range(dac_range[0], dac_range[1], dac_range[2]))[1:],
-                spectrum[1:],
-                name="Spectrum")
-
-        return chip_dac_scan, dac_axis
+        x_axis = np.array(dac_axis)
+        for chip_idx, chip_data in enumerate(scan_data):
+            self.plot.addline(x_axis, chip_data, name="DAC Scan",
+                              title="Chip {}".format(chip_idx))
+            spectrum = -np.diff(chip_data)
+            self.plot.addline(x_axis[1:-1], spectrum[1:],
+                              name="DAC Scan Differential",
+                              title="Chip {}".format(chip_idx))
 
     def show_pixel(self, dac_scan_data, dac_range, pixel):
         """Plot dac scan for an individual pixel.

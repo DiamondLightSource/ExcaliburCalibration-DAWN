@@ -84,6 +84,16 @@ class ExcaliburDetector(object):
         """
         self.MasterNode.set_hv_bias(hv_bias)
 
+    def set_quiet(self, state):
+        """Set the quiet state for each node to given state.
+
+        Args:
+            state(bool): True or False for whether terminal output silenced
+
+        """
+        for node in self.Nodes:
+            node.set_quiet(state)
+
     def display_status(self):
         """Display status of node."""
         for node in self.Nodes:

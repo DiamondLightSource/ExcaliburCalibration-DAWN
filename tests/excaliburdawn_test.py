@@ -45,35 +45,40 @@ class SimpleMethodsTest(unittest.TestCase):
         plot_mock.assert_called_once_with(mock_data,
                                           name="Test Plot")
 
+    @patch(DAWN_patch_path + '.clear_plot')
     @patch('scisoftpy.plot.addline')
     @patch('numpy.histogram')
-    def test_plot_histogram(self, histo_mock, addline_mock):
+    def test_plot_histogram(self, histo_mock, addline_mock, clear_mock):
         mock_data = [np.random.randint(10, size=[256, 256])]
 
         self.e.plot_histogram(mock_data, name="Test Histogram")
 
+        clear_mock.assert_called_once_with("Test Histogram")
         np.testing.assert_array_equal(mock_data[0],
                                       histo_mock.call_args[0][0])
         addline_mock.assert_called_once_with(histo_mock.return_value[1][0:-1],
                                              histo_mock.return_value[0],
                                              name="Test Histogram",
-                                             title=None)
+                                             title="Chip 0")
 
+    @patch(DAWN_patch_path + '.clear_plot')
     @patch('scisoftpy.plot.addline')
     @patch('numpy.histogram')
-    def test_plot_histogram_with_mask(self, histo_mock, addline_mock):
+    def test_plot_histogram_with_mask(self, histo_mock, addline_mock,
+                                      clear_mock):
         mock_data = np.random.randint(10, size=[256, 256])
         mock_mask = np.ones(shape=[256, 256], dtype=int)
 
         self.e.plot_histogram_with_mask([0], mock_data, mock_mask,
                                         name="Test Histogram")
 
+        clear_mock.assert_called_once_with("Test Histogram")
         np.testing.assert_array_equal(mock_data[mock_mask.astype(bool)],
                                       histo_mock.call_args[0][0])
         addline_mock.assert_called_once_with(histo_mock.return_value[1][0:-1],
                                              histo_mock.return_value[0],
                                              name="Test Histogram",
-                                             title=None)
+                                             title="Chip 0")
 
     @patch('scisoftpy.io.load')
     def test_load_image(self, load_mock):
@@ -220,7 +225,8 @@ class PlotGaussianFitTest(unittest.TestCase):
         self.assertEqual((histo_mock.return_value[1][0:-1],
                           histo_mock.return_value[0]),
                          addline_mock.call_args_list[0][0])
-        self.assertEqual(dict(name="Test"), addline_mock.call_args_list[0][1])
+        self.assertEqual(dict(name="Test", title="Chip 0"),
+                         addline_mock.call_args_list[0][1])
         # Check fit calls
         curve_fit.assert_called_once_with(gauss_mock,
                                           histo_mock.return_value[1][0:-2],
@@ -234,52 +240,37 @@ class PlotGaussianFitTest(unittest.TestCase):
         self.assertEqual((histo_mock.return_value[1][0:-1],
                           gauss_mock.return_value),
                          addline_mock.call_args_list[1][0])
-        self.assertEqual(dict(name="Test (fitted)"), addline_mock.call_args_list[1][1])
+        self.assertEqual(dict(name="Test (fitted)", title="Chip 0"),
+                         addline_mock.call_args_list[1][1])
 
 
 @patch('numpy.diff')
-@patch('numpy.squeeze')
 @patch('scisoftpy.plot.addline')
 @patch(DAWN_patch_path + '.clear_plot')
 class PlotDacScanTest(unittest.TestCase):
 
-    def test_given_start_lower_than_stop(self, clear_mock, addline_mock,
-                                         squeeze_mock, diff_mock):
+    def test_correct_calls_made(self, clear_mock, addline_mock, diff_mock):
         e = ExcaliburDAWN()
-        chips = [0]
-        dac_range = [1, 10, 1]
-        expected_range = range(1, 11, 1)
-        expected_subrange = range(1, 10, 1)[1:]
-        dac_scan_data = np.random.randint(10, size=(10, 256, 8*256))
-        expected_mean = dac_scan_data[:, 0:256, 0:256].mean(2).mean(1)
+        dac_axis = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        dac_scan_data = [np.random.randint(10, size=(256, 8*256))]
 
-        scan, axis = e.plot_dac_scan(chips, dac_scan_data, dac_range)
+        e.plot_dac_scan(dac_scan_data, dac_axis)
 
         # Check clear calls
         self.assertEqual("DAC Scan", clear_mock.call_args_list[0][0][0])
         self.assertEqual("Spectrum", clear_mock.call_args_list[1][0][0])
         # Check first addline call
-        np.testing.assert_array_equal(expected_range, addline_mock.call_args_list[0][0][0])
-        np.testing.assert_array_equal(expected_mean, squeeze_mock.call_args_list[0][0][0])
-        self.assertEqual(squeeze_mock.return_value, addline_mock.call_args_list[0][0][1])
-        self.assertEqual(dict(name="DAC Scan"), addline_mock.call_args_list[0][1])
+        np.testing.assert_array_equal(dac_axis,
+                                      addline_mock.call_args_list[0][0][0])
+        self.assertEqual(dict(name="DAC Scan", title="Chip 0"),
+                         addline_mock.call_args_list[0][1])
         # Check diff call
-        diff_mock.assert_called_once_with(squeeze_mock.return_value)
+        np.testing.assert_array_equal(dac_scan_data[0],
+                                      diff_mock.call_args[0][0])
         # Check second addline call
-        np.testing.assert_array_equal(expected_subrange, addline_mock.call_args_list[1][0][0])
-        np.testing.assert_array_equal(expected_mean, squeeze_mock.call_args_list[1][0][0])
-        self.assertEqual(diff_mock.return_value.__neg__.return_value[1:], addline_mock.call_args_list[1][0][1])
-        self.assertEqual(dict(name="Spectrum"), addline_mock.call_args_list[1][1])
-        np.testing.assert_array_equal(expected_range, axis)
-
-    def test_given_start_higher_than_stop(self, clear_mock, addline_mock,
-                                          squeeze_mock, diff_mock):
-        e = ExcaliburDAWN()
-        chips = [0]
-        dac_range = [10, 1, 1]
-        expected_range = range(10, 0, -1)
-        dac_scan_data = np.random.randint(10, size=(10, 256, 8*256))
-
-        scan, axis = e.plot_dac_scan(chips, dac_scan_data, dac_range)
-
-        np.testing.assert_array_equal(expected_range, axis)
+        np.testing.assert_array_equal(dac_axis[1:-1],
+                                      addline_mock.call_args_list[1][0][0])
+        self.assertEqual(diff_mock.return_value.__neg__.return_value[1:],
+                         addline_mock.call_args_list[1][0][1])
+        self.assertEqual(dict(name="Spectrum", title="Chip 0"),
+                         addline_mock.call_args_list[1][1])
