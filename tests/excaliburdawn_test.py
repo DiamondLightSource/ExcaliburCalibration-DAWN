@@ -46,7 +46,7 @@ class SimpleMethodsTest(unittest.TestCase):
                                           name="Test Plot")
 
     @patch(DAWN_patch_path + '.clear_plot')
-    @patch('scisoftpy.plot.addline')
+    @patch(DAWN_patch_path + '.add_plot_line')
     @patch('numpy.histogram')
     def test_plot_histogram(self, histo_mock, addline_mock, clear_mock):
         mock_data = [np.random.randint(10, size=[256, 256])]
@@ -55,14 +55,15 @@ class SimpleMethodsTest(unittest.TestCase):
 
         clear_mock.assert_called_once_with("Test Histogram")
         np.testing.assert_array_equal(mock_data[0],
-                                      histo_mock.call_args[0][0])
+                                      histo_mock.call_args[0][0],
+                                      "Test Histogram")
         addline_mock.assert_called_once_with(histo_mock.return_value[1][0:-1],
                                              histo_mock.return_value[0],
-                                             name="Test Histogram",
-                                             title="Chip 0")
+                                             "Test Histogram",
+                                             "Chip 0")
 
     @patch(DAWN_patch_path + '.clear_plot')
-    @patch('scisoftpy.plot.addline')
+    @patch(DAWN_patch_path + '.add_plot_line')
     @patch('numpy.histogram')
     def test_plot_histogram_with_mask(self, histo_mock, addline_mock,
                                       clear_mock):
@@ -77,8 +78,8 @@ class SimpleMethodsTest(unittest.TestCase):
                                       histo_mock.call_args[0][0])
         addline_mock.assert_called_once_with(histo_mock.return_value[1][0:-1],
                                              histo_mock.return_value[0],
-                                             name="Test Histogram",
-                                             title="Chip 0")
+                                             "Test Histogram",
+                                             "Chip 0")
 
     @patch('scisoftpy.io.load')
     def test_load_image(self, load_mock):
@@ -109,22 +110,23 @@ class SimpleMethodsTest(unittest.TestCase):
         y = MagicMock()
         name = "Test"
 
-        self.e.add_plot_line(x, y, name)
+        self.e.add_plot_line(x, y, name, "Chip 0")
 
-        add_mock.assert_called_once_with(x, y, name=name, title=None)
+        add_mock.assert_called_once_with(x, [(y, "Chip 0")],
+                                         name="Test", title="Test")
 
-    @patch('scisoftpy.plot.addline')
+    @patch(DAWN_patch_path + '.add_plot_line')
     @patch('numpy.histogram')
     def test_add_histogram(self, histo_mock, add_mock):
         x = MagicMock()
         name = "Test"
 
-        self.e._add_histogram(x, name, 5)
+        self.e._add_histogram(x, name, "Chip 0", 5)
 
         histo_mock.assert_called_once_with(x, bins=5)
         add_mock.assert_called_once_with(histo_mock.return_value[1][0:-1],
                                          histo_mock.return_value[0],
-                                         name=name, title=None)
+                                         name, "Chip 0")
 
 
 @patch('scisoftpy.plot.addline')
@@ -174,41 +176,43 @@ class FitDacScanTest(unittest.TestCase):
 @patch(DAWN_patch_path + '.lin_function')
 @patch('excaliburcalibrationdawn.excaliburdawn.curve_fit',
        return_value=[[1, 2, 3], None])
-@patch('scisoftpy.plot.addline')
+@patch(DAWN_patch_path + '.add_plot_line')
 @patch(DAWN_patch_path + '.clear_plot')
 class PlotLinearFitTest(unittest.TestCase):
 
-    def test_correct_calls_made(self, clear_mock, addline_mock, curve_fit,
+    def test_correct_calls_made(self, clear_mock, add_mock, curve_fit,
                                 lin_mock):
         e = ExcaliburDAWN()
         x = MagicMock()
         y = MagicMock()
 
-        e.plot_linear_fit(x, y, [0, 1], name="Test", fit_name="Test fits")
+        e.plot_linear_fit(x, y, [0, 1], "Chip 0",
+                          name="Test", fit_name="Test fits")
 
         # Check clear calls
         self.assertEqual("Test", clear_mock.call_args_list[0][0][0])
         self.assertEqual("Test fits", clear_mock.call_args_list[1][0][0])
         # Check first addline call
-        self.assertEqual((x, y), addline_mock.call_args_list[0][0])
-        self.assertEqual(dict(name="Test", title=None), addline_mock.call_args_list[0][1])
+        self.assertEqual((x, y, "Test", "Chip 0"),
+                         add_mock.call_args_list[0][0])
         # Check fit calls
         curve_fit.assert_called_once_with(lin_mock, x, y, [0, 1])
-        lin_mock.assert_called_once_with(x, curve_fit.return_value[0][0], curve_fit.return_value[0][1])
+        lin_mock.assert_called_once_with(x, curve_fit.return_value[0][0],
+                                         curve_fit.return_value[0][1])
         # Check second addline call
-        self.assertEqual((x, lin_mock.return_value), addline_mock.call_args_list[1][0])
-        self.assertEqual(dict(name="Test fits", title=None), addline_mock.call_args_list[1][1])
+        self.assertEqual((x, lin_mock.return_value, "Test fits", "Chip 0"),
+                         add_mock.call_args_list[1][0])
 
 
 @patch('numpy.histogram', return_value=[MagicMock(), MagicMock()])
 @patch(DAWN_patch_path + '.gauss_function')
 @patch('excaliburcalibrationdawn.excaliburdawn.curve_fit',
        return_value=[[1, 2, 3], None])
-@patch('scisoftpy.plot.addline')
+@patch(DAWN_patch_path + '.add_plot_line')
 @patch(DAWN_patch_path + '.clear_plot')
 class PlotGaussianFitTest(unittest.TestCase):
 
-    def test_correct_calls_made(self, clear_mock, addline_mock, curve_fit,
+    def test_correct_calls_made(self, clear_mock, add_mock, curve_fit,
                                 gauss_mock, histo_mock):
         e = ExcaliburDAWN()
         x1 = MagicMock()
@@ -223,10 +227,10 @@ class PlotGaussianFitTest(unittest.TestCase):
         histo_mock.assert_called_once_with(x1, bins=bins)
         # Check first addline call
         self.assertEqual((histo_mock.return_value[1][0:-1],
-                          histo_mock.return_value[0]),
-                         addline_mock.call_args_list[0][0])
-        self.assertEqual(dict(name="Test", title="Chip 0"),
-                         addline_mock.call_args_list[0][1])
+                          histo_mock.return_value[0], "Test"),
+                         add_mock.call_args_list[0][0])
+        self.assertEqual(dict(label="Chip 0"),
+                         add_mock.call_args_list[0][1])
         # Check fit calls
         curve_fit.assert_called_once_with(gauss_mock,
                                           histo_mock.return_value[1][0:-2],
@@ -238,14 +242,15 @@ class PlotGaussianFitTest(unittest.TestCase):
                                            curve_fit.return_value[0][2])
         # Check second addline call
         self.assertEqual((histo_mock.return_value[1][0:-1],
-                          gauss_mock.return_value),
-                         addline_mock.call_args_list[1][0])
-        self.assertEqual(dict(name="Test (fitted)", title="Chip 0"),
-                         addline_mock.call_args_list[1][1])
+                          gauss_mock.return_value,
+                          "Test (fitted)"),
+                         add_mock.call_args_list[1][0])
+        self.assertEqual(dict(label="Chip 0"),
+                         add_mock.call_args_list[1][1])
 
 
 @patch('numpy.diff')
-@patch('scisoftpy.plot.addline')
+@patch(DAWN_patch_path + '.add_plot_line')
 @patch(DAWN_patch_path + '.clear_plot')
 class PlotDacScanTest(unittest.TestCase):
 
@@ -263,7 +268,7 @@ class PlotDacScanTest(unittest.TestCase):
         # Check first addline call
         np.testing.assert_array_equal(dac_axis,
                                       addline_mock.call_args_list[0][0][0])
-        self.assertEqual(dict(name="DAC Scan", title="Chip 0"),
+        self.assertEqual(dict(label="Chip 0"),
                          addline_mock.call_args_list[0][1])
         # Check diff call
         np.testing.assert_array_equal(dac_scan_data[0],
@@ -273,5 +278,5 @@ class PlotDacScanTest(unittest.TestCase):
                                       addline_mock.call_args_list[1][0][0])
         self.assertEqual(diff_mock.return_value.__neg__.return_value[1:],
                          addline_mock.call_args_list[1][0][1])
-        self.assertEqual(dict(name="DAC Scan Differential", title="Chip 0"),
+        self.assertEqual(dict(label="Chip 0"),
                          addline_mock.call_args_list[1][1])

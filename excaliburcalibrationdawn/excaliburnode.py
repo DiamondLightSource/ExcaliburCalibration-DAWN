@@ -214,17 +214,17 @@ class ExcaliburNode(object):
         self.set_dacs(chips)
         self.set_gnd_fbk_cas_excalibur_rx001(chips, self.fem)
 
-        self.calibrate_disc(chips, 'discL')
+        self.calibrate_disc_l(chips)
 
         # NOTE: Always equalize DiscL before DiscH since Threshold1 is set at 0
         # when equalizing DiscL. So if DiscH was equalized first, this would
         # induce noisy counts interfering with DiscL equalization
 
-        # self.calibrate_disc(chips, 'discH', 1, 'rect')
+        # self._calibrate_disc(chips, 'discH', 1, 'rect')
         # self.settings['mode'] = 'csm'
         # self.settings['gain'] = 'slgm'
-        # self.calibrate_disc(chips, 'discL', 1, 'rect')
-        # self.calibrate_disc(chips, 'discH', 1, 'rect')
+        # self._calibrate_disc(chips, 'discL', 1, 'rect')
+        # self._calibrate_disc(chips, 'discH', 1, 'rect')
 
         # EG (13/06/2016) creates mask for horizontal noise
         # badPixels = self.mask_row_block(range(4), 256-20, 256)
@@ -474,7 +474,6 @@ class ExcaliburNode(object):
 
         offset = np.zeros(8)
         gain = np.zeros(8)
-        clear = True
 
         for chip in chips:
             x = np.array([E1_E, E2_E, E3_E])
@@ -483,11 +482,10 @@ class ExcaliburNode(object):
                           E3_Dac[self.fem - 1, chip]])
 
             p1, p2 = self.dawn.plot_linear_fit(x, y, [0, 1],
-                                               name="DAC vs Energy")
+                                               name="DAC vs Energy",
+                                               label="Chip {}".format(chip))
             offset[chip] = p1
             gain[chip] = p2
-
-            clear = False  # Only clear plot the first time
 
         self.save_kev2dac_calib(threshold, gain, offset)
 
@@ -879,7 +877,7 @@ class ExcaliburNode(object):
         ff_coeff = ff_coeff/ff_image
 
         self.dawn.plot_image(self._grab_chip_slice(ff_image, chip),
-                             name='Flat Field coefficients')
+                             name="Flat Field coefficients")
 
         # Set any elements outside range 0-2 to 1 TODO: Why?
         ff_coeff[ff_coeff > 2] = 1
@@ -909,7 +907,7 @@ class ExcaliburNode(object):
             ff[ff > 3000] = 0
             chip = 3
             self.dawn.plot_image(self._grab_chip_slice(ff, chip),
-                                 name='Image data Cor')
+                                 name="Image data Cor")
 
     def logo_test(self):
         """Test the detector using test pulses representing excalibur logo."""
@@ -1024,7 +1022,7 @@ class ExcaliburNode(object):
         self.app.load_config([chip],
                              self.discL_bits[chip], pixelmask=pixel_mask_file)
 
-        self.dawn.plot_image(bad_pixels, name='Bad Pixels')
+        self.dawn.plot_image(bad_pixels, name="Bad Pixels")
 
     def mask_col(self, chip, column):
         """Mask a column in a chip and update the maskfile.
@@ -1044,7 +1042,7 @@ class ExcaliburNode(object):
         self.app.load_config([chip],
                              self.discL_bits[chip], pixelmask=pixel_mask_file)
 
-        self.dawn.plot_image(bad_pixels, name='Bad pixels')
+        self.dawn.plot_image(bad_pixels, name="Bad pixels")
 
     def mask_pixels(self, chips, image_data, max_counts):
         """Mask pixels in image_data with counts above max_counts.
@@ -1059,7 +1057,7 @@ class ExcaliburNode(object):
         """
         bad_pix_tot = np.zeros(8)
         bad_pixels = image_data > max_counts
-        self.dawn.plot_image(bad_pixels, name='Bad pixels')
+        self.dawn.plot_image(bad_pixels, name="Bad pixels")
         for chip_idx in chips:
             bad_pix_tot[chip_idx] = \
                 self._grab_chip_slice(bad_pixels, chip_idx).sum()
@@ -1098,7 +1096,7 @@ class ExcaliburNode(object):
         self.settings['exposure'] = 100
         dac_scan_data = self.scan_dac(chips, threshold, dac_range)
         bad_pixels = dac_scan_data.sum(0) > max_counts
-        self.dawn.plot_image(bad_pixels, name='Bad Pixels')
+        self.dawn.plot_image(bad_pixels, name="Bad Pixels")
 
         for chip_idx in chips:
             bad_pix_tot[chip_idx] = \
@@ -1261,10 +1259,10 @@ class ExcaliburNode(object):
             discbits[roi_full_mask.astype(bool)] = \
                 discbits_roi[roi_full_mask.astype(bool)]
             # TODO: Should this be +=? Currently just uses final ROI
-            self.dawn.plot_image(discbits_roi, name='Disc bits')
+            self.dawn.plot_image(discbits_roi, name="Disc bits")
 
-        self.save_discbits(chips, discbits, disc_name + 'bits')
-        self.dawn.plot_image(discbits, name='Disc bits total')
+        self.save_discbits(chips, discbits, disc_name + "bits")
+        self.dawn.plot_image(discbits, name="Disc bits total")
 
         return discbits
 
@@ -1329,37 +1327,13 @@ class ExcaliburNode(object):
             image_data.append(self._grab_chip_slice(data, chip_idx))
         self.dawn.plot_histogram(image_data, name)
 
-    def optimize_disc_l(self, chips, roi_full_mask):
-        """Optimize discriminator L for the given chips.
-
-        Args:
-            chips(list(int)): Chips to optimize
-            roi_full_mask(numpy.array): Mask to apply during process
-
-        """
-        self.set_dac(chips, "Threshold1", 0)
-        self.settings['disccsmspm'] = "discL"
-        self._optimize_dac_disc(chips, "discL", roi_full_mask)
-
-    def optimize_disc_h(self, chips, roi_full_mask):
-        """Optimize discriminator H for the given chips.
-
-        Args:
-            chips(list(int)): Chips to optimize
-            roi_full_mask(numpy.array): Mask to apply during process
-
-        """
-        self.set_dac(chips, "Threshold0", 60)  # To be above the noise
-        self.settings['disccsmspm'] = "discH"
-        self._optimize_dac_disc(chips, "discH", roi_full_mask)
-
-    def _optimize_dac_disc(self, chips, disc_name, roi_full_mask):
+    def _optimize_dac_disc(self, chips, disc_name, roi_mask):
         """Calculate optimum DAC disc values for given chips.
 
         Args:
             chips(list(int)): Chips to optimize
             disc_name(str): Discriminator to optimize (discL or discH)
-            roi_full_mask(numpy.array): Mask to exclude pixels from
+            roi_mask(numpy.array): Mask to exclude pixels from
                 optimization calculation
 
         Returns:
@@ -1393,7 +1367,7 @@ class ExcaliburNode(object):
 
         # Set discbits at 0
         discbits = discbit * np.ones(self.full_array_shape)
-        self.load_all_discbits(chips, disc_name, discbits, roi_full_mask)
+        self.load_all_discbits(chips, disc_name, discbits, roi_mask)
 
         # Threshold DAC scans, fitting and plotting
         p0 = [5000, 50, 30]
@@ -1408,16 +1382,17 @@ class ExcaliburNode(object):
                 # TODO: idx:(idx+1), not 0:idx+1; why doesn't it plot at end?
                 self.dawn.add_plot_line(np.asarray(dac_disc_range[0:idx + 1]),
                                         x0[chip_idx, 0:idx + 1],
-                                        name=calib_plot_name,
-                                        title="Chip {}".format(chip_idx))
+                                        calib_plot_name,
+                                        label="Chip {}".format(chip_idx))
 
         # Plot mean noise edge vs DAC Disc for discbits set at 0
         offset = np.zeros(8)
         gain = np.zeros(8)
         for chip_idx in chips:
-            results = self.dawn.plot_linear_fit(np.asarray(dac_disc_range),
-                                                x0[chip_idx, :], [0, -1],
-                                                fit_name=calib_plot_name)
+            results = self.dawn.plot_linear_fit(
+                np.asarray(dac_disc_range), x0[chip_idx, :], [0, -1],
+                fit_name=calib_plot_name, label="Chip {}".format(chip_idx))
+
             offset[chip_idx], gain[chip_idx] = results[0], results[1]
 
         # Fit range should be adjusted to remove outliers at 0 and max DAC 150
@@ -1428,17 +1403,15 @@ class ExcaliburNode(object):
         # Fit threshold scan and calculate width of noise edge distribution
         ######################################################################
 
-        discbit = 15
+        discbit = 15  # Centre of valid range - No correction
         dac_value = 80  # Value does not matter since no correction is applied
-        # when discbits = 15
 
-        # Set discbits at 15
         discbits = discbit * np.ones(self.full_array_shape)
-        self.load_all_discbits(chips, disc_name, discbits, roi_full_mask)
+        self.load_all_discbits(chips, disc_name, discbits, roi_mask)
 
         p0 = [5000, 0, 30]
-        x0, sigma = self._chip_dac_scan(chips, threshold, dac_value,
-                                        dac_range, discbit, p0)
+        x0, sigma = self._chip_dac_scan(chips, threshold, dac_value, dac_range,
+                                        discbit, p0)
 
         opt_dac_disc = np.zeros(self.num_chips)
         for chip_idx in chips:
@@ -1553,40 +1526,6 @@ class ExcaliburNode(object):
         for chip in chips:
             print("Chip {chip}: {shift}".format(
                 chip=chip, shift=opt_dac_disc[chip] / 16))
-
-    def equalize_disc_l(self, chips, roi_full_mask, method="stripes"):
-        """Equalize discriminator L for the given chips.
-
-        Args:
-            chips(list(int)): Chips to equalize
-            roi_full_mask(numpy.array): Mask to use during process
-            method(str): Equalization method to use (stripes)
-
-        Returns:
-            numpy.array: Equalised discriminator bits
-
-        """
-        self.set_dac(chips, "Threshold1", 0)
-        self.settings['disccsmspm'] = "discL"
-        self._equalise_discbits(chips, "discL", "Threshold0", roi_full_mask,
-                                method)
-
-    def equalize_disc_h(self, chips, roi_full_mask, method="stripes"):
-        """Equalize discriminator H for the given chips.
-
-        Args:
-            chips(list(int)): Chips to equalize
-            roi_full_mask(numpy.array): Mask to use during process
-            method(str): Equalization method to use (stripes)
-
-        Returns:
-            numpy.array: Equalised discriminator bits
-
-        """
-        self.set_dac(chips, "Threshold0", 60)
-        self.settings['disccsmspm'] = "discH"
-        self._equalise_discbits(chips, "discH", "Threshold1", roi_full_mask,
-                                method)
 
     def _equalise_discbits(self, chips, disc_name, threshold, roi_full_mask,
                            method):
@@ -1776,7 +1715,29 @@ class ExcaliburNode(object):
 
         return roi_full_mask
 
-    def calibrate_disc(self, chips, disc_name, steps=1, roi_type='rect'):
+    def calibrate_disc_l(self, chips):
+        """Calibrate discriminator L for the given chips.
+
+        Args:
+            chips(list(int)): Chips to calibrate
+
+        """
+        self.set_dac(chips, "Threshold1", 0)
+        self.settings['disccsmspm'] = "discL"
+        self._calibrate_disc(chips, "discL")
+
+    def calibrate_disc_h(self, chips):
+        """Calibrate discriminator H for the given chips.
+
+        Args:
+            chips(list(int)): Chips to calibrate
+
+        """
+        self.set_dac(chips, "Threshold0", 60)  # To be above the noise
+        self.settings['disccsmspm'] = "discH"
+        self._calibrate_disc(chips, "discH")
+
+    def _calibrate_disc(self, chips, disc_name, steps=1, roi_type='rect'):
         """Calibrate given discriminator for given chips.
 
         Args:
@@ -1789,8 +1750,8 @@ class ExcaliburNode(object):
         thresholds = dict(discL="Threshold0", discH="Threshold1")
         threshold = thresholds[disc_name]
 
-        self._optimize_dac_disc(chips, disc_name,
-                                roi_full_mask=1 - self.roi(chips, 0, 1, 'rect'))
+        roi_mask = 1 - self.roi(chips, 0, 1, 'rect')
+        self._optimize_dac_disc(chips, disc_name, roi_mask)
 
         # Run threshold_equalization over each roi
         for step in range(steps):

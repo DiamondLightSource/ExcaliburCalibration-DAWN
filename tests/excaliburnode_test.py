@@ -170,7 +170,7 @@ class SimpleFunctionsTest(unittest.TestCase):
 @patch(Node_patch_path + '.log_chip_ids')
 @patch(Node_patch_path + '.set_dacs')
 @patch(Node_patch_path + '.set_gnd_fbk_cas_excalibur_rx001')
-@patch(Node_patch_path + '.calibrate_disc')
+@patch(Node_patch_path + '._calibrate_disc')
 class ThresholdEqualizationTest(unittest.TestCase):
 
     def test_correct_calls_made(self, cal_disc_mock, set_gnd_mock,
@@ -272,7 +272,8 @@ class ThresholdCalibrationTest(unittest.TestCase):
         self.e.settings['gain'] = 'slgm'
         self.e.multiple_energy_thresh_calib([0])
 
-        plot_mock.assert_called_once_with(ANY, ANY, [0, 1], name='DAC vs Energy')
+        plot_mock.assert_called_once_with(ANY, ANY, [0, 1],
+                                          label="Chip 0", name='DAC vs Energy')
         np.testing.assert_array_equal(expected_array_1, plot_mock.call_args[0][0])
         np.testing.assert_array_equal(expected_array_2, plot_mock.call_args[0][1])
 
@@ -1307,30 +1308,6 @@ class OptimizeDacDiscTest(unittest.TestCase):
     def setUp(self):
         self.e = ExcaliburNode(1)
 
-    @patch(Node_patch_path + '.set_dac')
-    @patch(Node_patch_path + '._optimize_dac_disc')
-    def test_optimize_disc_l(self, optimize_mock, set_mock):
-        chips = [0]
-        roi_mock = np.ones([256, 8*256])
-
-        self.e.optimize_disc_l(chips, roi_mock)
-
-        set_mock.assert_called_once_with(chips, "Threshold1", 0)
-        self.assertEqual('discL', self.e.settings['disccsmspm'])
-        optimize_mock.assert_called_once_with(chips, "discL", roi_mock)
-
-    @patch(Node_patch_path + '.set_dac')
-    @patch(Node_patch_path + '._optimize_dac_disc')
-    def test_optimize_disc_h(self, optimize_mock, set_mock):
-        chips = [0]
-        roi_mock = np.ones([256, 8*256])
-
-        self.e.optimize_disc_h(chips, roi_mock)
-
-        set_mock.assert_called_once_with(chips, "Threshold0", 60)
-        self.assertEqual('discH', self.e.settings['disccsmspm'])
-        optimize_mock.assert_called_once_with(chips, "discH", roi_mock)
-
     @patch(Node_patch_path + '._display_optimization_results')
     @patch(Node_patch_path + '.set_dac')
     @patch(DAWN_patch_path + '.clear_plot')
@@ -1388,26 +1365,6 @@ class EqualizeDiscbitsTest(unittest.TestCase):
         self.e.chip_size = 4
         self.e.num_chips = 4
         self.e.full_array_shape = [4, 16]
-
-    @patch(Node_patch_path + '._equalise_discbits')
-    @patch(Node_patch_path + '.set_dac')
-    def test_equalize_disc_l(self, set_mock, equalise_mock):
-        roi = MagicMock()
-        self.e.equalize_disc_l([0], roi, "Method")
-
-        set_mock.assert_called_once_with([0], "Threshold1", 0)
-        equalise_mock.assert_called_once_with([0], "discL", "Threshold0", roi, "Method")
-        self.assertEqual("discL", self.e.settings['disccsmspm'])
-
-    @patch(Node_patch_path + '._equalise_discbits')
-    @patch(Node_patch_path + '.set_dac')
-    def test_equalize_disc_h(self, set_mock, equalise_mock):
-        roi = MagicMock()
-        self.e.equalize_disc_h([0], roi, "Method")
-
-        set_mock.assert_called_once_with([0], "Threshold0", 60)
-        equalise_mock.assert_called_once_with([0], "discH", "Threshold1", roi, "Method")
-        self.assertEqual("discH", self.e.settings['disccsmspm'])
 
     @patch(Node_patch_path + '.load_config')
     @patch(DAWN_patch_path + '.plot_histogram_with_mask')
@@ -1507,6 +1464,31 @@ class ROITest(unittest.TestCase):
 
 class CalibrateDiscTest(unittest.TestCase):
 
+    def setUp(self):
+        self.e = ExcaliburNode(1)
+
+    @patch(Node_patch_path + '.set_dac')
+    @patch(Node_patch_path + '._calibrate_disc')
+    def test_optimize_disc_l(self, calibrate_mock, set_mock):
+        chips = [0]
+
+        self.e.calibrate_disc_l(chips)
+
+        set_mock.assert_called_once_with(chips, "Threshold1", 0)
+        self.assertEqual('discL', self.e.settings['disccsmspm'])
+        calibrate_mock.assert_called_once_with(chips, "discL")
+
+    @patch(Node_patch_path + '.set_dac')
+    @patch(Node_patch_path + '._calibrate_disc')
+    def test_optimize_disc_h(self, calibrate_mock, set_mock):
+        chips = [0]
+
+        self.e.calibrate_disc_h(chips)
+
+        set_mock.assert_called_once_with(chips, "Threshold0", 60)
+        self.assertEqual('discH', self.e.settings['disccsmspm'])
+        calibrate_mock.assert_called_once_with(chips, "discH")
+
     @patch(Node_patch_path + '._optimize_dac_disc')
     @patch(Node_patch_path + '.roi')
     @patch(Node_patch_path + '._equalise_discbits')
@@ -1516,12 +1498,11 @@ class CalibrateDiscTest(unittest.TestCase):
     @patch(Node_patch_path + '.copy_slgm_into_other_gain_modes')
     def test_correct_calls_made(self, copy_mock, load_mock, combine_rois,
                                 save_mock, equalize_mock, roi_mock, opt_mock):
-        e = ExcaliburNode(1)
         chips = [0]
 
-        e.calibrate_disc(chips, 'discL', 1, 'rect')
+        self.e._calibrate_disc(chips, 'discL', 1, 'rect')
 
-        opt_mock.assert_called_once_with(chips, 'discL', roi_full_mask=1 - roi_mock.return_value)
+        opt_mock.assert_called_once_with(chips, 'discL', 1 - roi_mock.return_value)
         equalize_mock.assert_called_once_with(chips, 'discL', 'Threshold0', 1 - roi_mock.return_value, 'stripes')
         self.assertEqual(save_mock.call_args_list[0][0], (chips, equalize_mock.return_value, 'discLbits_roi_0'))
         combine_rois.assert_called_once_with(chips, 'discL', 1, 'rect')
