@@ -194,6 +194,21 @@ class ExcaliburNode(object):
         print("DACs Loaded: {}".format(self.app.dacs_loaded))
         print("Initialised: {}".format(self.app.initialised))
 
+    def acquire_tp_image(self, tp_mask):
+        """Load the given test pulse mask and capture a tp image.
+
+        Args:
+            tp_mask(str): Mask file in config directory
+
+        """
+        mask_path = os.path.join(self.config_dir, tp_mask)
+
+        if os.path.isfile(mask_path):
+            self.app.load_tp_mask(self.chip_range, mask_path)
+            self.app.acquire_tp_image(self.chip_range)
+        else:
+            raise(IOError("Mask file '%s' does not exist", mask_path))
+
     def threshold_equalization(self, chips=range(8)):
         """Calibrate discriminator equalization.
 

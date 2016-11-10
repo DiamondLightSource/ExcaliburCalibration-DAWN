@@ -136,6 +136,23 @@ class ExcaliburDetector(object):
             logging.info("Equalizing node %s", node_idx)
             node.threshold_equalization(chips[node_idx])
 
+    def acquire_tp_image(self, tp_mask):
+        """Load the given test pulse mask and capture a tp image.
+
+        Args:
+            tp_mask(str): Mask file in config directory
+
+        """
+        images = []
+        for node in self.Nodes:
+            images.append(node.acquire_tp_image(tp_mask))
+
+        detector_image = self._combine_images(images)
+
+        plot_name = "Excalibur Detector TP Image - {time_stamp}".format(
+            time_stamp=util.get_time_stamp())
+        self.dawn.plot_image(detector_image, plot_name)
+
     def expose(self, exposure_time):
         """Acquire single image.
 
@@ -146,16 +163,32 @@ class ExcaliburDetector(object):
             numpy.array: Image data
 
         """
+        images = []
         for node in self.Nodes:
-            node.settings['acquire_time'] = exposure_time
+            images.append(node.expose(exposure_time))
 
-        image = self.Nodes[0].expose(exposure_time)
-        for node in self.Nodes[1:]:
-            image = np.concatenate((image, node.expose(exposure_time)), axis=0)
+        detector_image = self._combine_images(images)
 
         plot_name = "Excalibur Detector Image - {time_stamp}".format(
             time_stamp=util.get_time_stamp())
-        self.dawn.plot_image(image, plot_name)
+        self.dawn.plot_image(detector_image, plot_name)
+
+    @staticmethod
+    def _combine_images(images):
+        """Combine images from each node into a full detector image.
+
+        Args:
+            images(list): Images from each node
+
+        Returns:
+            np.array: Full detector image
+
+        """
+        detector_image = images[0]
+        for image in images[1:]:
+            detector_image = np.concatenate((detector_image, image), axis=0)
+
+        return detector_image
 
     def _grab_node_slice(self, array, node_idx):
         """Grab a node from a full array.

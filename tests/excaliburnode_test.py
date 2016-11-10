@@ -166,6 +166,42 @@ class SimpleFunctionsTest(unittest.TestCase):
         self.assertFalse(self.app_mock.quiet)
 
 
+class CaptureTPImageTest(unittest.TestCase):
+
+    def setUp(self):
+        self.e = ExcaliburNode(1)
+        self.e.chip_range = [0]
+
+    @patch(ETAI_patch_path + '.load_tp_mask')
+    @patch(ETAI_patch_path + '.acquire_tp_image')
+    @patch('os.path.isfile', return_value=True)
+    def test_file_exist_then_capture_image(self, isfile_mock, acquire_mock,
+                                           load_mock):
+        expected_path = "/dls/detectors/support/silicon_pixels/excaliburRX" \
+                        "/TestApplication_15012015/config/triangles.mask"
+
+        self.e.acquire_tp_image("triangles.mask")
+
+        isfile_mock.assert_called_once_with(expected_path)
+        load_mock.assert_called_once_with([0], expected_path)
+        acquire_mock.assert_called_once_with([0])
+
+    @patch(ETAI_patch_path + '.load_tp_mask')
+    @patch(ETAI_patch_path + '.acquire_tp_image')
+    @patch('os.path.isfile', return_value=False)
+    def test_file_doesnt_exist_then_capture_image(self, isfile_mock,
+                                                  acquire_mock, load_mock):
+        expected_path = "/dls/detectors/support/silicon_pixels/excaliburRX" \
+                        "/TestApplication_15012015/config/none.mask"
+
+        with self.assertRaises(IOError):
+            self.e.acquire_tp_image("none.mask")
+
+        isfile_mock.assert_called_once_with(expected_path)
+        load_mock.assert_not_called()
+        acquire_mock.assert_not_called()
+
+
 @patch(Node_patch_path + '.check_calib_dir')
 @patch(Node_patch_path + '.log_chip_ids')
 @patch(Node_patch_path + '.set_dacs')

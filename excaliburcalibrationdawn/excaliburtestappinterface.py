@@ -96,7 +96,7 @@ class ExcaliburTestAppInterface(object):
     GAIN_MODE = "--gainmode"  # --gainmode 3
     PATH = "--path="  # --path=/scratch/excalibur_images
     HDF_FILE = "--hdffile="  # --hdffile=image_1.hdf5
-    TP_COUNT = "--tpcount"  # --tpcount 2
+    TP_COUNT = "--tpcount"  # --tpcount 100
     CONFIG = "--config"
     PIXEL_MASK = "--pixelmask="  # --pixelmask mask.txt
     DISC_L = "--discl="  # --discl=default_disc_L.txt
@@ -381,7 +381,7 @@ class ExcaliburTestAppInterface(object):
 
         """
         logging.debug("Sending sense command for chips %s", chips)
-        # TODO: Check is command_2 'Requires DAC LOAD to take effect'?
+
         # Set up DAC for sensing
         command_1 = self._construct_command(chips,
                                             self.SENSE, self.dac_code[dac],

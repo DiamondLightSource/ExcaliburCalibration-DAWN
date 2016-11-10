@@ -168,13 +168,49 @@ class FunctionsTest(unittest.TestCase):
 
     @patch(util_patch_path + '.get_time_stamp',
            return_value="2016-10-21_16:42:50")
+    @patch(Detector_patch_path + '._combine_images')
     @patch(DAWN_patch_path + '.plot_image')
-    def test_expose(self, plot_mock, _):
-        mock_array = np.array([[0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
-                               [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0]])
+    def test_acquire_tp_image(self, plot_mock, combine_mock, _):
+
+        mock_image = MagicMock()
 
         for node in self.e.Nodes:
-            node.expose.return_value = mock_array
+            node.acquire_tp_image.return_value = mock_image
+
+        self.e.acquire_tp_image("triangles.mask")
+
+        for node in self.e.Nodes:
+            node.acquire_tp_image.assert_called_once_with("triangles.mask")
+
+        combine_mock.assert_called_once_with([mock_image] * 6)
+        plot_mock.assert_called_once_with(combine_mock.return_value,
+                                          "Excalibur Detector TP Image - "
+                                          "2016-10-21_16:42:50")
+
+    @patch(util_patch_path + '.get_time_stamp',
+           return_value="2016-10-21_16:42:50")
+    @patch(Detector_patch_path + '._combine_images')
+    @patch(DAWN_patch_path + '.plot_image')
+    def test_expose(self, plot_mock, combine_mock, _):
+
+        mock_image = MagicMock()
+
+        for node in self.e.Nodes:
+            node.expose.return_value = mock_image
+
+        self.e.expose(100)
+
+        for node in self.e.Nodes:
+            node.expose.assert_called_once_with(100)
+
+        combine_mock.assert_called_once_with([mock_image] * 6)
+        plot_mock.assert_called_once_with(combine_mock.return_value,
+                                          "Excalibur Detector Image - "
+                                          "2016-10-21_16:42:50")
+
+    def test_combine_images(self):
+        images = [np.array([[0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+                            [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0]])] * 6
 
         expected_array = np.array([[0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
                                    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
@@ -189,13 +225,9 @@ class FunctionsTest(unittest.TestCase):
                                    [0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
                                    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0]])
 
-        self.e.expose(100)
+        detector_image = self.e._combine_images(images)
 
-        for node in self.e.Nodes:
-            node.expose.assert_called_once_with(100)
-
-        plot_mock.assert_called_once_with(ANY, "Excalibur Detector Image - 2016-10-21_16:42:50")
-        np.testing.assert_array_equal(expected_array, plot_mock.call_args[0][0])
+        np.testing.assert_array_equal(expected_array, detector_image)
 
 
 class UtilTest(unittest.TestCase):
