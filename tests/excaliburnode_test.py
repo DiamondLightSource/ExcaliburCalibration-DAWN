@@ -205,7 +205,7 @@ class CaptureTPImageTest(unittest.TestCase):
 @patch(Node_patch_path + '.check_calib_dir')
 @patch(Node_patch_path + '.log_chip_ids')
 @patch(Node_patch_path + '.set_dacs')
-@patch(Node_patch_path + '.set_gnd_fbk_cas_excalibur_rx001')
+@patch(Node_patch_path + '.set_gnd_fbk_cas')
 @patch(Node_patch_path + '._calibrate_disc')
 class ThresholdEqualizationTest(unittest.TestCase):
 
@@ -222,7 +222,7 @@ class ThresholdEqualizationTest(unittest.TestCase):
         check_mock.assert_called_once_with()
         log_mock.assert_called_once_with()
         set_dacs_mock.assert_called_once_with(chips)
-        set_gnd_mock.assert_called_once_with(chips, e.fem)
+        set_gnd_mock.assert_called_once_with(chips)
         cal_disc_mock.assert_called_once_with(chips, 'discL')
 
 
@@ -467,8 +467,9 @@ class SetThreshEnergyTest(unittest.TestCase):
 
 class SetDacsTest(unittest.TestCase):
 
-    @patch(Node_patch_path + '.set_dac')
-    def test_correct_calls_made(self, set_dac_mock):
+    @patch(ETAI_patch_path + '.load_dacs')
+    @patch(Node_patch_path + '._write_dac')
+    def test_correct_calls_made(self, set_dac_mock, load_mock):
         e = ExcaliburNode(1)
         chips = [0]
         expected_calls = [('Threshold1', 0), ('Threshold2', 0),
@@ -484,7 +485,8 @@ class SetDacsTest(unittest.TestCase):
         e.set_dacs(chips)
 
         for index, call_args in enumerate(set_dac_mock.call_args_list):
-            self.assertEqual((chips,) + expected_calls[index], call_args[0])
+            self.assertEqual((0,) + expected_calls[index], call_args[0])
+        load_mock.assert_called_once_with(chips, e.dacs_file)
 
 
 class TestAppCallsTest(unittest.TestCase):
@@ -1585,16 +1587,18 @@ class CSMTest(unittest.TestCase):
 
 class SetGNDFBKCasExcaliburRX001Test(unittest.TestCase):
 
-    @patch(Node_patch_path + '.set_dac')
-    def test_correct_calls_made(self, set_mock):
+    @patch(ETAI_patch_path + '.load_dacs')
+    @patch(Node_patch_path + '._write_dac')
+    def test_correct_calls_made(self, write_mock, load_mock):
         e = ExcaliburNode(1)
         chips = [0]
 
-        e.set_gnd_fbk_cas_excalibur_rx001(chips, 1)
+        e.set_gnd_fbk_cas(chips)
 
-        self.assertEqual(set_mock.call_args_list[0][0], ([0], 'GND', 141))
-        self.assertEqual(set_mock.call_args_list[1][0], ([0], 'FBK', 190))
-        self.assertEqual(set_mock.call_args_list[2][0], ([0], 'Cas', 178))
+        self.assertEqual(write_mock.call_args_list[0][0], (0, 'GND', 141))
+        self.assertEqual(write_mock.call_args_list[1][0], (0, 'FBK', 190))
+        self.assertEqual(write_mock.call_args_list[2][0], (0, 'Cas', 178))
+        load_mock.assert_called_once_with(chips, e.dacs_file)
 
 
 class RotateTest(unittest.TestCase):

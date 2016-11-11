@@ -114,23 +114,41 @@ class ExcaliburNode(object):
                              exposure=100,  # In milliseconds
                              frames=1)
 
-        # Commonly used file paths
-        self.template_path = posixpath.join(self.calib_dir,
-                                            'fem{fem}'.format(fem=self.fem),
-                                            self.settings['mode'],
-                                            self.settings['gain'])
-        tp = posixpath.join(self.template_path, '{disc}.chip{chip}')
-        self.discL_bits = [tp.format(disc="discLbits",
-                                     chip=chip) for chip in self.chip_range]
-        self.discH_bits = [tp.format(disc="discHbits",
-                                     chip=chip) for chip in self.chip_range]
-        self.pixel_mask = [tp.format(disc="pixelmask",
-                                     chip=chip) for chip in self.chip_range]
-
         # Helper classes
         self.app = ExcaliburTestAppInterface(self.fem, self.ipaddress, 6969,
                                              self.server_name)
         self.dawn = ExcaliburDAWN()
+
+        self.config = MPX3RX
+
+    @property
+    def template_path(self):
+        return posixpath.join(self.calib_dir,
+                              'fem{fem}'.format(fem=self.fem),
+                              self.settings['mode'],
+                              self.settings['gain'])
+
+    @property
+    def discL_bits(self):
+        tp = posixpath.join(self.template_path, '{disc}.chip{chip}')
+        return [tp.format(disc="discLbits",
+                          chip=chip) for chip in self.chip_range]
+
+    @property
+    def discH_bits(self):
+        tp = posixpath.join(self.template_path, '{disc}.chip{chip}')
+        return [tp.format(disc="discHbits",
+                          chip=chip) for chip in self.chip_range]
+
+    @property
+    def pixel_mask(self):
+        tp = posixpath.join(self.template_path, '{disc}.chip{chip}')
+        return [tp.format(disc="pixelmask",
+                          chip=chip) for chip in self.chip_range]
+
+    @property
+    def dacs_file(self):
+        return posixpath.join(self.template_path, "dacs")
 
     def setup(self):
         """Perform necessary initialisation."""
@@ -227,7 +245,7 @@ class ExcaliburNode(object):
         self.check_calib_dir()
         self.log_chip_ids()
         self.set_dacs(chips)
-        self.set_gnd_fbk_cas_excalibur_rx001(chips, self.fem)
+        self.set_gnd_fbk_cas(chips)
 
         self.calibrate_disc_l(chips)
 
@@ -547,16 +565,6 @@ class ExcaliburNode(object):
                                                energy=thresh_energy,
                                                DACs=thresh_DACs))
 
-    def set_dacs(self, chips):
-        """Set dacs to values recommended by MEDIPIX3-RX designers.
-
-        Args:
-            chips(list(int)): Chips to set DACs for
-
-        """
-        for dac, value in MPX3RX.DACS.items():
-            self.set_dac(chips, dac, value)
-
     def read_chip_ids(self):
         """Read chip IDs."""
         self.app.read_chip_ids()
@@ -622,26 +630,42 @@ class ExcaliburNode(object):
             value(int): Value to set DAC to
 
         """
-        logging.info("Setting DAC %s to %s", name, value)
+        logging.info("Setting DAC %s to %s for chips %s", name, value, chips)
+        for chip_idx in chips:
+            self._write_dac(chip_idx, name, value)
+        self.app.load_dacs(chips, self.dacs_file)
 
+    def set_dacs(self, chips):
+        """Set dacs to values recommended by MEDIPIX3-RX designers.
+
+        Args:
+            chips(list(int)): Chips to set DACs for
+
+        """
+        logging.info("Setting config script DACs for chips %s", chips)
+        for dac, value in MPX3RX.DACS.items():
+            for chip_idx in chips:
+                self._write_dac(chip_idx, dac, value)
+        self.app.load_dacs(chips, self.dacs_file)
+
+    def _write_dac(self, chip, name, value):
+        """Write a new DAC value to the dacs file in the calibration directory.
+
+        Args:
+            chip(int): Chip to write DAC for
+            name(str): Name of DAC
+            value(str/int): Value to set DAC to
+
+        """
         new_line = "{name} = {value}\r\n".format(name=name, value=value)
-        dac_file_path = posixpath.join(self.calib_dir,
-                                       'fem{fem}',
-                                       self.settings['mode'],
-                                       self.settings['gain'],
-                                       'dacs'
-                                       ).format(fem=self.fem)
 
-        for chip in chips:
-            with open(dac_file_path, 'r') as dac_file:
-                f_content = dac_file.readlines()
+        with open(self.dacs_file, "r") as dac_file:
+            f_content = dac_file.readlines()
 
-            line_nb = chip * 29 + np.int(self.dac_number[name])
-            f_content[line_nb] = new_line
-            with open(dac_file_path, 'w') as dac_file:
-                dac_file.writelines(f_content)
-
-        self.app.load_dacs(chips, dac_file_path)
+        line_nb = chip * 29 + np.int(self.dac_number[name])
+        f_content[line_nb] = new_line
+        with open(self.dacs_file, "w") as dac_file:
+            dac_file.writelines(f_content)
 
     def read_dac(self, dac_name):
         """Read back DAC analogue voltage using chip sense DAC (DAC out).
@@ -650,14 +674,7 @@ class ExcaliburNode(object):
             dac_name(str): DAC value to read (Any from self.dac_number keys)
 
         """
-        dac_file = posixpath.join(self.calib_dir,
-                                  'fem{fem}',
-                                  self.settings['mode'],
-                                  self.settings['gain'],
-                                  'dacs'
-                                  ).format(fem=self.fem)
-
-        self.app.sense(self.chip_range, dac_name, dac_file)
+        self.app.sense(self.chip_range, dac_name, self.dacs_file)
 
     def scan_dac(self, chips, threshold, dac_range):
         """Perform a dac scan and plot the result (mean counts vs DAC values).
@@ -1821,23 +1838,24 @@ class ExcaliburNode(object):
         self.expose()
         self.expose()
 
-    def set_gnd_fbk_cas_excalibur_rx001(self, chips, fem):
-        """Set GND, FBK and CAS values.
+    def set_gnd_fbk_cas(self, chips):
+        """Set GND, FBK and CAS values from the config python script.
 
         Args:
             chips(list(int)): Chips to set
-            fem(int): FEM to set
 
         """
-        logging.info("Setting GND, FBK and Cas values from ECD config.")
-        for chip in chips:
-            self.set_dac([chip], 'GND', MPX3RX.GND_DAC[fem - 1, chip])
-            self.set_dac([chip], 'FBK', MPX3RX.FBK_DAC[fem - 1, chip])
-            self.set_dac([chip], 'Cas', MPX3RX.CAS_DAC[fem - 1, chip])
-
-        # self.read_dac(range(8), 'GND')
-        # self.read_dac(range(8), 'FBK')
-        # self.read_dac(range(8), 'Cas')
+        logging.info("Setting GND, FBK and Cas values from config script for "
+                     "chips %s", chips)
+        fem_idx = self.fem - 1
+        for chip_idx in chips:
+            self._write_dac(chip_idx, "GND", self.config.GND_DAC[fem_idx,
+                                                                 chip_idx])
+            self._write_dac(chip_idx, "FBK", self.config.FBK_DAC[fem_idx,
+                                                                 chip_idx])
+            self._write_dac(chip_idx, "Cas", self.config.CAS_DAC[fem_idx,
+                                                                 chip_idx])
+        self.app.load_dacs(chips, self.dacs_file)
 
     def rotate_all_configs(self):
         """Rotate arrays in config files for EPICS.
