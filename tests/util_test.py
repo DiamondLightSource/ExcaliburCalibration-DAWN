@@ -43,7 +43,7 @@ class FunctionsTest(unittest.TestCase):
     def test_rotate_config(self, load_mock, save_mock, rotate_mock):
         test_path = 'path/to/config'
 
-        util.rotate_config(test_path)
+        util.rotate_array(test_path)
 
         load_mock.assert_called_once_with(test_path)
         rotate_mock.assert_called_once_with(load_mock.return_value, 2)

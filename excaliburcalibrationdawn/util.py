@@ -36,7 +36,7 @@ def set_slice(array, start, stop, value):
     array[start[0]:stop[0] + 1, start[1]:stop[1] + 1] = value
 
 
-def rotate_config(config_file):
+def rotate_array(config_file):
     """Rotate array in given file 180 degrees.
 
     Args:

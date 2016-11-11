@@ -229,6 +229,18 @@ class FunctionsTest(unittest.TestCase):
 
         np.testing.assert_array_equal(expected_array, detector_image)
 
+    @patch('shutil.copytree')
+    def test_rotate_configs(self, copy_mock):
+
+        self.e.rotate_configs()
+
+        copy_mock.assert_called_once_with(self.e.calib_dir,
+                                          self.e.calib_dir + "_epics")
+        for node in self.e.Nodes[1:2:6]:
+            node.rotate_config.assert_called_once_with()
+        for node in self.e.Nodes[0:2:6]:
+            node.rotate_config.assert_not_called()
+
 
 class UtilTest(unittest.TestCase):
 

@@ -1857,47 +1857,33 @@ class ExcaliburNode(object):
                                                                  chip_idx])
         self.app.load_dacs(chips, self.dacs_file)
 
-    def rotate_all_configs(self):
-        """Rotate arrays in config files for EPICS.
-
-        Calibration files of node 1, 3 and 5 have to be rotated in order to be
-        loaded correctly in EPICS. This routine copies calib into calib_epics
-        and rotate discLbits, discHbits and maskbits files when they exist for
-        node 1, 3, and 5
-
-        """
-        chips = range(self.num_chips)
-        EPICS_calib_path = self.calib_dir + '_epics'
-        shutil.copytree(self.calib_dir, EPICS_calib_path)
-
-        logging.debug("EPICS_calib_path: %s", EPICS_calib_path)
-
-        template_path = posixpath.join(EPICS_calib_path,
+    def rotate_config(self):
+        """Rotate discbits files in EPICS calibration directory."""
+        template_path = posixpath.join(self.calib_dir + '_epics',
                                        'fem{fem}',
                                        'spm',
                                        'slgm',
                                        '{disc}.chip{chip}')
 
-        for fem in [1, 3, 5]:
-            for chip_idx in chips:
-                discLbits_file = template_path.format(fem=fem,
-                                                      disc='discLbits',
-                                                      chip=chip_idx)
-                discHbits_file = template_path.format(fem=fem,
-                                                      disc='discHbits',
-                                                      chip=chip_idx)
-                pixel_mask_file = template_path.format(fem=fem,
-                                                       disc='pixelmask',
-                                                       chip=chip_idx)
-                if os.path.isfile(discLbits_file):
-                    util.rotate_config(discLbits_file)
-                    print("{file} rotated".format(file=discLbits_file))
-                if os.path.isfile(discHbits_file):
-                    util.rotate_config(discHbits_file)
-                    print("{file} rotated".format(file=discHbits_file))
-                if os.path.isfile(pixel_mask_file):
-                    util.rotate_config(pixel_mask_file)
-                    print("{file} rotated".format(file=pixel_mask_file))
+        for chip_idx in self.chip_range:
+            discLbits_file = template_path.format(fem=self.fem,
+                                                  disc='discLbits',
+                                                  chip=chip_idx)
+            discHbits_file = template_path.format(fem=self.fem,
+                                                  disc='discHbits',
+                                                  chip=chip_idx)
+            pixel_mask_file = template_path.format(fem=self.fem,
+                                                   disc='pixelmask',
+                                                   chip=chip_idx)
+            if os.path.isfile(discLbits_file):
+                util.rotate_array(discLbits_file)
+                logging.info("{file} rotated".format(file=discLbits_file))
+            if os.path.isfile(discHbits_file):
+                util.rotate_array(discHbits_file)
+                logging.info("{file} rotated".format(file=discHbits_file))
+            if os.path.isfile(pixel_mask_file):
+                util.rotate_array(pixel_mask_file)
+                logging.info("{file} rotated".format(file=pixel_mask_file))
 
     def _grab_chip_slice(self, array, chip_idx):
         """Grab a chip from a full array.

@@ -2,7 +2,7 @@ import unittest
 
 from pkg_resources import require
 require("mock")
-from mock import patch, MagicMock, ANY
+from mock import patch, MagicMock, ANY, call
 
 import numpy as np
 
@@ -1606,25 +1606,30 @@ class RotateTest(unittest.TestCase):
     def setUp(self):
         self.e = ExcaliburNode(1)
 
-    @patch('shutil.copytree')
-    @patch(util_patch_path + '.rotate_config')
+    @patch(util_patch_path + '.rotate_array')
     @patch('os.path.isfile', return_value=True)
-    def test_rotate_config_files_exist(self, _, rotate_mock, copy_mock):
-        self.e.num_chips = 1  # Make test easier
+    def test_rotate_config_files_exist(self, _, rotate_mock):
+        self.e.chip_range = [0]  # Make test easier
         root_path = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/'
-        expected_calib_path = root_path + 'calib'
         expected_epics_path = root_path + 'calib_epics'
         expected_discL_path = expected_epics_path + '/fem1/spm/slgm/discLbits.chip0'
         expected_discH_path = expected_epics_path + '/fem1/spm/slgm/discHbits.chip0'
         expected_mask_path = expected_epics_path + '/fem1/spm/slgm/pixelmask.chip0'
 
-        self.e.rotate_all_configs()
+        self.e.rotate_config()
 
-        copy_mock.assert_called_once_with(expected_calib_path, expected_epics_path)
-        self.assertEqual(rotate_mock.call_args_list[0][0][0], expected_discL_path)
-        self.assertEqual(rotate_mock.call_args_list[1][0][0], expected_discH_path)
-        self.assertEqual(rotate_mock.call_args_list[2][0][0], expected_mask_path)
-        self.assertEqual(9, rotate_mock.call_count)
+        rotate_mock.assert_has_calls([call(expected_discL_path),
+                                      call(expected_discH_path),
+                                      call(expected_mask_path)])
+
+    @patch(util_patch_path + '.rotate_array')
+    @patch('os.path.isfile', return_value=False)
+    def test_rotate_config_files_dont_exist(self, _, rotate_mock):
+        self.e.chip_range = [0]  # Make test easier
+
+        self.e.rotate_config()
+
+        rotate_mock.assert_not_called()
 
 
 class SliceGrabSetTest(unittest.TestCase):
@@ -1641,7 +1646,8 @@ class SliceGrabSetTest(unittest.TestCase):
         value = self.e._grab_chip_slice(array, 1)
 
         generate_mock.assert_called_once_with(1)
-        grab_mock.assert_called_once_with(array, generate_mock.return_value[0], generate_mock.return_value[1])
+        grab_mock.assert_called_once_with(array, generate_mock.return_value[0],
+                                          generate_mock.return_value[1])
         self.assertEqual(grab_mock.return_value, value)
 
     @patch(util_patch_path + '.set_slice')

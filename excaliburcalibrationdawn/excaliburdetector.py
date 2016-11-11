@@ -1,4 +1,7 @@
 """An Excalibur RX detector."""
+import shutil
+import posixpath
+
 import numpy as np
 
 from excaliburcalibrationdawn.excaliburnode import ExcaliburNode
@@ -16,6 +19,9 @@ class ExcaliburDetector(object):
 
     node_shape = [256, 8*256]
     valid_nodes = [1, 2, 3, 4, 5, 6]
+
+    root_path = '/dls/detectors/support/silicon_pixels/excaliburRX/'
+    calib_dir = posixpath.join(root_path, '3M-RX001/calib')
 
     def __init__(self, detector_name, nodes, master_node):
         """Initialise detector.
@@ -189,6 +195,22 @@ class ExcaliburDetector(object):
             detector_image = np.concatenate((detector_image, image), axis=0)
 
         return detector_image
+
+    def rotate_configs(self):
+        """Rotate arrays in config files for EPICS.
+
+        Calibration files of node 1, 3 and 5 have to be rotated in order to be
+        loaded correctly in EPICS. This routine copies calib into calib_epics
+        and rotate discLbits, discHbits and maskbits files when they exist for
+        nodes 1, 3, and 5
+
+        """
+        epics_calib_path = self.calib_dir + '_epics'
+        shutil.copytree(self.calib_dir, epics_calib_path)
+        logging.debug("EPICS calibration directory: %s", epics_calib_path)
+
+        for node_idx in [1, 3, 5]:
+            self.Nodes[node_idx].rotate_config()
 
     def _grab_node_slice(self, array, node_idx):
         """Grab a node from a full array.
