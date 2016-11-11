@@ -410,30 +410,6 @@ class MaskRowBlockTest(unittest.TestCase):
         load_mock.assert_called_once_with(chips)
 
 
-@patch(Node_patch_path + '.expose')
-@patch(Node_patch_path + '.set_dac')
-class SetThreshold0DacTest(unittest.TestCase):
-
-    def test_correct_calls_made(self, set_dac_mock, expose_mock):
-        e = ExcaliburNode(1)
-        chips = [1, 2, 3]
-
-        e.set_threshold0_dac(chips, 1)
-
-        set_dac_mock.assert_called_once_with(chips, 'Threshold0', 1)
-        expose_mock.assert_called_once_with()
-
-    def test_correct_calls_made_with_default_param(self, set_dac_mock,
-                                                   expose_mock):
-        e = ExcaliburNode(1)
-        chips = [0, 1, 2, 3, 4, 5, 6, 7]
-
-        e.set_threshold0_dac()
-
-        set_dac_mock.assert_called_once_with(chips, 'Threshold0', 40)
-        expose_mock.assert_called_once_with()
-
-
 @patch('time.sleep')
 @patch('numpy.genfromtxt')
 @patch(Node_patch_path + '.set_dac')
@@ -445,23 +421,10 @@ class SetThreshEnergyTest(unittest.TestCase):
         e = ExcaliburNode(1)
         expected_filepath = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem1/spm/shgm/threshold0'
 
-        e.set_thresh_energy('0', 7.0)
+        e.set_thresh_energy(0, 7.0)
 
         gen_mock.assert_called_once_with(expected_filepath)
         self.assertEqual(8, set_dac_mock.call_count)
-        self.assertEqual(2, expose_mock.call_count)
-
-    def test_correct_calls_made_with_default_param(self, expose_mock,
-                                                   set_dac_mock, gen_mock,
-                                                   sleep_mock):
-        e = ExcaliburNode(1)
-        expected_filepath = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem1/spm/shgm/threshold0'
-
-        e.set_thresh_energy()
-
-        gen_mock.assert_called_once_with(expected_filepath)
-        self.assertEqual(8, set_dac_mock.call_count)
-        sleep_mock.assert_called_with(0.2)
         self.assertEqual(2, expose_mock.call_count)
 
 
@@ -670,7 +633,7 @@ class TestAppCallsTest(unittest.TestCase):
 
     @patch(Node_patch_path + '.load_temp_config')
     @patch(Node_patch_path + '._grab_chip_slice')
-    @patch(Node_patch_path + '.open_discbits_file',
+    @patch(Node_patch_path + '._load_discbits',
            side_effect=[rand.randint(2, size=[256, 256]),
                         rand.randint(2, size=[256, 256])])
     def test_load_all_discbits_L(self, open_mock, grab_mock, load_mock):
@@ -690,7 +653,7 @@ class TestAppCallsTest(unittest.TestCase):
 
     @patch(Node_patch_path + '.load_temp_config')
     @patch(Node_patch_path + '._grab_chip_slice')
-    @patch(Node_patch_path + '.open_discbits_file')
+    @patch(Node_patch_path + '._load_discbits')
     def test_load_all_discbits_H(self, open_mock, grab_mock, load_mock):
         chips = [0]
         temp_bits_mock = MagicMock()
@@ -708,7 +671,7 @@ class TestAppCallsTest(unittest.TestCase):
 
     @patch(Node_patch_path + '.load_temp_config')
     @patch(Node_patch_path + '._grab_chip_slice')
-    @patch(Node_patch_path + '.open_discbits_file')
+    @patch(Node_patch_path + '._load_discbits')
     def test_load_all_discbits_error(self, _, _1, _2):
         chips = [0]
         temp_bits_mock = MagicMock()
@@ -746,11 +709,11 @@ class LoadConfigTest(unittest.TestCase):
 
 @patch('time.sleep')
 @patch(Node_patch_path + '.load_config')
-@patch(Node_patch_path + '.set_threshold0_dac')
+@patch(Node_patch_path + '.set_dac')
 @patch(Node_patch_path + '.expose')
 class Fe55ImageRX001Test(unittest.TestCase):
 
-    def test_correct_calls_made(self, expose_mock, set_threshhold_mock,
+    def test_correct_calls_made(self, expose_mock, set_mock,
                                 load_mock, sleep_mock):
         e = ExcaliburNode(1)
         chips = [1, 4, 6, 7]
@@ -762,24 +725,7 @@ class Fe55ImageRX001Test(unittest.TestCase):
         self.assertEqual('spm', e.settings['mode'])
 
         load_mock.assert_called_once_with(chips)
-        set_threshhold_mock.assert_called_once_with(chips, 40)
-        sleep_mock.assert_called_once_with(0.5)
-        expose_mock.assert_called_once_with(exposure_time)
-
-    def test_correct_calls_made_with_default_params(self, expose_mock,
-                                                    set_threshhold_mock,
-                                                    load_mock, sleep_mock):
-        e = ExcaliburNode(1)
-        chips = [0, 1, 2, 3, 4, 5, 6, 7]
-        exposure_time = 60000
-
-        e.fe55_image_rx001()
-
-        self.assertEqual('shgm', e.settings['gain'])
-        self.assertEqual('spm', e.settings['mode'])
-
-        load_mock.assert_called_once_with(chips)
-        set_threshhold_mock.assert_called_once_with(chips, 40)
+        set_mock.assert_called_once_with(chips, "Threshold0", 40)
         sleep_mock.assert_called_once_with(0.5)
         expose_mock.assert_called_once_with(exposure_time)
 
@@ -1248,7 +1194,7 @@ class OpenDiscbitsFileTest(unittest.TestCase):
         expected_path = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem1/spm/shgm/test_file.chip0'
         e = ExcaliburNode(1)
 
-        value = e.open_discbits_file([0], 'test_file')
+        value = e._load_discbits([0], 'test_file')
 
         load_mock.assert_called_once_with(expected_path)
         self.assertTrue((value[0:256, 0:256] == self.mock_array).all())
@@ -1263,7 +1209,7 @@ class CombineROIsTest(unittest.TestCase):
     @patch(Node_patch_path + '.roi',
            return_value=np.ones([256, 256]))
     @patch(Node_patch_path + '.save_discbits')
-    @patch(Node_patch_path + '.open_discbits_file',
+    @patch(Node_patch_path + '._load_discbits',
            side_effect=[rand.randint(2, size=[256, 256]),
                         rand.randint(2, size=[256, 256])])
     def test_correct_calls_made(self, open_mock, save_mock, roi_mock,
@@ -1352,7 +1298,7 @@ class OptimizeDacDiscTest(unittest.TestCase):
     @patch(DAWN_patch_path + '.plot_linear_fit', return_value=(1, 1))
     @patch(DAWN_patch_path + '.add_plot_line')
     @patch(Node_patch_path + '.load_all_discbits')
-    @patch(Node_patch_path + '._chip_dac_scan', return_value=([1], [1]))
+    @patch(Node_patch_path + '._dac_scan_fit', return_value=([1], [1]))
     def test_optimize_dac_disc(self, scan_mock, load_mock, add_mock, plot_mock,
                                clear_mock, set_mock, display_mock):
         chips = [0]
@@ -1378,7 +1324,7 @@ class OptimizeDacDiscTest(unittest.TestCase):
         expected_message = "Histogram of edges when scanning DAC_disc for discbit = 0"
         range = MagicMock(start=0, stop=150, step=50)
 
-        self.e._chip_dac_scan(chips, "discL", 1, range, 0, [5000, 0, 30])
+        self.e._dac_scan_fit(chips, "discL", 1, range, 0, [5000, 0, 30])
 
         set_mock.assert_called_once_with(chips, "discL", 1)
         scan_mock.assert_called_once_with(chips, "discL", range)

@@ -583,17 +583,6 @@ class ExcaliburNode(object):
         """Monitor temperature, humidity, FEM voltage status and DAC out."""
         self.app.read_slow_control_parameters()
 
-    def set_threshold0_dac(self, chips=range(8), dac_value=40):
-        """Set threshold0 DAC to a selected value for given chips.
-
-        Args:
-            chips: Chips to set for
-            dac_value: DAC value to set
-
-        """
-        self.set_dac(chips, 'Threshold0', dac_value)
-        self.expose()
-
     def fe55_image_rx001(self, chips=range(8), exposure=60000):
         """Save FE55 image.
 
@@ -609,7 +598,7 @@ class ExcaliburNode(object):
 
         self.settings['gain'] = 'shgm'
         self.load_config(chips)
-        self.set_threshold0_dac(chips, 40)
+        self.set_dac(chips, "Threshold0", 40)
         self.file_name = 'Fe55_image_node_{fem}_{exposure}s'.format(
             fem=self.fem, exposure=self.settings['exposure'])
         self.output_folder = posixpath.join(self.root_path, "Fe55_images")
@@ -955,7 +944,7 @@ class ExcaliburNode(object):
         logo_tp = 1 - logo_tp
 
         for chip in self.chip_range:
-            dac_file = posixpath.join(self.calib_dir, 'dacs')
+            dac_file = posixpath.join(self.calib_dir, "dacs")
 
             # TODO: Why is this done for each chip?
             test_bits_file = posixpath.join(self.calib_dir,
@@ -1246,8 +1235,8 @@ class ExcaliburNode(object):
         shutil.copytree(slgm_dir, hgm_dir)
         shutil.copytree(slgm_dir, shgm_dir)
 
-    def open_discbits_file(self, chips, discbits_filename):
-        """Open discriminator bit array stored in current calibration folder.
+    def _load_discbits(self, chips, discbits_filename):
+        """Load discriminator bit array from calib directory into numpy array.
 
         Args:
             chips(list(int)): Chips to load
@@ -1286,8 +1275,8 @@ class ExcaliburNode(object):
         discbits = np.zeros(self.full_array_shape)
         for step in range(steps):
             roi_full_mask = self.roi(chips, step, steps, roi_type)
-            discbits_roi = self.open_discbits_file(chips, disc_name +
-                                                   'bits_roi_' + str(step))
+            discbits_roi = self._load_discbits(chips, disc_name +
+                                              'bits_roi_' + str(step))
             discbits[roi_full_mask.astype(bool)] = \
                 discbits_roi[roi_full_mask.astype(bool)]
             # TODO: Should this be +=? Currently just uses final ROI
@@ -1406,12 +1395,12 @@ class ExcaliburNode(object):
         dac_disc_range = range(0, 150, 50)
         x0 = np.zeros([8, len(dac_disc_range)])
         for idx, dac_value in enumerate(dac_disc_range):
-            x0[:, idx], _ = self._chip_dac_scan(chips, threshold, dac_value,
-                                                dac_range, discbit, p0)
+            x0[:, idx], _ = self._dac_scan_fit(chips, threshold, dac_value,
+                                               dac_range, discbit, p0)
 
             self.dawn.clear_plot(calib_plot_name)
             for chip_idx in chips:
-                # TODO: idx:(idx+1), not 0:idx+1; why doesn't it plot at end?
+                # TODO: idx:(idx+1), not 0:idx+1?
                 self.dawn.add_plot_line(np.asarray(dac_disc_range[0:idx + 1]),
                                         x0[chip_idx, 0:idx + 1],
                                         calib_plot_name,
@@ -1442,8 +1431,8 @@ class ExcaliburNode(object):
         self.load_all_discbits(chips, disc_name, discbits, roi_mask)
 
         p0 = [5000, 0, 30]
-        x0, sigma = self._chip_dac_scan(chips, threshold, dac_value, dac_range,
-                                        discbit, p0)
+        x0, sigma = self._dac_scan_fit(chips, threshold, dac_value, dac_range,
+                                       discbit, p0)
 
         opt_dac_disc = np.zeros(self.num_chips)
         for chip_idx in chips:
@@ -1454,8 +1443,8 @@ class ExcaliburNode(object):
         self._display_optimization_results(chips, x0, sigma, gain,
                                            opt_dac_disc)
 
-    def _chip_dac_scan(self, chips, threshold, dac_value, dac_range, discbit,
-                       p0):
+    def _dac_scan_fit(self, chips, threshold, dac_value, dac_range, discbit,
+                      p0):
         """Scan given DAC for given chips and perform a gaussian fit.
 
         Args:
@@ -1490,7 +1479,7 @@ class ExcaliburNode(object):
 
     def _display_optimization_results(self, chips, x0, sigma, gain,
                                       opt_dac_disc):
-        """Print out results of _chip_dac_scan."""
+        """Print out optimization results."""
         print("Edge shift (in Threshold DAC units) produced by 1 DACdisc DAC"
               "unit for discbits=15:")
         for chip in chips:
@@ -1651,10 +1640,10 @@ class ExcaliburNode(object):
 
         """
         for chip in chips:
-            if disc_name == 'discH':
-                discLbits = self.open_discbits_file(chips, 'discLbits')
+            if disc_name == "discH":
+                discLbits = self._load_discbits(chips, "discLbits")
                 discHbits = temp_bits
-            elif disc_name == 'discL':
+            elif disc_name == "discL":
                 discLbits = temp_bits
                 discHbits = np.zeros(self.full_array_shape)
             else:
