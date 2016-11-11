@@ -206,10 +206,10 @@ class CaptureTPImageTest(unittest.TestCase):
 @patch(Node_patch_path + '.log_chip_ids')
 @patch(Node_patch_path + '.set_dacs')
 @patch(Node_patch_path + '.set_gnd_fbk_cas')
-@patch(Node_patch_path + '._calibrate_disc')
+@patch(Node_patch_path + '.calibrate_disc_l')
 class ThresholdEqualizationTest(unittest.TestCase):
 
-    def test_correct_calls_made(self, cal_disc_mock, set_gnd_mock,
+    def test_correct_calls_made(self, calibrate_mock, set_gnd_mock,
                                 set_dacs_mock, log_mock, check_mock):
         e = ExcaliburNode(1)
         chips = [1, 4, 6, 7]
@@ -223,7 +223,7 @@ class ThresholdEqualizationTest(unittest.TestCase):
         log_mock.assert_called_once_with()
         set_dacs_mock.assert_called_once_with(chips)
         set_gnd_mock.assert_called_once_with(chips)
-        cal_disc_mock.assert_called_once_with(chips, 'discL')
+        calibrate_mock.assert_called_once_with(chips)
 
 
 @patch(Node_patch_path + '.check_calib_dir')
