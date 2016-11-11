@@ -46,6 +46,8 @@ class ExcaliburNode(object):
     chip_size = 256
     # Number of chips in 1/2 module
     num_chips = 8
+    # Shape of chip
+    chip_shape = [chip_size, chip_size]
     # Shape of full 1/2 module array
     full_array_shape = [chip_size, num_chips * chip_size]
 
@@ -1144,39 +1146,33 @@ class ExcaliburNode(object):
             pix=str(bad_pix_tot.sum()),
             tot=str(100 * bad_pix_tot.sum() / (8 * 256**2))))
 
-    def unmask_all_pixels(self, chips):
-        """Unmask all pixels and update mask file in calibration directory.
+    def unmask_pixels(self, chips):
+        """Reset pixelmask bits to zero.
 
         Args:
             chips(list(int)): Chips to unmask
 
         """
 
-        bad_pixels = np.zeros(self.full_array_shape)
-
+        zeros = np.zeros(self.chip_shape)
         for chip_idx in chips:
             pixel_mask_file = self.pixel_mask[chip_idx]
-            np.savetxt(pixel_mask_file,
-                       self._grab_chip_slice(bad_pixels, chip_idx),
-                       fmt='%.18g', delimiter=' ')
+            np.savetxt(pixel_mask_file, zeros, fmt='%.18g', delimiter=' ')
             self.app.load_config([chip_idx], self.discL_bits[chip_idx],
                                  pixelmask=pixel_mask_file)
 
-    def unequalize_all_pixels(self, chips):
-        """Reset discL_bits and pixel_mask bits to 0.
+    def unequalize_pixels(self, chips):
+        """Reset discL_bits to zero.
 
         Args:
             chips(list(int)): Chips to unequalize
 
         """
-        discL_bits = 31 * np.zeros(self.full_array_shape)  # TODO: Not 32?
-        # TODO: Just have a single 256*256 array and save to all???
+        zeros = np.zeros(self.chip_shape)
         for chip_idx in chips:
             discL_bits_file = self.discL_bits[chip_idx]
-            np.savetxt(discL_bits_file,
-                       self._grab_chip_slice(discL_bits, chip_idx),
-                       fmt='%.18g', delimiter=' ')
-            # TODO: Doesn't save pixelmask...
+            np.savetxt(discL_bits_file, zeros, fmt='%.18g', delimiter=' ')
+
             self.app.load_config([chip_idx], discL_bits_file,
                                  pixelmask=self.pixel_mask[chip_idx])
 

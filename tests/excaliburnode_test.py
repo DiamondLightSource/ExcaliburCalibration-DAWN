@@ -1079,7 +1079,7 @@ class MaskUnmaskTest(unittest.TestCase):
         expected_file_2 = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem1/spm/shgm/pixelmask.chip0'
         expected_mask = np.zeros([256, 256])
 
-        self.e.unmask_all_pixels([0])
+        self.e.unmask_pixels([0])
 
         self.assertEqual(save_mock.call_args[0][0], '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem1/spm/shgm/pixelmask.chip0')
         np.testing.assert_array_equal(expected_mask, save_mock.call_args[0][1])
@@ -1092,7 +1092,7 @@ class MaskUnmaskTest(unittest.TestCase):
         expected_file_2 = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem1/spm/shgm/pixelmask.chip0'
         expected_mask = np.zeros([256, 256])
 
-        self.e.unequalize_all_pixels([0])
+        self.e.unequalize_pixels([0])
 
         self.assertEqual(save_mock.call_args[0][0], '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem1/spm/shgm/discLbits.chip0')
         np.testing.assert_array_equal(expected_mask, save_mock.call_args[0][1])
