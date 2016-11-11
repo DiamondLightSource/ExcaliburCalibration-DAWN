@@ -251,18 +251,11 @@ class ExcaliburNode(object):
 
         self.calibrate_disc_l(chips)
 
-        # NOTE: Always equalize DiscL before DiscH since Threshold1 is set at 0
-        # when equalizing DiscL. So if DiscH was equalized first, this would
-        # induce noisy counts interfering with DiscL equalization
-
         # self._calibrate_disc(chips, 'discH', 1, 'rect')
         # self.settings['mode'] = 'csm'
         # self.settings['gain'] = 'slgm'
         # self._calibrate_disc(chips, 'discL', 1, 'rect')
         # self._calibrate_disc(chips, 'discH', 1, 'rect')
-
-        # EG (13/06/2016) creates mask for horizontal noise
-        # badPixels = self.mask_row_block(range(4), 256-20, 256)
 
     def threshold_calibration_all_gains(self, threshold="0"):
         """Calibrate equalization for all gain modes and chips.
@@ -388,41 +381,25 @@ class ExcaliburNode(object):
 
         return chip_dac_scan, dac_axis
 
-    def mask_row_block(self, chips, start, stop):
-        """Mask a block of rows of pixels on the given chips.
+    def mask_rows(self, chips, start, stop):
+        """Mask a block of rows of pixels on the given chip(s).
 
         Args:
-            chips(list(int)): List of indexes of chips to mask
+            chips(int/list(int)): Index(es) of chip(s) to mask
             start(int): Index of starting row of mask
             stop(int): Index of final row to be included in mask
 
-        Returns:
-            numpy.array: Array mask that was written to config
-
         """
-        bad_pixels = np.zeros(self.full_array_shape)
+        chips = util.to_list(chips)
 
+        mask = np.zeros(self.full_array_shape)
         for chip_idx in chips:
             # Subtract 1 to convert chip_size from number to index
-            util.set_slice(bad_pixels, [start, chip_idx * self.chip_size],
+            util.set_slice(mask, [start, chip_idx * self.chip_size],
                            [stop, (chip_idx + 1) * self.chip_size - 1], 1)
 
-        for chip_idx in chips:
-            pixel_mask_file = posixpath.join(self.calib_dir,
-                                             'fem{fem}',
-                                             self.settings['mode'],
-                                             self.settings['gain'],
-                                             'pixelmask.chip{idx}'
-                                             ).format(fem=self.fem,
-                                                      idx=chip_idx)
-            np.savetxt(pixel_mask_file,
-                       self._grab_chip_slice(bad_pixels, chip_idx),
-                       fmt='%.18g', delimiter=' ')
-
-        self.dawn.plot_image(bad_pixels, "Mask")
-        self.load_config(chips)
-
-        return bad_pixels
+        self._apply_mask(chips, mask)
+        self.dawn.plot_image(mask, "Mask")
 
     def one_energy_thresh_calib(self, threshold=0):
         """Plot single energy threshold calibration spectra.
@@ -684,12 +661,7 @@ class ExcaliburNode(object):
 
         dac_scan_file = util.generate_file_name("DACScan")
 
-        dac_file = posixpath.join(self.calib_dir,
-                                  "fem{fem}".format(fem=self.fem),
-                                  self.settings['mode'],
-                                  self.settings['gain'],
-                                  "dacs")
-
+        dac_file = self.dacs_file
         self.app.perform_dac_scan(chips, threshold, dac_range, dac_file,
                                   self.output_folder, dac_scan_file)
 
@@ -1027,50 +999,29 @@ class ExcaliburNode(object):
                        self._grab_chip_slice(discbits, chip_idx),
                        fmt='%.18g', delimiter=' ')
 
-    def mask_super_column(self, chip, super_column):
-        """Mask a super column (32 bits?) in a chip and update the maskfile.
+    def mask_columns(self, chips, start, stop):
+        """Mask a block of column of pixels on the given chip(s).
 
         Args:
-            chip(list(int)): Chip to mask
-            super_column(int): Super column to mask (0 to 7)
+            chips(int/list(int)): Index(es) of chip(s) to mask
+            start(int): Index of starting row of mask
+            stop(int): Index of final row to be included in mask
 
         """
-        bad_pixels = np.zeros(self.full_array_shape)
-        bad_pixels[:, chip*256 + super_column * 32:chip * 256 +
-                   super_column * 32 + 64] = 1  # TODO: Should it be 64 wide?
+        chips = util.to_list(chips)
 
-        pixel_mask_file = self.pixel_mask[chip]
-        np.savetxt(pixel_mask_file, self._grab_chip_slice(bad_pixels, chip),
-                   fmt='%.18g', delimiter=' ')
-        self.app.load_config([chip],
-                             self.discL_bits[chip], pixelmask=pixel_mask_file)
+        mask = np.zeros(self.full_array_shape)
+        for chip_idx in chips:
+            # Subtract 1 to convert chip_size from number to index
+            offset = self.chip_size * chip_idx
+            util.set_slice(mask, [0, offset + start],
+                           [self.chip_size, offset + stop], 1)
 
-        self.dawn.plot_image(bad_pixels, name="Bad Pixels")
+        self._apply_mask(chips, mask)
+        self.dawn.plot_image(mask, "Mask")
 
-    def mask_col(self, chip, column):
-        """Mask a column in a chip and update the maskfile.
-
-        Args:
-            chip(list(int)): Chip to mask
-            column(int): Column to mask (0 to 255)
-
-        """
-        bad_pixels = np.zeros(self.full_array_shape)
-        bad_pixels[:, column] = 1
-
-        pixel_mask_file = self.pixel_mask[chip]
-        np.savetxt(pixel_mask_file, self._grab_chip_slice(bad_pixels, chip),
-                   fmt='%.18g', delimiter=' ')
-
-        self.app.load_config([chip],
-                             self.discL_bits[chip], pixelmask=pixel_mask_file)
-
-        self.dawn.plot_image(bad_pixels, name="Bad pixels")
-
-    def mask_pixels(self, chips, image_data, max_counts):
+    def mask_pixels_using_image(self, chips, image_data, max_counts):
         """Mask pixels in image_data with counts above max_counts.
-
-        Also updates the corresponding maskfile in the calibration directory
 
         Args:
             chips(list(int)): Chips to mask
@@ -1078,28 +1029,8 @@ class ExcaliburNode(object):
             max_counts(int): Mask threshold
 
         """
-        bad_pix_tot = np.zeros(8)
-        bad_pixels = image_data > max_counts
-        self.dawn.plot_image(bad_pixels, name="Bad pixels")
-        for chip_idx in chips:
-            bad_pix_tot[chip_idx] = \
-                self._grab_chip_slice(bad_pixels, chip_idx).sum()
-
-            print('####### {pix} noisy pixels in chip {chip} ({tot})'.format(
-                pix=str(bad_pix_tot[chip_idx]),
-                chip=str(chip_idx),
-                tot=str(100 * bad_pix_tot[chip_idx] / (256**2))))
-
-            pixel_mask_file = self.pixel_mask[chip_idx]
-            np.savetxt(pixel_mask_file,
-                       self._grab_chip_slice(bad_pixels, chip_idx),
-                       fmt='%.18g', delimiter=' ')
-            self.app.load_config([chip_idx], self.discL_bits[chip_idx],
-                                 pixelmask=pixel_mask_file)
-
-        print('####### {pix} noisy pixels in half module ({tot}%)'.format(
-            pix=str(bad_pix_tot.sum()),
-            tot=str(100 * bad_pix_tot.sum() / (8 * 256**2))))
+        noisy_pixels = image_data > max_counts
+        self._mask_noisy_pixels(chips, noisy_pixels)
 
     def mask_pixels_using_dac_scan(self, chips=range(8),
                                    threshold="Threshold0",
@@ -1115,36 +1046,51 @@ class ExcaliburNode(object):
 
         """
         max_counts = 1
-        bad_pix_tot = np.zeros(8)
         self.settings['exposure'] = 100
         dac_scan_data = self.scan_dac(chips, threshold, dac_range)
-        bad_pixels = dac_scan_data.sum(0) > max_counts
-        self.dawn.plot_image(bad_pixels, name="Bad Pixels")
+        noisy_pixels = dac_scan_data.sum(0) > max_counts
 
+        self._mask_noisy_pixels(chips, noisy_pixels)
+
+    def _mask_noisy_pixels(self, chips, data):
+        """Mask the noisy pixels in given data on the given chips.
+
+        Args:
+            data(np.array): Data from DAC scan or image
+
+        """
+        self.dawn.plot_image(data, name="Noisy Pixels")
+
+        bad_pix_tot = np.zeros(8)
         for chip_idx in chips:
             bad_pix_tot[chip_idx] = \
-                self._grab_chip_slice(bad_pixels, chip_idx).sum()
+                self._grab_chip_slice(data, chip_idx).sum()
 
             print('####### {pix} noisy pixels in chip {chip} ({tot})'.format(
                 pix=str(bad_pix_tot[chip_idx]),
                 chip=str(chip_idx),
                 tot=str(100 * bad_pix_tot[chip_idx] / (256**2))))
 
-            pixel_mask_file = self.pixel_mask[chip_idx]
-            np.savetxt(pixel_mask_file,
-                       self._grab_chip_slice(bad_pixels, chip_idx),
-                       fmt='%.18g', delimiter=' ')
-            # subprocess.call([self.command, "-i", self.ipaddress,
-            #                  "-p", self.port,
-            #                  "-m", self.mask(range(chip_idx, chip_idx + 1)),
-            #                  "--config",
-            #                  "--pixelmask=" + pixel_mask_file,
-            #                  "--config",
-            #                  "--discl=" + discLbitsFile])
+        self._apply_mask(chips, data)
 
         print('####### {pix} noisy pixels in half module ({tot}%)'.format(
             pix=str(bad_pix_tot.sum()),
             tot=str(100 * bad_pix_tot.sum() / (8 * 256**2))))
+
+    def _apply_mask(self, chips, mask):
+        """Save the given mask to the calibration to file and load to detector.
+
+        Args:
+            mask(np.array): Mask to apply
+
+        """
+        for chip_idx in chips:
+            pixel_mask_file = self.pixel_mask[chip_idx]
+            np.savetxt(pixel_mask_file,
+                       self._grab_chip_slice(mask, chip_idx),
+                       fmt='%.18g', delimiter=' ')
+
+        self.load_config(chips)
 
     def unmask_pixels(self, chips):
         """Reset pixelmask bits to zero.

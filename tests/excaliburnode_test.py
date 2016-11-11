@@ -372,44 +372,6 @@ class FindXrayEnergyDacTest(unittest.TestCase):
         self.assertEqual(tuple(display_mock.return_value), values)
 
 
-class MaskRowBlockTest(unittest.TestCase):
-
-    @patch(Node_patch_path + '.load_config')
-    @patch('numpy.savetxt')
-    @patch(DAWN_patch_path + '.plot_image')
-    def test_correct_calls_made(self, plot_mock, save_mock, load_mock):
-
-        e = ExcaliburNode(1)
-        e.full_array_shape = [4, 16]  # Make testing easier
-        e.chip_size = 4  # Make testing easier
-        e.num_chips = 4  # Make testing easier
-        chips = [1, 2]
-        expected_array = np.array([[0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
-                                   [0., 0., 0., 0., 1., 1., 1., 1., 1., 1., 1., 1., 0., 0., 0., 0.],
-                                   [0., 0., 0., 0., 1., 1., 1., 1., 1., 1., 1., 1., 0., 0., 0., 0.],
-                                   [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]])
-        expected_subarray = np.array([[0., 0., 0., 0.],
-                                      [1., 1., 1., 1.],
-                                      [1., 1., 1., 1.],
-                                      [0., 0., 0., 0.]])
-        expected_filename = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem1/spm/shgm/pixelmask.chip'
-
-        e.mask_row_block(chips, 1, 2)
-
-        # Check first save call
-        self.assertEqual(expected_filename + '1', save_mock.call_args_list[0][0][0])
-        np.testing.assert_array_equal(expected_subarray, save_mock.call_args_list[0][0][1])
-        self.assertEqual(dict(delimiter=' ', fmt='%.18g'), save_mock.call_args_list[0][1])
-        # Check second save call
-        self.assertEqual(expected_filename + '2', save_mock.call_args_list[1][0][0])
-        np.testing.assert_array_equal(expected_subarray, save_mock.call_args_list[1][0][1])
-        self.assertEqual(dict(delimiter=' ', fmt='%.18g'), save_mock.call_args_list[1][1])
-        # Check plot call
-        np.testing.assert_array_equal(expected_array, plot_mock.call_args[0][0])
-
-        load_mock.assert_called_once_with(chips)
-
-
 @patch('time.sleep')
 @patch('numpy.genfromtxt')
 @patch(Node_patch_path + '.set_dac')
@@ -994,87 +956,115 @@ class SaveDiscbitsTest(unittest.TestCase):
         self.assertEqual(dict(fmt='%.18g', delimiter=' '), call_kwargs)
 
 
-@patch(DAWN_patch_path + '.plot_image')
-@patch('numpy.savetxt')
-@patch(ETAI_patch_path + '.load_config')
 class MaskUnmaskTest(unittest.TestCase):
 
     def setUp(self):
         self.e = ExcaliburNode(1)
 
-    def test_mask_col(self, load_mock, save_mock, plot_mock):
-        expected_file_1 = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem1/spm/shgm/discLbits.chip0'
-        expected_file_2 = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem1/spm/shgm/pixelmask.chip0'
-        expected_mask = np.zeros([256, 8*256])
-        expected_mask[:, 1] = 1
-        expected_submask = expected_mask[0:256, 0:256]
+    @patch(DAWN_patch_path + '.plot_image')
+    @patch(Node_patch_path + '._apply_mask')
+    def test_mask_columns(self, apply_mock, plot_mock):
+        self.e.full_array_shape = [4, 16]  # Make testing easier
+        self.e.chip_size = 4  # Make testing easier
+        self.e.num_chips = 4  # Make testing easier
+        chips = [1, 2]
+        expected_array = np.array([[0., 0., 0., 0., 0., 1., 1., 0.,
+                                    0., 1., 1., 0., 0., 0., 0., 0.],
+                                   [0., 0., 0., 0., 0., 1., 1., 0.,
+                                    0., 1., 1., 0., 0., 0., 0., 0.],
+                                   [0., 0., 0., 0., 0., 1., 1., 0.,
+                                    0., 1., 1., 0., 0., 0., 0., 0.],
+                                   [0., 0., 0., 0., 0., 1., 1., 0.,
+                                    0., 1., 1., 0., 0., 0., 0., 0.]])
 
-        self.e.mask_col(0, 1)
+        self.e.mask_columns(chips, 1, 2)
 
-        self.assertEqual('/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem1/spm/shgm/pixelmask.chip0', save_mock.call_args[0][0])
-        np.testing.assert_array_equal(expected_submask, save_mock.call_args[0][1])
-        self.assertEqual(dict(fmt='%.18g', delimiter=' '), save_mock.call_args[1])
+        apply_mock.assert_called_once_with(chips, ANY)
+        np.testing.assert_array_equal(expected_array,
+                                      apply_mock.call_args[0][1])
+        plot_mock.assert_called_once_with(ANY, "Mask")
+        np.testing.assert_array_equal(expected_array,
+                                      plot_mock.call_args[0][0])
 
-        load_mock.assert_called_once_with([0], expected_file_1, pixelmask=expected_file_2)
+    @patch(DAWN_patch_path + '.plot_image')
+    @patch(Node_patch_path + '._apply_mask')
+    def test_mask_rows(self, apply_mock, plot_mock):
 
-        np.testing.assert_array_equal(expected_mask, plot_mock.call_args[0][0])
-        self.assertEqual(dict(name='Bad pixels'), plot_mock.call_args[1])
+        self.e.full_array_shape = [4, 16]  # Make testing easier
+        self.e.chip_size = 4  # Make testing easier
+        self.e.num_chips = 4  # Make testing easier
+        chips = [1, 2]
+        expected_array = np.array([[0., 0., 0., 0., 0., 0., 0., 0.,
+                                    0., 0., 0., 0., 0., 0., 0., 0.],
+                                   [0., 0., 0., 0., 1., 1., 1., 1.,
+                                    1., 1., 1., 1., 0., 0., 0., 0.],
+                                   [0., 0., 0., 0., 1., 1., 1., 1.,
+                                    1., 1., 1., 1., 0., 0., 0., 0.],
+                                   [0., 0., 0., 0., 0., 0., 0., 0.,
+                                    0., 0., 0., 0., 0., 0., 0., 0.]])
 
-    def test_mask_sup_col(self, load_mock, save_mock, plot_mock):
-        expected_file_1 = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem1/spm/shgm/discLbits.chip0'
-        expected_file_2 = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem1/spm/shgm/pixelmask.chip0'
-        expected_mask = np.zeros([256, 8*256])
-        expected_mask[:, 32:32 + 64] = 1
-        expected_submask = expected_mask[0:256, 0:256]
+        self.e.mask_rows(chips, 1, 2)
 
-        self.e.mask_super_column(0, 1)
+        apply_mock.assert_called_once_with(chips, ANY)
+        np.testing.assert_array_equal(expected_array, apply_mock.call_args[0][1])
+        plot_mock.assert_called_once_with(ANY, "Mask")
+        np.testing.assert_array_equal(expected_array, plot_mock.call_args[0][0])
 
-        self.assertEqual('/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem1/spm/shgm/pixelmask.chip0', save_mock.call_args[0][0])
-        np.testing.assert_array_equal(expected_submask, save_mock.call_args[0][1])
-        self.assertEqual(dict(fmt='%.18g', delimiter=' '), save_mock.call_args[1])
-
-        load_mock.assert_called_once_with([0], expected_file_1, pixelmask=expected_file_2)
-
-        np.testing.assert_array_equal(expected_mask, plot_mock.call_args[0][0])
-        self.assertEqual(dict(name='Bad Pixels'), plot_mock.call_args[1])
-
-    def test_mask_pixels(self, load_mock, save_mock, plot_mock):
-        expected_file_1 = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem1/spm/shgm/discLbits.chip0'
-        expected_file_2 = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem1/spm/shgm/pixelmask.chip0'
+    @patch(Node_patch_path + '._mask_noisy_pixels')
+    def test_mask_pixels_using_image(self, mask_mock):
         image_data = np.random.randint(10, size=(256, 8*256))
         expected_mask = image_data > 7
 
-        self.e.mask_pixels([0], image_data, 7)
+        self.e.mask_pixels_using_image([0], image_data, 7)
 
-        np.testing.assert_array_equal(expected_mask, plot_mock.call_args[0][0])
-        self.assertEqual(dict(name='Bad pixels'), plot_mock.call_args[1])
-
-        self.assertEqual('/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem1/spm/shgm/pixelmask.chip0', save_mock.call_args[0][0])
-        np.testing.assert_array_equal(expected_mask[0:256, 0:256], save_mock.call_args[0][1])
-        self.assertEqual(dict(fmt='%.18g', delimiter=' '), save_mock.call_args[1])
-
-        load_mock.assert_called_once_with([0], expected_file_1, pixelmask=expected_file_2)
+        mask_mock.assert_called_once_with([0], ANY)
+        np.testing.assert_array_equal(expected_mask, mask_mock.call_args[0][1])
 
     mock_scan_data = np.random.randint(3, size=(3, 256, 8*256))
 
-    @patch(Node_patch_path + '.scan_dac',
-           return_value=mock_scan_data)
-    def test_mask_pixels_using_dac_scan(self, scan_mock, load_mock, save_mock,
-                                        plot_mock):
-        mask = self.mock_scan_data.sum(0) > 1
+    @patch(Node_patch_path + '._mask_noisy_pixels')
+    @patch(Node_patch_path + '.scan_dac', return_value=mock_scan_data)
+    def test_mask_pixels_using_dac_scan(self, scan_mock, mask_mock):
+        expected_mask = self.mock_scan_data.sum(0) > 1
 
         self.e.mask_pixels_using_dac_scan([0])
 
         scan_mock.assert_called_once_with([0], "Threshold0", (20, 120, 2))
+        mask_mock.assert_called_once_with([0], ANY)
+        np.testing.assert_array_equal(expected_mask, mask_mock.call_args[0][1])
 
-        np.testing.assert_array_equal(mask, plot_mock.call_args[0][0])
-        self.assertEqual(dict(name='Bad Pixels'), plot_mock.call_args[1])
+    @patch(DAWN_patch_path + '.plot_image')
+    @patch(Node_patch_path + '._apply_mask')
+    def test_mask_noisy_pixels(self, apply_mock, plot_mock):
+        image_data = np.random.randint(10, size=(256, 8*256))
 
-        self.assertEqual(save_mock.call_args[0][0], '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem1/spm/shgm/pixelmask.chip0')
-        np.testing.assert_array_equal(mask[0:256, 0:256], save_mock.call_args[0][1])
-        self.assertEqual(dict(fmt='%.18g', delimiter=' '), save_mock.call_args[1])
+        self.e._mask_noisy_pixels([0], image_data)
 
-    def test_unmask_all_pixels(self, load_mock, save_mock, _):
+        plot_mock.assert_called_once_with(ANY, name="Noisy Pixels")
+        np.testing.assert_array_equal(image_data, plot_mock.call_args[0][0])
+
+        apply_mock.assert_called_once_with([0], ANY)
+        np.testing.assert_array_equal(image_data, apply_mock.call_args[0][1])
+
+    @patch(Node_patch_path + '.load_config')
+    @patch('numpy.savetxt')
+    def test_apply_mask(self, save_mock, load_mock):
+        mask = np.random.randint(10, size=(256, 8*256))
+        expected_mask = mask[:, 0:256]
+        expected_file = "/dls/detectors/support/silicon_pixels/excaliburRX/" \
+                        "3M-RX001/calib/fem1/spm/shgm/pixelmask.chip0"
+
+        self.e._apply_mask([0], mask)
+
+        save_mock.assert_called_once_with(expected_file, ANY,
+                                          fmt="%.18g", delimiter=" ")
+        np.testing.assert_array_equal(expected_mask, save_mock.call_args[0][1])
+
+        load_mock.assert_called_once_with([0])
+
+    @patch('numpy.savetxt')
+    @patch(ETAI_patch_path + '.load_config')
+    def test_unmask_all_pixels(self, load_mock, save_mock):
         expected_file_1 = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem1/spm/shgm/discLbits.chip0'
         expected_file_2 = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem1/spm/shgm/pixelmask.chip0'
         expected_mask = np.zeros([256, 256])
@@ -1087,7 +1077,9 @@ class MaskUnmaskTest(unittest.TestCase):
 
         load_mock.assert_called_once_with([0], expected_file_1, pixelmask=expected_file_2)
 
-    def test_unequalize_pixels(self, load_mock, save_mock, _):
+    @patch('numpy.savetxt')
+    @patch(ETAI_patch_path + '.load_config')
+    def test_unequalize_pixels(self, load_mock, save_mock):
         expected_file_1 = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem1/spm/shgm/discLbits.chip0'
         expected_file_2 = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib/fem1/spm/shgm/pixelmask.chip0'
         expected_mask = np.zeros([256, 256])
