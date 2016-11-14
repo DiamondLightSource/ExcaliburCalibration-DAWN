@@ -13,7 +13,7 @@ import numpy as np
 from excaliburcalibrationdawn.excaliburtestappinterface import \
     ExcaliburTestAppInterface
 from excaliburcalibrationdawn.excaliburdawn import ExcaliburDAWN
-from config import MPX3RX
+from config import *
 from excaliburcalibrationdawn import util
 
 logging.basicConfig(level=logging.DEBUG)
@@ -55,6 +55,7 @@ class ExcaliburNode(object):
     calib_dir = posixpath.join(root_path, '3M-RX001/calib')
     config_dir = posixpath.join(root_path, 'TestApplication_15012015/config')
     default_dacs = posixpath.join(config_dir, "Default_SPM.dacs")
+    config = MPX3RX
 
     output_folder = "/tmp"  # Location to save data files to
     file_name = "image"  # Default base name for data files
@@ -120,8 +121,6 @@ class ExcaliburNode(object):
         self.app = ExcaliburTestAppInterface(self.fem, self.ipaddress, 6969,
                                              self.server_name)
         self.dawn = ExcaliburDAWN()
-
-        self.config = MPX3RX
 
     @property
     def template_path(self):
