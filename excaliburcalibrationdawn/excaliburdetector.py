@@ -56,6 +56,10 @@ class ExcaliburDetector(object):
 
         self.dawn = ExcaliburDAWN()
 
+    @property
+    def detector_range(self):
+        return [range(8)] * len(self.Nodes)
+
     def read_chip_ids(self):
         """Read chip IDs for all chips in all nodes."""
         for node in self.Nodes:
@@ -127,14 +131,34 @@ class ExcaliburDetector(object):
         for node in self.Nodes:
             node.load_config()
 
-    def threshold_equalization(self, chips):
+    def set_gnd_fbk_cas(self, chips=None):
+        """Set GND, FBK and CAS values from the config python script.
+
+        Args:
+            chips(list(list(int))): Chips to set
+
+        """
+        if chips is None:
+            chips = self.detector_range
+        elif not isinstance(chips[0], list):
+            raise ValueError("Argument chips must be a list of lists of chips "
+                             "for each node, got {}".format(chips))
+
+        for node_idx, node in enumerate(self.Nodes):
+            logging.info("Setting GND, FBK and Cas values from config script "
+                         "for node %s", node_idx)
+            node.set_gnd_fbk_cas(chips[node_idx])
+
+    def threshold_equalization(self, chips=None):
         """Calibrate discriminator equalization for given chips in detector.
 
         Args:
             chips(list(list(int))): List of lists of chips for each node
 
         """
-        if not isinstance(chips[0], list):
+        if chips is None:
+            chips = self.detector_range
+        elif not isinstance(chips[0], list):
             raise ValueError("Argument chips must be a list of lists of chips "
                              "for each node, got {}".format(chips))
 
@@ -178,6 +202,23 @@ class ExcaliburDetector(object):
         plot_name = "Excalibur Detector Image - {time_stamp}".format(
             time_stamp=util.get_time_stamp())
         self.dawn.plot_image(detector_image, plot_name)
+
+    def scan_dac(self, node_idx, chips, threshold, dac_range):
+        """Perform a dac scan and plot the result (mean counts vs DAC values).
+
+        Args:
+            node_idx(int) Node to perform scan on
+            chips(Any from self.dac_number keys): Chips to scan
+            threshold(str): Threshold to scan (ThresholdX DACs - X: 0-7)
+            dac_range(Range): Range of DAC values to scan over
+
+        Returns:
+            numpy.array: DAC scan data
+
+        """
+        logging.info("Performing DAC Scan on node %s", node_idx)
+        scan_data = self.Nodes[node_idx].scan_dac(chips, threshold, dac_range)
+        return scan_data
 
     @staticmethod
     def _combine_images(images):

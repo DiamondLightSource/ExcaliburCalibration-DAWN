@@ -154,7 +154,7 @@ class ExcaliburNode(object):
     def setup(self):
         """Perform necessary initialisation."""
         self.read_chip_ids()
-        self.app.load_dacs(range(8), self.default_dacs)
+        self.app.load_dacs(self.chip_range, self.default_dacs)
 
     def disable(self):
         """Set HV bias to 0 and disable LV and HV."""

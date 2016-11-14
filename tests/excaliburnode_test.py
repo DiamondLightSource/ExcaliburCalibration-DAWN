@@ -238,10 +238,10 @@ class ThresholdCalibrationTest(unittest.TestCase):
         expected_offset = np.array([10.0]*8)
 
         self.e.settings['gain'] = 'shgm'
-        self.e.threshold_calibration('0.1')
+        self.e.threshold_calibration(0)
 
         check_mock.assert_called_once_with()
-        self.assertEqual(save_mock.call_args[0][0], '0.1')
+        self.assertEqual(save_mock.call_args[0][0], 0)
         np.testing.assert_array_almost_equal(expected_slope, save_mock.call_args[0][1][0])
         self.assertTrue((save_mock.call_args[0][2] == expected_offset).all())
 
@@ -250,10 +250,10 @@ class ThresholdCalibrationTest(unittest.TestCase):
         expected_offset = np.array([10.0]*8)
 
         self.e.settings['gain'] = 'hgm'
-        self.e.threshold_calibration('0.1')
+        self.e.threshold_calibration(0)
 
         check_mock.assert_called_once_with()
-        self.assertEqual(save_mock.call_args[0][0], '0.1')
+        self.assertEqual(save_mock.call_args[0][0], 0)
         np.testing.assert_array_almost_equal(expected_slope, save_mock.call_args[0][1][0])
         self.assertTrue((save_mock.call_args[0][2] == expected_offset).all())
 
@@ -262,10 +262,10 @@ class ThresholdCalibrationTest(unittest.TestCase):
         expected_offset = np.array([10.0]*8)
 
         self.e.settings['gain'] = 'lgm'
-        self.e.threshold_calibration('0.1')
+        self.e.threshold_calibration(0)
 
         check_mock.assert_called_once_with()
-        self.assertEqual(save_mock.call_args[0][0], '0.1')
+        self.assertEqual(save_mock.call_args[0][0], 0)
         np.testing.assert_array_almost_equal(expected_slope, save_mock.call_args[0][1][0])
         self.assertTrue((save_mock.call_args[0][2] == expected_offset).all())
 
@@ -274,10 +274,10 @@ class ThresholdCalibrationTest(unittest.TestCase):
         expected_offset = np.array([10.0]*8)
 
         self.e.settings['gain'] = 'slgm'
-        self.e.threshold_calibration('0.1')
+        self.e.threshold_calibration(0)
 
         check_mock.assert_called_once_with()
-        self.assertEqual(save_mock.call_args[0][0], '0.1')
+        self.assertEqual(save_mock.call_args[0][0], 0)
         np.testing.assert_array_almost_equal(expected_slope, save_mock.call_args[0][1][0])
         self.assertTrue((save_mock.call_args[0][2] == expected_offset).all())
 
@@ -321,7 +321,7 @@ class SaveKev2DacCalibTest(unittest.TestCase):
 
     def setUp(self):
         self.e = ExcaliburNode(1)
-        self.threshold = '0'
+        self.threshold = 0
         self.gain = [1.1, 0.7, 1.1, 1.3, 1.0, 0.9, 1.2, 0.9]
         self.offset = [0.2, -0.7, 0.1, 0.0, 0.3, -0.1, 0.2, 0.5]
         self.expected_array = np.array([self.gain, self.offset])

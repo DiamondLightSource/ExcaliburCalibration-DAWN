@@ -6,7 +6,7 @@ from mock import patch, MagicMock, ANY
 
 import numpy as np
 
-from excaliburcalibrationdawn import ExcaliburDetector, ExcaliburNode
+from excaliburcalibrationdawn import ExcaliburDetector, ExcaliburNode, Range
 Detector_patch_path = "excaliburcalibrationdawn.excaliburdetector" \
                       ".ExcaliburDetector"
 Node_patch_path = "excaliburcalibrationdawn.excalibur1M.ExcaliburNode"
@@ -114,7 +114,8 @@ class FunctionsTest(unittest.TestCase):
         self.e.MasterNode = self.e.Nodes[0]
 
     def tearDown(self):
-        self.e.MasterNode.reset_mock()
+        for node in self.e.Nodes:
+            node.reset_mock()
 
     def test_read_chip_ids(self):
         self.e.read_chip_ids()
@@ -154,6 +155,17 @@ class FunctionsTest(unittest.TestCase):
 
         for node in self.e.Nodes:
             node.setup.assert_called_once_with()
+
+    def test_set_gnd_fbk_cas(self):
+        self.e.set_gnd_fbk_cas([[0], [0], [0], [0], [0], [0]])
+
+        for node in self.e.Nodes:
+            node.set_gnd_fbk_cas.assert_called_once_with([0])
+
+    def test_set_gnd_fbk_cas_given_invalid_chips(self):
+
+        with self.assertRaises(ValueError):
+            self.e.set_gnd_fbk_cas([0, 1, 2, 3, 4, 5, 6, 7])
 
     def test_threshold_equalization(self):
         self.e.threshold_equalization([[0], [0], [0], [0], [0], [0]])
@@ -207,6 +219,13 @@ class FunctionsTest(unittest.TestCase):
         plot_mock.assert_called_once_with(combine_mock.return_value,
                                           "Excalibur Detector Image - "
                                           "2016-10-21_16:42:50")
+
+    def test_scan_dac(self):
+
+        self.e.scan_dac(0, [0], "Threshold0", Range(0, 10, 1))
+
+        self.e.Nodes[0].scan_dac.assert_called_once_with([0], "Threshold0",
+                                                         Range(0, 10, 1))
 
     def test_combine_images(self):
         images = [np.array([[0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
