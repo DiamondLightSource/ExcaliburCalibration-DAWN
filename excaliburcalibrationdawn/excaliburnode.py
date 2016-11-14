@@ -719,14 +719,14 @@ class ExcaliburNode(object):
                                        '{disc}.tmp')
         discH_bits_file = template_path.format(disc='discHbits')
         discL_bits_file = template_path.format(disc='discLbits')
-        mask_bits_file = template_path.format(disc='maskbits')
+        pixel_bits_file = template_path.format(disc='pixelmask')
 
         np.savetxt(discL_bits_file, discLbits, fmt='%.18g', delimiter=' ')
         np.savetxt(discH_bits_file, discHbits, fmt='%.18g', delimiter=' ')
-        np.savetxt(mask_bits_file, mask_bits, fmt='%.18g', delimiter=' ')
+        np.savetxt(pixel_bits_file, mask_bits, fmt='%.18g', delimiter=' ')
 
         self.app.load_config(chips,
-                             discL_bits_file, discH_bits_file, mask_bits_file)
+                             discL_bits_file, discH_bits_file, pixel_bits_file)
 
     def load_config(self, chips=range(8)):
         """Load detector configuration files and default thresholds.
@@ -1101,10 +1101,9 @@ class ExcaliburNode(object):
 
         zeros = np.zeros(self.chip_shape)
         for chip_idx in chips:
-            pixel_mask_file = self.pixel_mask[chip_idx]
-            np.savetxt(pixel_mask_file, zeros, fmt='%.18g', delimiter=' ')
-            self.app.load_config([chip_idx], self.discL_bits[chip_idx],
-                                 pixelmask=pixel_mask_file)
+            self.load_temp_config([chip_idx], self.discL_bits[chip_idx],
+                                  self.discH_bits[chip_idx],
+                                  mask_bits=zeros)
 
     def unequalize_pixels(self, chips):
         """Reset discL_bits to zero.
@@ -1115,11 +1114,8 @@ class ExcaliburNode(object):
         """
         zeros = np.zeros(self.chip_shape)
         for chip_idx in chips:
-            discL_bits_file = self.discL_bits[chip_idx]
-            np.savetxt(discL_bits_file, zeros, fmt='%.18g', delimiter=' ')
-
-            self.app.load_config([chip_idx], discL_bits_file,
-                                 pixelmask=self.pixel_mask[chip_idx])
+            self.load_temp_config([chip_idx], discLbits=zeros, discHbits=zeros,
+                                  mask_bits=self.pixel_mask[chip_idx])
 
     def check_calib_dir(self):
         """Check if calibration directory exists and backs it up."""
