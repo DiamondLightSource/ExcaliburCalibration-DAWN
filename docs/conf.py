@@ -21,8 +21,7 @@ require('mock')
 from mock import MagicMock
 
 # Mock out failing imports
-MOCK_MODULES = ["scisoftpy", "scipy", "scipy.optimize"]
-sys.modules.update((mod_name, MagicMock()) for mod_name in MOCK_MODULES)
+autodoc_mock_imports = ["scisoftpy", "scipy", "scipy.optimize", "numpy"]
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
