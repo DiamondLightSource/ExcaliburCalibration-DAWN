@@ -1325,7 +1325,7 @@ class ExcaliburNode(object):
 
         discbit = 0
         calib_plot_name = "Mean edge shift in Threshold DACs as a function " \
-                          "of DAC_disc for discbit =" + str(discbit)
+                          "of DAC_disc for discbit = {}".format(discbit)
 
         # Set discbits at 0
         discbits = discbit * np.ones(self.full_array_shape)
@@ -1339,13 +1339,13 @@ class ExcaliburNode(object):
             x0[:, idx], _ = self._dac_scan_fit(chips, threshold, dac_value,
                                                dac_range, discbit, p0)
 
-            self.dawn.clear_plot(calib_plot_name)
-            for chip_idx in chips:
-                # TODO: idx:(idx+1), not 0:idx+1?
-                self.dawn.add_plot_line(np.asarray(dac_disc_range[0:idx + 1]),
-                                        x0[chip_idx, 0:idx + 1],
-                                        calib_plot_name,
-                                        label="Chip {}".format(chip_idx))
+        self.dawn.clear_plot(calib_plot_name)
+        for chip_idx in chips:
+            # TODO: idx:(idx+1), not 0:idx+1?
+            self.dawn.add_plot_line(np.asarray(dac_disc_range[0:idx + 1]),
+                                    x0[chip_idx, 0:idx + 1],
+                                    calib_plot_name,
+                                    label="Chip {}".format(chip_idx))
 
         # Plot mean noise edge vs DAC Disc for discbits set at 0
         offset = np.zeros(8)
@@ -1377,6 +1377,7 @@ class ExcaliburNode(object):
 
         opt_dac_disc = np.zeros(self.num_chips)
         for chip_idx in chips:
+            # TODO: Round this to get closer optimisation??
             opt_value = int(self.num_sigma * sigma[chip_idx] / gain[chip_idx])
             self.set_dac([chip_idx], threshold, opt_value)
             opt_dac_disc[chip_idx] = opt_value

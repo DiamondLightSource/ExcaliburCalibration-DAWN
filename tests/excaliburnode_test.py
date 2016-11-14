@@ -1291,20 +1291,44 @@ class OptimizeDacDiscTest(unittest.TestCase):
     @patch(DAWN_patch_path + '.add_plot_line')
     @patch(Node_patch_path + '.load_all_discbits')
     @patch(Node_patch_path + '._dac_scan_fit', return_value=([1], [1]))
-    def test_optimize_dac_disc(self, scan_mock, load_mock, add_mock, plot_mock,
+    def test_optimize_dac_disc(self, scan_mock, load_mock, add_mock, fit_mock,
                                clear_mock, set_mock, display_mock):
         chips = [0]
-        roi_mock = np.ones([256, 8*256])
+        zeros = np.zeros([256, 8*256])
+        ones = np.ones([256, 8*256])
 
-        self.e._optimize_dac_disc(chips, "discL", roi_mock)
+        self.e._optimize_dac_disc(chips, "discL", ones)
 
-        self.assertEqual(2, load_mock.call_count)
-        self.assertEqual(4, scan_mock.call_count)
-        self.assertEqual(3, clear_mock.call_count)
-        self.assertEqual(3, add_mock.call_count)
-        self.assertEqual(1, plot_mock.call_count)
-        self.assertEqual(1, set_mock.call_count)
-        self.assertEqual(1, display_mock.call_count)
+        load_mock.assert_has_calls([call(chips, "discL", ANY, ANY),
+                                    call(chips, "discL", ANY, ANY)])
+        np.testing.assert_array_equal(zeros, load_mock.call_args_list[0][0][2])
+        np.testing.assert_array_equal(ones, load_mock.call_args_list[0][0][3])
+        np.testing.assert_array_equal(15 * ones, load_mock.call_args_list[1][0][2])
+        np.testing.assert_array_equal(ones, load_mock.call_args_list[1][0][3])
+
+        r = Range(0, 150, 5)
+        p = [5000, 50, 30]
+        scan_mock.assert_has_calls([call(chips, "Threshold0", 0, r, 0, p),
+                                    call(chips, "Threshold0", 50, r, 0, p),
+                                    call(chips, "Threshold0", 100, r, 0, p),
+                                    call(chips, "Threshold0", 80, r, 15, [5000, 0, 30])])
+
+        name = "Mean edge shift in Threshold DACs as a function of DAC_disc " \
+               "for discbit = 0"
+        clear_mock.assert_called_once_with(name)
+
+        add_mock.assert_called_once_with(ANY, ANY, name, label="Chip 0")
+        fit_mock.assert_called_once_with(ANY, ANY, [0, -1], fit_name=name,
+                                         label="Chip 0")
+        np.testing.assert_array_equal(np.array([0, 50, 100]), fit_mock.call_args[0][0])
+        np.testing.assert_array_equal(np.array([1., 1., 1.]), fit_mock.call_args[0][1])
+
+        set_mock.assert_called_once_with(chips, "Threshold0", 3)
+        display_mock.assert_called_once_with(chips, ANY, ANY, ANY, ANY)
+        np.testing.assert_array_equal(np.array([1.]), display_mock.call_args[0][1])
+        np.testing.assert_array_equal(np.array([1.]), display_mock.call_args[0][2])
+        np.testing.assert_array_equal(np.array([1., 0., 0., 0., 0., 0., 0., 0.]),
+                                      display_mock.call_args[0][3])
 
     @patch(DAWN_patch_path + '.plot_gaussian_fit', return_value=(0, 0))
     @patch(Node_patch_path + '.set_dac')
