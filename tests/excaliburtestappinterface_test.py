@@ -3,15 +3,16 @@ from subprocess import CalledProcessError
 
 from pkg_resources import require
 require("mock")
-from mock import patch, MagicMock, ANY
+from mock import patch, MagicMock, ANY, call
 
-from excaliburcalibrationdawn.excaliburtestappinterface import ExcaliburTestAppInterface
+from excaliburcalibrationdawn import ExcaliburTestAppInterface
 ETAI_patch_path = "excaliburcalibrationdawn.excaliburtestappinterface.ExcaliburTestAppInterface"
 
 
+@patch('logging.info')
 class InitTest(unittest.TestCase):
 
-    def test_attributes_set(self):
+    def test_attributes_set(self, info_mock):
         e = ExcaliburTestAppInterface(1, "test_ip", "test_port")
         expected_path = "/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp"
 
@@ -26,8 +27,10 @@ class InitTest(unittest.TestCase):
         self.assertEqual(['/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
                           '-i', 'test_ip',
                           '-p', 'test_port'], e.base_cmd)
+        info_mock.assert_called_once_with("Set self.quiet to False to display "
+                                          "terminal output.")
 
-    def test_base_cmd_with_server_given(self):
+    def test_base_cmd_with_server_given(self, _):
         e = ExcaliburTestAppInterface(1, "test_ip", "test_port", "test_server")
         self.assertEqual(['ssh',
                           'test_server.diamond.ac.uk',
@@ -68,34 +71,70 @@ class ConstructCommandTest(unittest.TestCase):
         self.assertEqual(expected_command, command)
 
 
+@patch('logging.info')
 @patch('logging.debug')
+@patch('subprocess.check_output')
 @patch('subprocess.check_call')
 class SendCommandTest(unittest.TestCase):
 
-    def test_subp_called_and_logged(self, subp_mock, logging_mock):
-        e = ExcaliburTestAppInterface(1, "test_ip", "test_port")
-        expected_message = "Sending Command:\n'%s' with kwargs %s"
-        subp_mock.return_value = "Success"
+    def setUp(self):
+        self.e = ExcaliburTestAppInterface(1, "test_ip", "test_port")
 
-        e._send_command(["test_command"], test=True)
+    def test_quiet_subp_called_and_logged(self, call_mock, output_mock,
+                                          debug_mock, _):
+        expected_message = "Sending Command:\n'%s' with kwargs %s"
+        output_mock.return_value = "Success"
+
+        self.e._send_command(["test_command"], test=True)
 
         self.assertEqual((expected_message, "test_command", "{'test': True}"),
-                         logging_mock.call_args_list[0][0])
-        subp_mock.assert_called_once_with(["test_command"], test=True)
+                         debug_mock.call_args_list[0][0])
+        output_mock.assert_called_once_with(["test_command"], test=True)
+        call_mock.assert_not_called()
 
-    def test_error_raised_then_catch_and_log(self, subp_mock, logging_mock):
-        e = ExcaliburTestAppInterface(1, "test_ip", "test_port")
+    def test_quiet_error_raised_then_catch_and_log(self, call_mock, output_mock,
+                                                   debug_mock, info_mock):
         expected_message = "Sending Command:\n'%s' with kwargs %s"
-        subp_mock.side_effect = CalledProcessError(1, "test_command",
+        output_mock.side_effect = CalledProcessError(1, "test_command",
+                                                     output="Invalid command")
+
+        self.e._send_command(["test_command"], test=True)
+
+        self.assertEqual((expected_message, "test_command", "{'test': True}"),
+                         debug_mock.call_args_list[0][0])
+        output_mock.assert_called_once_with(["test_command"], test=True)
+        call_mock.assert_not_called()
+        self.assertEqual(("Error Output:\n%s", "Invalid command"),
+                         debug_mock.call_args_list[1][0])
+        info_mock.assert_called_once_with("Set self.quiet to False to display "
+                                          "terminal output.")
+
+    def test_subp_called_and_logged(self, call_mock, output_mock,
+                                    debug_mock, _):
+        expected_message = "Sending Command:\n'%s' with kwargs %s"
+        call_mock.return_value = "Success"
+
+        self.e.quiet = False
+        self.e._send_command(["test_command"], test=True)
+
+        self.assertEqual((expected_message, "test_command", "{'test': True}"),
+                         debug_mock.call_args_list[0][0])
+        call_mock.assert_called_once_with(["test_command"], test=True)
+
+    def test_error_raised_then_catch_and_log(self, call_mock, output_mock,
+                                             debug_mock, _):
+        expected_message = "Sending Command:\n'%s' with kwargs %s"
+        call_mock.side_effect = CalledProcessError(1, "test_command",
                                                    output="Invalid command")
 
-        e._send_command(["test_command"], test=True)
+        self.e.quiet = False
+        self.e._send_command(["test_command"], test=True)
 
         self.assertEqual((expected_message, "test_command", "{'test': True}"),
-                         logging_mock.call_args_list[0][0])
-        subp_mock.assert_called_once_with(["test_command"], test=True)
+                         debug_mock.call_args_list[0][0])
+        call_mock.assert_called_once_with(["test_command"], test=True)
         self.assertEqual(("Error Output:\n%s", "Invalid command"),
-                         logging_mock.call_args_list[1][0])
+                         debug_mock.call_args_list[1][0])
 
 
 @patch(ETAI_patch_path + '._construct_command')
@@ -247,18 +286,17 @@ class APICallsTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.e.set_hv_bias(200)
 
-    @patch('time.sleep')
-    def test_sense(self, sleep_mock, send_mock, construct_mock):
+    def test_sense(self, send_mock, construct_mock):
         expected_params_1 = ['--sensedac', '1', '--dacs=test_file']
         expected_params_2 = ['--sensedac', '1', '-s']
 
         self.e.sense(self.chips, "Threshold0", "test_file")
 
-        self.assertEqual((self.chips, ) + tuple(expected_params_1), construct_mock.call_args_list[0][0])
-        self.assertEqual(construct_mock.return_value, send_mock.call_args_list[0][0][0])
-        sleep_mock.assert_called_once_with(1)
-        self.assertEqual((self.chips, ) + tuple(expected_params_2), construct_mock.call_args_list[1][0])
-        self.assertEqual(construct_mock.return_value, send_mock.call_args_list[1][0][0])
+        construct_mock.assert_has_calls([call(self.chips, *expected_params_1),
+                                         call(self.chips, *expected_params_2)])
+        send_mock.assert_has_calls([call(construct_mock.return_value),
+                                    call(construct_mock.return_value,
+                                         loud_call=True)])
 
     def test_perform_dac_scan(self, send_mock, construct_mock):
         expected_params = ['--dacs=dac_file', '-t', '5', '--dacscan',
@@ -280,7 +318,8 @@ class APICallsTest(unittest.TestCase):
         self.e.read_chip_ids()
 
         construct_mock.assert_called_once_with(self.chips, *expected_params)
-        send_cmd_mock.assert_called_once_with(construct_mock.return_value)
+        send_cmd_mock.assert_called_once_with(construct_mock.return_value,
+                                              loud_call=True)
 
     def test_read_chip_id_with_outfile(self, send_cmd_mock, construct_mock):
         expected_params = ['-r', '-e']
@@ -290,6 +329,7 @@ class APICallsTest(unittest.TestCase):
 
         construct_mock.assert_called_once_with(self.chips, *expected_params)
         send_cmd_mock.assert_called_once_with(construct_mock.return_value,
+                                              loud_call=True,
                                               stdout=mock_outfile)
 
     def test_read_slow_params(self, send_cmd_mock, construct_mock):
@@ -298,7 +338,8 @@ class APICallsTest(unittest.TestCase):
         self.e.read_slow_control_parameters()
 
         construct_mock.assert_called_once_with(self.chips, *expected_params)
-        send_cmd_mock.assert_called_once_with(construct_mock.return_value)
+        send_cmd_mock.assert_called_once_with(construct_mock.return_value,
+                                              loud_call=True)
 
     def test_load_dacs(self, send_cmd_mock, construct_mock):
         send_cmd_mock.return_value = True
@@ -324,7 +365,7 @@ class APICallsTest(unittest.TestCase):
         tp_mask = MagicMock()
         expected_params = ['--dacs=test_file', '--tpmask=' + tp_mask]
 
-        self.e.configure_test_pulse(self.chips, "test_file", tp_mask)
+        self.e.configure_test_pulse(self.chips, tp_mask, "test_file")
 
         construct_mock.assert_called_once_with(self.chips, *expected_params)
         send_cmd_mock.assert_called_once_with(construct_mock.return_value)
@@ -334,13 +375,13 @@ class APICallsTest(unittest.TestCase):
         disc_l_mock = MagicMock()
         disc_h_mock = MagicMock()
         mask_mock = MagicMock()
-        disc_files = dict(discl=disc_l_mock, disch=disc_h_mock,
-                          pixelmask=mask_mock)
+        disc_files = dict(discL=disc_l_mock, discH=disc_h_mock,
+                          pixel_mask=mask_mock)
         expected_params = ['--dacs=test_file', '--tpmask=' + tp_mask,
                            '--discl=' + disc_l_mock, '--disch=' + disc_h_mock,
                            '--pixelmask=' + mask_mock]
 
-        self.e.configure_test_pulse(self.chips, "test_file", tp_mask, disc_files)
+        self.e.configure_test_pulse(self.chips, tp_mask, "test_file", disc_files)
 
         construct_mock.assert_called_once_with(self.chips, *expected_params)
         send_cmd_mock.assert_called_once_with(construct_mock.return_value)
@@ -474,7 +515,8 @@ class SimpleWrappersTest(unittest.TestCase):
         expected_kwargs = dict(hdf_file='test.hdf5', path='/scratch',
                                tp_count=1000)
 
-        self.e.acquire_tp_image(self.chips, 100, 1000, "/scratch", "test.hdf5")
+        self.e.acquire_tp_image(self.chips, 100, 1000, "test.hdf5",
+                                path="/scratch")
 
         acquire_mock.assert_called_once_with(self.chips, *expected_params,
                                              **expected_kwargs)

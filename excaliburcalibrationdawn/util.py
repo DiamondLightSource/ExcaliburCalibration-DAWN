@@ -3,6 +3,8 @@ import os
 import time
 from datetime import datetime
 import numpy as np
+import logging
+logging.basicConfig(level=logging.DEBUG)
 
 
 def grab_slice(array, start, stop):
@@ -36,7 +38,7 @@ def set_slice(array, start, stop, value):
     array[start[0]:stop[0] + 1, start[1]:stop[1] + 1] = value
 
 
-def rotate_config(config_file):
+def rotate_array(config_file):
     """Rotate array in given file 180 degrees.
 
     Args:
@@ -56,6 +58,20 @@ def get_time_stamp():
     time_stamp = iso.split(".")[0]  # Remove milliseconds
 
     return time_stamp
+
+
+def generate_file_name(base_name):
+    """Generate file name with a time stamp from a given base_name.
+
+    Args:
+        base_name(str): Base file name - e.g. Image, DAC Scan
+
+    Returns:
+        str: New file name
+
+    """
+    return "{tag}_{base_name}.hdf5".format(base_name=base_name,
+                                           tag=get_time_stamp())
 
 
 def to_list(value):
@@ -80,6 +96,7 @@ def wait_for_file(file_path, wait_time):
         wait_time: Time to wait before
 
     """
+    logging.info("Waiting up to %s seconds for file %s", wait_time, file_path)
     loop_time = 0.1
     loops = wait_time / loop_time
 
@@ -87,7 +104,11 @@ def wait_for_file(file_path, wait_time):
     while loop < loops:
         time.sleep(0.1)
         if os.path.isfile(file_path):
+            logging.info("File appeared!")
             return True
         loop += 1
+        if loop % 10 == 0 and loop > 0:
+            logging.info("%s seconds", loop / 10)
 
+    logging.info("File didn't appear within given time.")
     return False

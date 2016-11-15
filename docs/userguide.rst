@@ -57,7 +57,7 @@ The very first time you calibrate a module, you need to manually adjust the FBK,
 * FBK: 0.9V
 * CAS: 0.85V
 
-To calibrate these manually, you can use the set_dac and read_dac values to home in on the required DAC value to get the correct read back value. Once you have the optimum DAC value for a given chip, insert it into the corresponding array in the config folder. These values will be specific to each module and so each must have its own file in the config folder with the appropriate GND< FBK and CAS arrays.
+To calibrate these manually, you can use the set_dac and read_dac values to home in on the required DAC value to get the correct read back value. Once you have the optimum DAC value for a given chip, insert it into the corresponding array in the config folder. These values will be specific to each module and so each must have its own file in the config folder with the appropriate GND, FBK and CAS arrays.
 
 ### Add Scott's automated stuff here... ###
 
@@ -66,7 +66,7 @@ Threshold Equalisation
 
 To run threshold equalisation for all chips::
 
-    >>> x.threshold_equalisation()
+    >>> x.threshold_equalization()
 
 By default, threshold equalization files will be created /tmp/femX of the server node X. You should copy this folder to the path were EPICS expects, for each of the FEMs.
 
@@ -127,11 +127,11 @@ Other useful functions::
 Full Detector Calibration
 -------------------------
 
-The Excalibur1M class allows some operations to be performed on two FEMs with a single command. To create aN Excalibur1M instance::
+The Excalibur1M class allows some operations to be performed on two FEMs with a single command. To create an Excalibur1M instance::
 
     >>> from excaliburcalibrationdawn import Excalibur1M
-    >>> x = Excalibur1M(server="p99-excalibur-0", master=6, node2=5)
+    >>> x = Excalibur1M(detector_name="p99-excalibur-0", nodes=[5, 6], master=6)
 
-Where server is the root of the server name, without the FEM specifier on the end, i.e. the server for FEM 6 will be p99-excalibur-06, which will be added to the server path on the ExcaliburNode instance for the master node. Master is the node set to control the power supply card and node2 is the second FEM making up the module. The class will then ssh into each node server, perform the relevant commands and return with any response.
+Where detector_name is the root of the server name, without the FEM specifier on the end, i.e. the server for FEM 6 will be p99-excalibur-06, which will be added to the server path on the ExcaliburNode instance for the master node. Nodes is a list of the nodes making up the 1M and master is the node set to control the power supply card. The class will then ssh into each node server, perform the relevant commands and return with any response.
 
 You can capture images in the same way as with a single node using the expose() function. The images from both nodes will be loaded, combined and plotted in DAWN to give a full image.

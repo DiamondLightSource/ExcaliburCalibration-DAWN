@@ -43,7 +43,7 @@ class FunctionsTest(unittest.TestCase):
     def test_rotate_config(self, load_mock, save_mock, rotate_mock):
         test_path = 'path/to/config'
 
-        util.rotate_config(test_path)
+        util.rotate_array(test_path)
 
         load_mock.assert_called_once_with(test_path)
         rotate_mock.assert_called_once_with(load_mock.return_value, 2)
@@ -61,6 +61,12 @@ class FunctionsTest(unittest.TestCase):
         time_stamp = util.get_time_stamp()
 
         self.assertEqual(expected_time_stamp, time_stamp)
+
+    @patch(util_patch_path + '.get_time_stamp', return_value="20161020~154548")
+    def test_generate_file_name(self, get_mock):
+        file_name = util.generate_file_name("TestImage")
+
+        self.assertEqual("20161020~154548_TestImage.hdf5", file_name)
 
     def test_to_list_given_value_then_return_list(self):
         response = util.to_list(1)

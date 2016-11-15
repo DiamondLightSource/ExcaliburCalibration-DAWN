@@ -4,8 +4,9 @@ from pkg_resources import require
 require("mock")
 from mock import patch, MagicMock, ANY
 
-from excaliburcalibrationdawn.excaliburdetector import ExcaliburDetector
-from excaliburcalibrationdawn.excaliburnode import ExcaliburNode, np
+import numpy as np
+
+from excaliburcalibrationdawn import ExcaliburDetector, ExcaliburNode, Range
 Detector_patch_path = "excaliburcalibrationdawn.excaliburdetector" \
                       ".ExcaliburDetector"
 Node_patch_path = "excaliburcalibrationdawn.excalibur1M.ExcaliburNode"
@@ -96,12 +97,25 @@ class SetVoltageTest(unittest.TestCase):
         for node in self.e.Nodes[1:]:
             self.assertFalse(node.set_hv_bias.call_count)
 
+    def test_disable(self):
+
+        self.e.disable()
+
+        self.e.Nodes[0].disable.assert_called_once_with()
+        for node in self.e.Nodes[1:]:
+            node.assert_not_called()
+
 
 class FunctionsTest(unittest.TestCase):
 
     def setUp(self):
         self.e = ExcaliburDetector("test-server", [1, 2, 3, 4, 5, 6], 1)
         self.e.Nodes = mock_list
+        self.e.MasterNode = self.e.Nodes[0]
+
+    def tearDown(self):
+        for node in self.e.Nodes:
+            node.reset_mock()
 
     def test_read_chip_ids(self):
         self.e.read_chip_ids()
@@ -109,17 +123,56 @@ class FunctionsTest(unittest.TestCase):
         for node in self.e.Nodes:
             node.read_chip_ids.assert_called_once_with()
 
+    def test_set_quiet(self):
+        self.e.set_quiet(True)
+
+        for node in self.e.Nodes:
+            node.set_quiet.assert_called_once_with(True)
+
     def test_monitor(self):
         self.e.monitor()
 
         for node in self.e.Nodes:
             node.monitor.assert_called_once_with()
 
+    def test_load_config(self):
+        self.e.load_config()
+
+        for node in self.e.Nodes:
+            node.load_config.assert_called_once_with()
+
+    def test_display_status(self):
+        self.e.display_status()
+
+        for node in self.e.Nodes:
+            node.display_status.assert_called_once_with()
+
     def test_setup(self):
         self.e.setup()
 
+        self.e.MasterNode.initialise_lv.assert_called_once_with()
+        self.e.MasterNode.set_hv_bias.assert_called_once_with(120)
+
         for node in self.e.Nodes:
             node.setup.assert_called_once_with()
+
+    def test_set_gnd_fbk_cas(self):
+        self.e.set_gnd_fbk_cas([[0], [0], [0], [0], [0], [0]])
+
+        for node in self.e.Nodes:
+            node.set_gnd_fbk_cas.assert_called_once_with([0])
+
+    def test_set_gnd_fbk_cas_default(self):
+        self.e.set_gnd_fbk_cas()
+
+        for node in self.e.Nodes:
+            node.set_gnd_fbk_cas.assert_called_once_with([0, 1, 2, 3,
+                                                          4, 5, 6, 7])
+
+    def test_set_gnd_fbk_cas_given_invalid_chips(self):
+
+        with self.assertRaises(ValueError):
+            self.e.set_gnd_fbk_cas([0, 1, 2, 3, 4, 5, 6, 7])
 
     def test_threshold_equalization(self):
         self.e.threshold_equalization([[0], [0], [0], [0], [0], [0]])
@@ -127,28 +180,70 @@ class FunctionsTest(unittest.TestCase):
         for node in self.e.Nodes:
             node.threshold_equalization.assert_called_once_with([0])
 
-    @patch(Detector_patch_path + '._grab_node_slice')
-    def test_optimize_dac_disc(self, grab_mock):
-        roi_mock = MagicMock()
-        self.e.optimize_dac_disc([[0], [0], [0], [0], [0], [0]], roi_mock)
+    def test_threshold_equalization_default(self):
+        self.e.threshold_equalization()
 
-        for idx, node in enumerate(self.e.Nodes):
-            self.assertEqual((roi_mock, idx),
-                             grab_mock.call_args_list[idx][0])
-            self.assertEqual(([0], grab_mock.return_value),
-                             node.optimize_disc_l.call_args_list[0][0])
-            self.assertEqual(([0], grab_mock.return_value),
-                             node.optimize_disc_h.call_args_list[0][0])
+        for node in self.e.Nodes:
+            node.threshold_equalization.assert_called_once_with([0, 1, 2, 3,
+                                                                 4, 5, 6, 7])
+
+    def test_threshold_equalization_given_invalid_chips(self):
+
+        with self.assertRaises(ValueError):
+            self.e.threshold_equalization([0, 1, 2, 3, 4, 5, 6, 7])
 
     @patch(util_patch_path + '.get_time_stamp',
            return_value="2016-10-21_16:42:50")
+    @patch(Detector_patch_path + '._combine_images')
     @patch(DAWN_patch_path + '.plot_image')
-    def test_expose(self, plot_mock, _):
-        mock_array = np.array([[0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
-                               [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0]])
+    def test_acquire_tp_image(self, plot_mock, combine_mock, _):
+
+        mock_image = MagicMock()
 
         for node in self.e.Nodes:
-            node.expose.return_value = mock_array
+            node.acquire_tp_image.return_value = mock_image
+
+        self.e.acquire_tp_image("triangles.mask")
+
+        for node in self.e.Nodes:
+            node.acquire_tp_image.assert_called_once_with("triangles.mask")
+
+        combine_mock.assert_called_once_with([mock_image] * 6)
+        plot_mock.assert_called_once_with(combine_mock.return_value,
+                                          "Excalibur Detector TP Image - "
+                                          "2016-10-21_16:42:50")
+
+    @patch(util_patch_path + '.get_time_stamp',
+           return_value="2016-10-21_16:42:50")
+    @patch(Detector_patch_path + '._combine_images')
+    @patch(DAWN_patch_path + '.plot_image')
+    def test_expose(self, plot_mock, combine_mock, _):
+
+        mock_image = MagicMock()
+
+        for node in self.e.Nodes:
+            node.expose.return_value = mock_image
+
+        self.e.expose(100)
+
+        for node in self.e.Nodes:
+            node.expose.assert_called_once_with(100)
+
+        combine_mock.assert_called_once_with([mock_image] * 6)
+        plot_mock.assert_called_once_with(combine_mock.return_value,
+                                          "Excalibur Detector Image - "
+                                          "2016-10-21_16:42:50")
+
+    def test_scan_dac(self):
+
+        self.e.scan_dac(0, [0], "Threshold0", Range(0, 10, 1))
+
+        self.e.Nodes[0].scan_dac.assert_called_once_with([0], "Threshold0",
+                                                         Range(0, 10, 1))
+
+    def test_combine_images(self):
+        images = [np.array([[0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+                            [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0]])] * 6
 
         expected_array = np.array([[0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
                                    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
@@ -163,13 +258,21 @@ class FunctionsTest(unittest.TestCase):
                                    [0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
                                    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0]])
 
-        self.e.expose(100)
+        detector_image = self.e._combine_images(images)
 
-        for node in self.e.Nodes:
-            node.expose.assert_called_once_with()
+        np.testing.assert_array_equal(expected_array, detector_image)
 
-        plot_mock.assert_called_once_with(ANY, "Excalibur Detector Image - 2016-10-21_16:42:50")
-        np.testing.assert_array_equal(expected_array, plot_mock.call_args[0][0])
+    @patch('shutil.copytree')
+    def test_rotate_configs(self, copy_mock):
+
+        self.e.rotate_configs()
+
+        copy_mock.assert_called_once_with(self.e.calib_dir,
+                                          self.e.calib_dir + "_epics")
+        for node in self.e.Nodes[1:2:6]:
+            node.rotate_config.assert_called_once_with()
+        for node in self.e.Nodes[0:2:6]:
+            node.rotate_config.assert_not_called()
 
 
 class UtilTest(unittest.TestCase):

@@ -6,8 +6,6 @@ import numpy as np
 from scipy.optimize import curve_fit
 import scisoftpy
 
-import util
-
 logging.basicConfig(level=logging.DEBUG)
 
 
@@ -23,8 +21,8 @@ class ExcaliburDAWN(object):
         """Plot the given data set as a 2D image.
 
         Args:
-            data_set: 2D numpy array
-            name: Name for plot
+            data_set(numpy.array): 2D numpy array
+            name(str): Name for plot
 
         """
         self.plot.image(data_set, name=name)
@@ -34,19 +32,20 @@ class ExcaliburDAWN(object):
         """Load image data in given file into a numpy array.
 
         Args:
-            path: Path to file to load from
+            path(str): Path to file to load from
 
         Returns:
-            Numpy array containing image data
+            numpy.array: Image data
 
         """
+        logging.info("Loading HDF5 file; %s", path)
         return self.io.load(path).image[...]
 
     def load_image_data(self, path):
         """Load and squeeze an image or set of images from the given file.
 
         Args:
-            path: Image to load
+            path(str): Image to load
 
         """
         image_raw = self.load_image(path)
@@ -57,124 +56,149 @@ class ExcaliburDAWN(object):
         """Clear given plot.
 
         Args:
-            name: Name of plot to clear
+            name(str): Name of plot to clear
 
         """
+        logging.debug("Clearing plot '%s'", name)
         self.plot.clear(name)
 
-    def plot_linear_fit(self, x_data, y_data, estimate,
-                        name="Linear", fit_name="Linear Fit", clear=False):
-        """Plot the given 2D data with a linear least squares fit.
+    def plot_linear_fit(self, x_data, y_data, estimate, x_name, y_name, label,
+                        name=None, fit_name=None):
+        """Fit the given 2D data with a linear least squares fit.
 
         Args:
-            x_data: Independent variable data
-            y_data: Dependent variable data
-            estimate: Starting estimate for offset and gain
-            name: Name of plot
-            fit_name: Name of fit plot
-            clear: Option to clear given plot before adding new one
+            x_data(list/np.array): Independent variable data
+            y_data(list/np.array): Dependent variable data
+            x_name(str): Label for x-axis
+            y_name(str): Label for y-axis
+            estimate(list(int/float): Starting estimate for offset and gain
+            label(str): Label for plot line added to any plots
+            name(str): Name of plot
+            fit_name(str): Name of fit plot
 
         Returns:
             Optimal offset and gain values for least squares fit
 
         """
-        if clear:
-            self.clear_plot(name)
-            self.clear_plot(fit_name)
+        logging.info("Performing linear fit")
 
-        self.plot.addline(x_data, y_data, name=name)
+        if name is not None:
+            self.clear_plot(name)
+            self.add_plot_line(x_data, y_data, x_name, y_name, name, label)
 
         popt, _ = curve_fit(self.lin_function, x_data, y_data, estimate)
         offset = popt[0]
         gain = popt[1]
 
-        self.plot.addline(x_data, self.lin_function(x_data, offset, gain),
-                          name=fit_name)
+        if fit_name is not None:
+            self.clear_plot(fit_name)
+            self.add_plot_line(x_data, self.lin_function(x_data, offset, gain),
+                               x_name, y_name, fit_name, label)
 
         return offset, gain
 
-    def add_plot_line(self, x, y, name):
+    def add_plot_line(self, x, y, x_name, y_name, plot_name, label):
         """Add a plot of x vs y to the given plot.
 
         Args:
-            x: X axis data
-            y: Y axis data
-            name: Name of plot to add to
+            x(list/np.array): X axis data
+            y(list/np.array): Y axis data
+            x_name(str): Label for x-axis
+            y_name(str): Label for y-axis
+            plot_name(str): Name of plot to add to
+            label(str): Label for plot line
 
         """
-        self.plot.addline(x, y, name=name)
+        self.plot.addline({x_name: x}, [{y_name: (y, label)}],
+                          name=plot_name, title=plot_name)
 
     def plot_gaussian_fit(self, scan_data, plot_name, p0, bins):
         """Calculate the Gaussian least squares fit and plot the result.
 
         Args:
-            scan_data: Data to fit
-            plot_name: Name of resulting plot
-            p0: Initial guess for gaussian curve parameters
-            bins: Bins to plot in histogram
+            scan_data(numpy.array): Data to fit
+            plot_name(str): Name of resulting plot
+            p0(list(int)): Initial guess for gaussian curve parameters
+            bins(int): Bins to plot in histogram
 
         """
+        logging.info("Performing Gaussian fit")
         fit_plot_name = plot_name + " (fitted)"
         a = np.zeros([8])
         x0 = np.zeros([8])
         sigma = np.zeros([8])
+
         self.clear_plot(plot_name)
         self.clear_plot(fit_plot_name)
-
-        for idx, chip_data in enumerate(scan_data):
-            bin_counts, bin_edges = np.histogram(chip_data, bins=bins)
-
-            self.plot.addline(bin_edges[0:-1], bin_counts, name=plot_name)
-            popt, _ = curve_fit(self.gauss_function, bin_edges[0:-2],
-                                bin_counts[0:-1], p0)
-
-            a[idx] = popt[0]
-            x0[idx] = popt[1]
-            sigma[idx] = popt[2]
-            self.plot.addline(bin_edges[0:-1],
-                              self.gauss_function(bin_edges[0:-1], a[idx],
-                                                  x0[idx], sigma[idx]),
-                              name=fit_plot_name)
+        for chip_idx, chip_data in enumerate(scan_data):
+            if chip_data is not None:
+                bin_counts, bin_edges = np.histogram(chip_data, bins=bins)
+    
+                self.add_plot_line(bin_edges[0:-1], bin_counts,
+                                   "Disc Value", "Bin Count", plot_name,
+                                   label="Chip {}".format(chip_idx))
+                popt, _ = curve_fit(self.gauss_function, bin_edges[0:-2],
+                                    bin_counts[0:-1], p0)
+    
+                a[chip_idx] = popt[0]
+                x0[chip_idx] = popt[1]
+                sigma[chip_idx] = popt[2]
+                self.add_plot_line(bin_edges[0:-1],
+                                   self.gauss_function(bin_edges[0:-1],
+                                                       a[chip_idx],
+                                                       x0[chip_idx],
+                                                       sigma[chip_idx]),
+                                   "Disc Value", "Bin Count", fit_plot_name,
+                                   label="Chip {}".format(chip_idx))
 
         return x0, sigma
 
-    def plot_histogram(self, image_data, name="Histogram"):
+    def plot_histogram(self, image_data, name, x_name):
         """Plot a histogram for each of the given chips.
 
         Args:
-            image_data: Data for full array
-            name: Name of plot
+            image_data(numpy.array): Data for full array
+            name(str): Name of plot
+            x_name(str): Label for x-axis
 
         """
-        for chip_data in image_data:
-            self._add_histogram(chip_data, name=name)
+        self.clear_plot(name)
+        for chip_idx, chip_data in enumerate(image_data):
+            self._add_histogram(chip_data, name, x_name,
+                                "Chip {}".format(chip_idx))
 
-    def plot_histogram_with_mask(self, chips, image_data, mask,
-                                 name="Histogram"):
+    def plot_histogram_with_mask(self, chips, image_data, mask, name, x_name):
         """Plot a histogram for each of the given chips, after applying a mask.
         Args:
-            chips: Chips to plot for
-            image_data: Data for full array
-            mask: Mask to apply before plotting data
-            name: Name of plot
+            chips(list(int)): Chips to plot for
+            image_data(numpy.array): Data for full array
+            mask(numpy.array): Mask to apply before plotting data
+            name(str): Name of plot
+            x_name(str): Label for x-axis
+
         """
+        self.clear_plot(name)
         for chip_idx in chips:
             chip_mask = mask[0:256, chip_idx*256:(chip_idx + 1)*256]
             chip_data = image_data[0:256, chip_idx*256:(chip_idx + 1)*256]
             masked_data = chip_data[chip_mask.astype(bool)]
-            self._add_histogram(masked_data, name=name)
+            self._add_histogram(masked_data, name, x_name,
+                                label="Chip {}".format(chip_idx))
 
-    def _add_histogram(self, data, name, bins=10):
+    def _add_histogram(self, data, name, x_name, label, bins=10):
         """Add a histogram of data to the given plot name.
 
         Args:
-            data: Data to plot
-            name: Name of plot to add to
-            bins: Bins to plot over
+            data(numpy.array): Data to plot
+            name(str): Name of plot to add to
+            x_name(str): Label for x-axis
+            label(str): Label for plot line
+            bins(int): Bins to plot over
 
         """
         histogram = np.histogram(data, bins=bins)
-        self.plot.addline(histogram[1][0:-1], histogram[0], name=name)
+        self.add_plot_line(histogram[1][0:-1], histogram[0],
+                           x_name, "Bin Counts", name, label)
 
     def fit_dac_scan(self, scan_data, dac_axis):
         """############## NOT TESTED"""
@@ -190,67 +214,43 @@ class ExcaliburDAWN(object):
 
         return dac_axis
 
-    def plot_dac_scan(self, chips, dac_scan_data, dac_range):
+    def plot_dac_scan(self, scan_data, dac_axis):
         """Plot the results of threshold dac scan.
 
-        Display in an integrated spectrum plot window (dac scan) and a
-        differential spectrum (spectrum)
+        Displays an integral plot (DAC Scan) and a differential plot
+        (DAC Scan Differential)
 
         Args:
-            chips: Chips to plot for
-            dac_scan_data: Data from dac scan to plot
-            dac_range: Scan range used for dac scan
+            scan_data(list(numpy.array)): Data from dac scan to plot
+            dac_axis(list(int)): X-axis data for plots
 
         Returns:
-            np.array, list: Averaged scan data, DAC values of scan
+            numpy.array: Averaged scan data
+
         """
-        self.clear_plot("DAC Scan")
-        self.clear_plot("Spectrum")
+        plot_name = "DAC Scan"
+        diff_plot_name = "DAC Scan Differential"
 
-        # TODO: Refactor to use Range() and grab*()
-        if dac_range[0] > dac_range[1]:
-            # TODO: Remove brackets if unnecessary
-            dac_axis = (np.array(range(dac_range[0],
-                                       dac_range[1] - dac_range[2],
-                                       -dac_range[2])))
-        else:
-            dac_axis = (np.array(range(dac_range[0],
-                                       dac_range[1] + dac_range[2],
-                                       dac_range[2])))
+        self.clear_plot(plot_name)
+        self.clear_plot(diff_plot_name)
 
-        chip_dac_scan = np.zeros([8])
-        for chip in chips:
-            # TODO: Should this be reset every loop?
-            chip_dac_scan = np.zeros([8, dac_axis.size])
-
-            # Store mean chip for each dac scan value
-            chip_dac_scan[chip, :] = (dac_scan_data[:, 0:256,
-                                      chip*256:chip*256 + 256].mean(2).mean(1))
-
-            self.plot.addline(
-                np.array(dac_axis),
-                np.squeeze(dac_scan_data[:, 0:256,
-                           chip*256:chip*256 + 256].mean(2).mean(1)),
-                name="DAC Scan")
-
-            spectrum = -np.diff(
-                np.squeeze(dac_scan_data[:, 0:256,
-                           chip*256:chip*256 + 256].mean(2).mean(1)))
-
-            self.plot.addline(
-                np.array(range(dac_range[0], dac_range[1], dac_range[2]))[1:],
-                spectrum[1:],
-                name="Spectrum")
-
-        return chip_dac_scan, dac_axis
+        x_axis = np.array(dac_axis)
+        for chip_idx, chip_data in enumerate(scan_data):
+            self.add_plot_line(x_axis, chip_data,
+                               "DAC Value", "Mean Counts", plot_name,
+                               label="Chip {}".format(chip_idx))
+            spectrum = -np.diff(chip_data)
+            self.add_plot_line(x_axis[1:-1], spectrum[1:],
+                               "DAC Value", "Mean Counts", diff_plot_name,
+                               label="Chip {}".format(chip_idx))
 
     def show_pixel(self, dac_scan_data, dac_range, pixel):
         """Plot dac scan for an individual pixel.
 
         Args:
-            dac_scan_data: Data from dac scan to plot
-            dac_range: Scan range used for dac scan
-            pixel: X, Y coordinates for pixel
+            dac_scan_data(numpy.array): Data from dac scan to plot
+            dac_range(list(int)): Scan range used for dac scan
+            pixel(list(int)): X, Y coordinates for pixel
 
         """
         # TODO: Combine with plot_dac_scan if possible
@@ -272,27 +272,20 @@ class ExcaliburDAWN(object):
     @staticmethod
     def myerf(x_val, a, mu, sigma):
         """Function required to express S-curve."""
-
         return a/2. * (1 + m.erf((x_val - mu) / (m.sqrt(2) * sigma)))
 
     @staticmethod
     def lin_function(x_val, offset, gain):
         """Function definition for linear fits."""
-
         return offset + gain * x_val
 
     @staticmethod
     def gauss_function(x_val, a, x0, sigma):
         """Function definition for Gaussian fits."""
-
         return a * np.exp(-(x_val - x0) ** 2 / (2 * sigma ** 2))
 
     @classmethod
     def s_curve_function(cls, x_val, k, delta, e, sigma):
-        """Function required to fit integral spectra.
-
-        Used during threshold calibration
-        """
+        """Function required to fit integral spectra."""
         erf = cls.myerf(x_val, k, e, sigma)
-
         return k * ((1 - 2 * delta * (x_val / e - 0.5)) ** 2) * (1 - erf)

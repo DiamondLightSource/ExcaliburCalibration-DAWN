@@ -22,10 +22,12 @@ Code Documentation
    :maxdepth: 2
 
    arch/excalibur1M
+   arch/excalibur3M
+   arch/excaliburdetector
    arch/excaliburnode
    arch/excaliburdawn
    arch/excaliburtestappinterface
-   arch/arrayutil
+   arch/util
 
 Indices and tables
 ------------------
