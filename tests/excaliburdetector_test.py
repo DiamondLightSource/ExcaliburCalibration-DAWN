@@ -162,6 +162,13 @@ class FunctionsTest(unittest.TestCase):
         for node in self.e.Nodes:
             node.set_gnd_fbk_cas.assert_called_once_with([0])
 
+    def test_set_gnd_fbk_cas_default(self):
+        self.e.set_gnd_fbk_cas()
+
+        for node in self.e.Nodes:
+            node.set_gnd_fbk_cas.assert_called_once_with([0, 1, 2, 3,
+                                                          4, 5, 6, 7])
+
     def test_set_gnd_fbk_cas_given_invalid_chips(self):
 
         with self.assertRaises(ValueError):
@@ -172,6 +179,13 @@ class FunctionsTest(unittest.TestCase):
 
         for node in self.e.Nodes:
             node.threshold_equalization.assert_called_once_with([0])
+
+    def test_threshold_equalization_default(self):
+        self.e.threshold_equalization()
+
+        for node in self.e.Nodes:
+            node.threshold_equalization.assert_called_once_with([0, 1, 2, 3,
+                                                                 4, 5, 6, 7])
 
     def test_threshold_equalization_given_invalid_chips(self):
 

@@ -111,6 +111,7 @@ class ExcaliburDetector(object):
 
     def setup(self):
         """Perform necessary initialisation."""
+        self.MasterNode.disable_hv()  # In case already setup and LV is enabled
         self.MasterNode.initialise_lv()
         self.MasterNode.set_hv_bias(120)
         # self.MasterNode.enable_hv()
