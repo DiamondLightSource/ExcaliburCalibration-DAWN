@@ -62,13 +62,15 @@ class ExcaliburDAWN(object):
         logging.debug("Clearing plot '%s'", name)
         self.plot.clear(name)
 
-    def plot_linear_fit(self, x_data, y_data, estimate, label,
+    def plot_linear_fit(self, x_data, y_data, estimate, x_name, y_name, label,
                         name=None, fit_name=None):
         """Fit the given 2D data with a linear least squares fit.
 
         Args:
             x_data(list/np.array): Independent variable data
             y_data(list/np.array): Dependent variable data
+            x_name(str): Label for x-axis
+            y_name(str): Label for y-axis
             estimate(list(int/float): Starting estimate for offset and gain
             label(str): Label for plot line added to any plots
             name(str): Name of plot
@@ -82,7 +84,7 @@ class ExcaliburDAWN(object):
 
         if name is not None:
             self.clear_plot(name)
-            self.add_plot_line(x_data, y_data, name, label)
+            self.add_plot_line(x_data, y_data, x_name, y_name, name, label)
 
         popt, _ = curve_fit(self.lin_function, x_data, y_data, estimate)
         offset = popt[0]
@@ -91,21 +93,24 @@ class ExcaliburDAWN(object):
         if fit_name is not None:
             self.clear_plot(fit_name)
             self.add_plot_line(x_data, self.lin_function(x_data, offset, gain),
-                               fit_name, label)
+                               x_name, y_name, fit_name, label)
 
         return offset, gain
 
-    def add_plot_line(self, x, y, name, label):
+    def add_plot_line(self, x, y, x_name, y_name, plot_name, label):
         """Add a plot of x vs y to the given plot.
 
         Args:
             x(list/np.array): X axis data
             y(list/np.array): Y axis data
-            name(str): Name of plot to add to
+            x_name(str): Label for x-axis
+            y_name(str): Label for y-axis
+            plot_name(str): Name of plot to add to
             label(str): Label for plot line
 
         """
-        self.plot.addline(x, [(y, label)], name=name, title=name)
+        self.plot.addline({x_name: x}, [{y_name: (y, label)}],
+                          name=plot_name, title=plot_name)
 
     def plot_gaussian_fit(self, scan_data, plot_name, p0, bins):
         """Calculate the Gaussian least squares fit and plot the result.
@@ -127,10 +132,10 @@ class ExcaliburDAWN(object):
         self.clear_plot(fit_plot_name)
         for chip_idx, chip_data in enumerate(scan_data):
             if chip_data is not None:
-                # TODO: Use _add_histogram
                 bin_counts, bin_edges = np.histogram(chip_data, bins=bins)
     
-                self.add_plot_line(bin_edges[0:-1], bin_counts, plot_name,
+                self.add_plot_line(bin_edges[0:-1], bin_counts,
+                                   "Disc Value", "Bin Count", plot_name,
                                    label="Chip {}".format(chip_idx))
                 popt, _ = curve_fit(self.gauss_function, bin_edges[0:-2],
                                     bin_counts[0:-1], p0)
@@ -143,30 +148,33 @@ class ExcaliburDAWN(object):
                                                        a[chip_idx],
                                                        x0[chip_idx],
                                                        sigma[chip_idx]),
-                                   fit_plot_name,
+                                   "Disc Value", "Bin Count", fit_plot_name,
                                    label="Chip {}".format(chip_idx))
 
         return x0, sigma
 
-    def plot_histogram(self, image_data, name):
+    def plot_histogram(self, image_data, name, x_name):
         """Plot a histogram for each of the given chips.
 
         Args:
             image_data(numpy.array): Data for full array
             name(str): Name of plot
+            x_name(str): Label for x-axis
 
         """
         self.clear_plot(name)
         for chip_idx, chip_data in enumerate(image_data):
-            self._add_histogram(chip_data, name, "Chip {}".format(chip_idx))
+            self._add_histogram(chip_data, name, x_name,
+                                "Chip {}".format(chip_idx))
 
-    def plot_histogram_with_mask(self, chips, image_data, mask, name):
+    def plot_histogram_with_mask(self, chips, image_data, mask, name, x_name):
         """Plot a histogram for each of the given chips, after applying a mask.
         Args:
             chips(list(int)): Chips to plot for
             image_data(numpy.array): Data for full array
             mask(numpy.array): Mask to apply before plotting data
             name(str): Name of plot
+            x_name(str): Label for x-axis
 
         """
         self.clear_plot(name)
@@ -174,21 +182,23 @@ class ExcaliburDAWN(object):
             chip_mask = mask[0:256, chip_idx*256:(chip_idx + 1)*256]
             chip_data = image_data[0:256, chip_idx*256:(chip_idx + 1)*256]
             masked_data = chip_data[chip_mask.astype(bool)]
-            self._add_histogram(masked_data, name,
+            self._add_histogram(masked_data, name, x_name,
                                 label="Chip {}".format(chip_idx))
 
-    def _add_histogram(self, data, name, label, bins=10):
+    def _add_histogram(self, data, name, x_name, label, bins=10):
         """Add a histogram of data to the given plot name.
 
         Args:
             data(numpy.array): Data to plot
             name(str): Name of plot to add to
+            x_name(str): Label for x-axis
             label(str): Label for plot line
             bins(int): Bins to plot over
 
         """
         histogram = np.histogram(data, bins=bins)
-        self.add_plot_line(histogram[1][0:-1], histogram[0], name, label)
+        self.add_plot_line(histogram[1][0:-1], histogram[0],
+                           x_name, "Bin Counts", name, label)
 
     def fit_dac_scan(self, scan_data, dac_axis):
         """############## NOT TESTED"""
@@ -226,10 +236,12 @@ class ExcaliburDAWN(object):
 
         x_axis = np.array(dac_axis)
         for chip_idx, chip_data in enumerate(scan_data):
-            self.add_plot_line(x_axis, chip_data, plot_name,
+            self.add_plot_line(x_axis, chip_data,
+                               "DAC Value", "Mean Counts", plot_name,
                                label="Chip {}".format(chip_idx))
             spectrum = -np.diff(chip_data)
-            self.add_plot_line(x_axis[1:-1], spectrum[1:], diff_plot_name,
+            self.add_plot_line(x_axis[1:-1], spectrum[1:],
+                               "DAC Value", "Mean Counts", diff_plot_name,
                                label="Chip {}".format(chip_idx))
 
     def show_pixel(self, dac_scan_data, dac_range, pixel):

@@ -494,9 +494,9 @@ class ExcaliburNode(object):
                           E2_Dac[self.fem - 1, chip],
                           E3_Dac[self.fem - 1, chip]])
 
-            p1, p2 = self.dawn.plot_linear_fit(x, y, [0, 1],
-                                               name="DAC vs Energy",
-                                               label="Chip {}".format(chip))
+            p1, p2 = self.dawn.plot_linear_fit(x, y, [0, 1], "DAC Value",
+                                               "Energy", "DAC vs Energy",
+                                               "Chip {}".format(chip))
             offset[chip] = p1
             gain[chip] = p2
 
@@ -1263,7 +1263,8 @@ class ExcaliburNode(object):
             edge_dacs = dac_range.start - dac_range.step * threshold_edge
 
         self.dawn.plot_image(edge_dacs, name="Noise Edges")
-        self._display_histogram(chips, edge_dacs, "Histogram of NEdge")
+        self._display_histogram(chips, edge_dacs, "Histogram of NEdge",
+                                "Edge Location")
         return edge_dacs
 
     def find_max(self, chips, dac_scan_data, dac_range):
@@ -1279,21 +1280,23 @@ class ExcaliburNode(object):
         # TODO: Assumes low to high scan? Does it matter?
 
         self.dawn.plot_image(max_dacs, name="Noise Max")
-        self._display_histogram(chips, max_dacs, "Histogram of NMax")
+        self._display_histogram(chips, max_dacs, "Histogram of NMax",
+                                "Max Location")
         return max_dacs
 
-    def _display_histogram(self, chips, data, name):
+    def _display_histogram(self, chips, data, name, x_name):
         """Plot an image and a histogram of given data.
 
         Args:
             chips(list(int)): Chips to plot for
             data(numpy.array): Data to analyse
+            x_name(str): Label for x-axis
 
         """
         image_data = []
         for chip_idx in chips:
             image_data.append(self._grab_chip_slice(data, chip_idx))
-        self.dawn.plot_histogram(image_data, name)
+        self.dawn.plot_histogram(image_data, name, x_name)
 
     def _optimize_dac_disc(self, chips, disc_name, roi_mask):
         """Calculate optimum DAC disc values for given chips.
@@ -1349,7 +1352,7 @@ class ExcaliburNode(object):
         for chip_idx in chips:
             self.dawn.add_plot_line(np.asarray(dac_disc_range[0:idx + 1]),
                                     x0[chip_idx, 0:idx + 1],
-                                    calib_plot_name,
+                                    "Disc Value", "Edges", calib_plot_name,
                                     label="Chip {}".format(chip_idx))
 
         # Plot mean noise edge vs DAC Disc for discbits set at 0
@@ -1358,6 +1361,7 @@ class ExcaliburNode(object):
         for chip_idx in chips:
             results = self.dawn.plot_linear_fit(
                 np.asarray(dac_disc_range), x0[chip_idx, :], [0, -1],
+                "Disc Value", "Edges",
                 fit_name=calib_plot_name, label="Chip {}".format(chip_idx))
 
             offset[chip_idx], gain[chip_idx] = results[0], results[1]
@@ -1560,7 +1564,8 @@ class ExcaliburNode(object):
 
                 plot_name = "Histogram of Final Discbits"
                 self.dawn.plot_histogram_with_mask(chips, discbits, inv_mask,
-                                                   plot_name)
+                                                   plot_name, "Bin Counts",
+                                                   "Bit Value")
         else:
             raise NotImplementedError("Equalization method not implemented.")
 

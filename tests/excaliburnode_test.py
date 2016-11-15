@@ -319,8 +319,8 @@ class ThresholdCalibrationTest(unittest.TestCase):
         self.e.settings['gain'] = 'slgm'
         self.e.multiple_energy_thresh_calib([0])
 
-        plot_mock.assert_called_once_with(ANY, ANY, [0, 1],
-                                          label="Chip 0", name='DAC vs Energy')
+        plot_mock.assert_called_once_with(ANY, ANY, [0, 1], "DAC Value",
+                                          "Energy", "DAC vs Energy", "Chip 0")
         np.testing.assert_array_equal(expected_array_1, plot_mock.call_args[0][0])
         np.testing.assert_array_equal(expected_array_2, plot_mock.call_args[0][1])
 
@@ -1281,7 +1281,10 @@ class FindTest(unittest.TestCase):  # TODO: Improve
 
         value = self.e.find_edge([0], dac_scan_data, dac_range, 7)
 
-        display_mock.assert_called_once_with([0], ANY, "Histogram of NEdge")
+        plot_mock.assert_called_once_with(ANY, name="Noise Edges")
+        np.testing.assert_array_equal(expected_array, plot_mock.call_args[0][0])
+        display_mock.assert_called_once_with([0], ANY, "Histogram of NEdge",
+                                             "Edge Location")
         np.testing.assert_array_equal(expected_array, display_mock.call_args[0][1])
         np.testing.assert_array_equal(expected_array, value)
 
@@ -1293,7 +1296,8 @@ class FindTest(unittest.TestCase):  # TODO: Improve
 
         value = self.e.find_edge([0], dac_scan_data, dac_range, 7)
 
-        display_mock.assert_called_once_with([0], ANY, "Histogram of NEdge")
+        display_mock.assert_called_once_with([0], ANY, "Histogram of NEdge",
+                                             "Edge Location")
         np.testing.assert_array_equal(expected_array, display_mock.call_args[0][1])
         np.testing.assert_array_equal(expected_array, value)
 
@@ -1305,7 +1309,8 @@ class FindTest(unittest.TestCase):  # TODO: Improve
 
         value = self.e.find_max([0], dac_scan_data, dac_range)
 
-        display_mock.assert_called_once_with([0], ANY, "Histogram of NMax")
+        display_mock.assert_called_once_with([0], ANY, "Histogram of NMax",
+                                             "Max Location")
         np.testing.assert_array_equal(expected_array, display_mock.call_args[0][1])
         np.testing.assert_array_equal(expected_array, value)
 
@@ -1314,10 +1319,10 @@ class FindTest(unittest.TestCase):  # TODO: Improve
     def test_display_histogram(self, plot_histo_mock, grab_mock, _):
         mock_array = MagicMock()
 
-        self.e._display_histogram([0], mock_array, "test")
+        self.e._display_histogram([0], mock_array, "Test", "X-Axis")
 
-        self.assertEqual([grab_mock.return_value],
-                         plot_histo_mock.call_args[0][0])
+        plot_histo_mock.assert_called_once_with([grab_mock.return_value],
+                                                "Test", "X-Axis")
 
 
 class OptimizeDacDiscTest(unittest.TestCase):
@@ -1361,9 +1366,11 @@ class OptimizeDacDiscTest(unittest.TestCase):
                "for discbit = 0"
         clear_mock.assert_called_once_with(name)
 
-        add_mock.assert_called_once_with(ANY, ANY, name, label="Chip 0")
-        fit_mock.assert_called_once_with(ANY, ANY, [0, -1], fit_name=name,
-                                         label="Chip 0")
+        add_mock.assert_called_once_with(ANY, ANY, "Disc Value", "Edges",
+                                         name, label="Chip 0")
+        fit_mock.assert_called_once_with(ANY, ANY, [0, -1],
+                                         "Disc Value", "Edges",
+                                         fit_name=name, label="Chip 0")
         np.testing.assert_array_equal(np.array([30, 80, 130]), fit_mock.call_args[0][0])
         np.testing.assert_array_equal(np.array([1., 1., 1.]), fit_mock.call_args[0][1])
 
