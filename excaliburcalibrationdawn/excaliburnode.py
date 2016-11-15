@@ -13,7 +13,7 @@ import numpy as np
 from excaliburcalibrationdawn.excaliburtestappinterface import \
     ExcaliburTestAppInterface
 from excaliburcalibrationdawn.excaliburdawn import ExcaliburDAWN
-from config import *
+import config
 from excaliburcalibrationdawn import util
 
 logging.basicConfig(level=logging.DEBUG)
@@ -55,7 +55,7 @@ class ExcaliburNode(object):
     calib_dir = posixpath.join(root_path, '3M-RX001/calib')
     config_dir = posixpath.join(root_path, 'TestApplication_15012015/config')
     default_dacs = posixpath.join(config_dir, "Default_SPM.dacs")
-    config = MPX3RX
+    config = config.MPX3RX
 
     output_folder = "/tmp"  # Location to save data files to
     file_name = "image"  # Default base name for data files
@@ -124,6 +124,7 @@ class ExcaliburNode(object):
 
     @property
     def template_path(self):
+        """Generate template path for current mode and gain."""
         return posixpath.join(self.calib_dir,
                               'fem{fem}'.format(fem=self.fem),
                               self.settings['mode'],
@@ -131,24 +132,28 @@ class ExcaliburNode(object):
 
     @property
     def discL_bits(self):
+        """Generate discL_bits file paths for current template path."""
         tp = posixpath.join(self.template_path, '{disc}.chip{chip}')
         return [tp.format(disc="discLbits",
                           chip=chip) for chip in self.chip_range]
 
     @property
     def discH_bits(self):
+        """Generate discH_bits file paths for current template path."""
         tp = posixpath.join(self.template_path, '{disc}.chip{chip}')
         return [tp.format(disc="discHbits",
                           chip=chip) for chip in self.chip_range]
 
     @property
     def pixel_mask(self):
+        """Generate pixelmask file paths for current template path."""
         tp = posixpath.join(self.template_path, '{disc}.chip{chip}')
         return [tp.format(disc="pixelmask",
                           chip=chip) for chip in self.chip_range]
 
     @property
     def dacs_file(self):
+        """Generate DACs file path for current template path."""
         return posixpath.join(self.template_path, "dacs")
 
     def setup(self):
@@ -339,7 +344,7 @@ class ExcaliburNode(object):
         os.chmod(thresh_filename, 0777)  # Allow anyone to overwrite
 
     def find_xray_energy_dac(self, chips=range(8), threshold=0, energy=5.9):
-        """############## NOT TESTED
+        """############## NOT TESTED.
 
         Perform a DAC scan and fit monochromatic spectra in order to find the
         DAC value corresponding to the X-ray energy
@@ -438,7 +443,7 @@ class ExcaliburNode(object):
         #         edgeDacs[0:256, chip*256:chip*256 + 256].mean()
 
         OneE_E = 6
-        OneE_Dac = MPX3RX.E1_DAC[self.settings['gain']]
+        OneE_Dac = self.config.E1_DAC[self.settings['gain']]
 
         slope = (OneE_Dac[self.fem - 1, :] - self.dac_target) / OneE_E
         offset = [self.dac_target] * 8
@@ -477,13 +482,13 @@ class ExcaliburNode(object):
         #    chipEdgeDacs[chip] = edgeDacs[0:256, chip*256:chip*256+256].mean()
 
         E1_E = 6
-        E1_Dac = MPX3RX.E1_DAC[self.settings['gain']]
+        E1_Dac = self.config.E1_DAC[self.settings['gain']]
 
         E2_E = 12
-        E2_Dac = MPX3RX.E2_DAC[self.settings['gain']]
+        E2_Dac = self.config.E2_DAC[self.settings['gain']]
 
         E3_E = 24
-        E3_Dac = MPX3RX.E3_DAC[self.settings['gain']]
+        E3_Dac = self.config.E3_DAC[self.settings['gain']]
 
         offset = np.zeros(8)
         gain = np.zeros(8)
@@ -612,7 +617,7 @@ class ExcaliburNode(object):
 
         """
         logging.info("Setting config script DACs for chips %s", chips)
-        for dac, value in MPX3RX.DACS.items():
+        for dac, value in self.config.DACS.items():
             for chip_idx in chips:
                 self._write_dac(chip_idx, dac, value)
         self.app.load_dacs(chips, self.dacs_file)

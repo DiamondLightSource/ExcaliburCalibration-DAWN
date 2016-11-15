@@ -6,5 +6,3 @@ python-targets:
   - 2
 ignore-paths:
   - docs
-ignore-patterns:
-  - *__init__*

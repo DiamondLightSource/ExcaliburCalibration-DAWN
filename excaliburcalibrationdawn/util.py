@@ -1,4 +1,4 @@
-"""Utility functions for excaliburcalibrationdawn"""
+"""Utility functions for excaliburcalibrationdawn."""
 import os
 import time
 from datetime import datetime
@@ -52,7 +52,7 @@ def rotate_array(config_file):
 
 
 def get_time_stamp():
-    """Get a time stamp"""
+    """Get a time stamp."""
     iso = datetime.now().isoformat(sep="~")  # Get ISO 8601 time stamp
     iso = iso.replace(":", "").replace("-", "")  # Remove date and time seps
     time_stamp = iso.split(".")[0]  # Remove milliseconds

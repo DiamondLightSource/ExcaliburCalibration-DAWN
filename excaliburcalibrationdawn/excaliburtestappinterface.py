@@ -1,4 +1,4 @@
-"""A Python interface to the ExcaliburTestApplication command line tool
+"""A Python interface to the ExcaliburTestApplication command line tool.
 
 Command Line Options:
 
@@ -58,7 +58,6 @@ Command Line Options:
 """
 import os
 import posixpath
-import time
 import subprocess
 
 import util
@@ -68,7 +67,6 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 class ExcaliburTestAppInterface(object):
-
     """A class to make subprocess calls to the excaliburTestApp tool."""
 
     # ExcaliburTestApp flags & example usage
@@ -123,6 +121,15 @@ class ExcaliburTestAppInterface(object):
                     TPREFA='24', TPREFB='25')
 
     def __init__(self, node, ip_address, port, server_name=None):
+        """Initialise excaliburTestApp interface.
+
+        Args:
+            node(int): Specifier for node to communicate with
+            ip_address(str): IP address of node
+            port(str): Port to communicate on
+            server_name(str): Name of server to connect to
+
+        """
         self.node = node
         self.server_path = "{}.diamond.ac.uk".format(server_name)
         self.ip_address = ip_address
