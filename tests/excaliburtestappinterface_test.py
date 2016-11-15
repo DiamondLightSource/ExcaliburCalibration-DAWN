@@ -3,7 +3,7 @@ from subprocess import CalledProcessError
 
 from pkg_resources import require
 require("mock")
-from mock import patch, MagicMock, ANY
+from mock import patch, MagicMock, ANY, call
 
 from excaliburcalibrationdawn import ExcaliburTestAppInterface
 ETAI_patch_path = "excaliburcalibrationdawn.excaliburtestappinterface.ExcaliburTestAppInterface"
@@ -286,18 +286,17 @@ class APICallsTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.e.set_hv_bias(200)
 
-    @patch('time.sleep')
-    def test_sense(self, sleep_mock, send_mock, construct_mock):
+    def test_sense(self, send_mock, construct_mock):
         expected_params_1 = ['--sensedac', '1', '--dacs=test_file']
         expected_params_2 = ['--sensedac', '1', '-s']
 
         self.e.sense(self.chips, "Threshold0", "test_file")
 
-        self.assertEqual((self.chips, ) + tuple(expected_params_1), construct_mock.call_args_list[0][0])
-        self.assertEqual(construct_mock.return_value, send_mock.call_args_list[0][0][0])
-        sleep_mock.assert_called_once_with(1)
-        self.assertEqual((self.chips, ) + tuple(expected_params_2), construct_mock.call_args_list[1][0])
-        self.assertEqual(construct_mock.return_value, send_mock.call_args_list[1][0][0])
+        construct_mock.assert_has_calls([call(self.chips, *expected_params_1),
+                                         call(self.chips, *expected_params_2)])
+        send_mock.assert_has_calls([call(construct_mock.return_value),
+                                    call(construct_mock.return_value,
+                                         loud_call=True)])
 
     def test_perform_dac_scan(self, send_mock, construct_mock):
         expected_params = ['--dacs=dac_file', '-t', '5', '--dacscan',

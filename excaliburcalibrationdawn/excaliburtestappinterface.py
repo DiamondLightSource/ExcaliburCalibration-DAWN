@@ -60,8 +60,10 @@ import os
 import posixpath
 import time
 import subprocess
-import logging
 
+import util
+
+import logging
 logging.basicConfig(level=logging.DEBUG)
 
 
@@ -130,7 +132,7 @@ class ExcaliburTestAppInterface(object):
                     "TestApplication_15012015/excaliburTestApp"
 
         self.base_cmd = []
-        if server_name is not None:  # TODO: Default localhost and always add?
+        if server_name is not None:
             self.base_cmd.extend(["ssh", self.server_path])
         self.base_cmd.extend([self.path,
                               self.IP_ADDRESS, self.ip_address,
@@ -149,7 +151,7 @@ class ExcaliburTestAppInterface(object):
         """Construct a command from the base_cmd, given chips and any cmd_args.
 
         Args:
-            chips(list(int): Chips to enable for command process
+            chips(list(int): Chip(s) to enable for command process
             *cmd_args(list(str)): Arguments defining the process to be called
 
         Returns:
@@ -159,15 +161,16 @@ class ExcaliburTestAppInterface(object):
         return self.base_cmd + [self.MASK, self._mask(chips)] + list(cmd_args)
 
     def _mask(self, chips):
-        """Create a hexadecimal mask to activate the given chips.
+        """Create a hexadecimal mask to activate the given chip(s).
 
         Args:
-            chips(list(int)): List of chips to be enabled
+            chips(list(int)): Chip(s) to be enabled
 
         Returns:
             str: Hexadecimal mask representing list of chips
 
         """
+        chips = util.to_list(chips)
         if len(chips) != len(set(chips)):
             raise ValueError("Given list must not contain duplicate values")
 
@@ -336,7 +339,6 @@ class ExcaliburTestAppInterface(object):
         if hdf_file is not None:
             if path is None:
                 path = "/tmp"
-            # TODO: Using join() assumes ETA is smart also?
             full_path = posixpath.join(path, hdf_file)
             if os.path.isfile(full_path):
                 raise IOError("File already exists")
@@ -380,7 +382,7 @@ class ExcaliburTestAppInterface(object):
             dac_file(str): File to load DAC values from
 
         """
-        logging.debug("Sending sense command for chips %s", chips)
+        logging.debug("Sending sense command for %s on chips %s", dac, chips)
 
         # Set up DAC for sensing
         command_1 = self._construct_command(chips,
@@ -388,13 +390,11 @@ class ExcaliburTestAppInterface(object):
                                             self.DAC_FILE + dac_file)
         self._send_command(command_1)
 
-        time.sleep(1)  # TODO: Test and see if this is really necessary
-
         # Read back params
         command_2 = self._construct_command(chips,
                                             self.SENSE, self.dac_code[dac],
                                             self.READ_SLOW_PARAMS)
-        self._send_command(command_2)
+        self._send_command(command_2, loud_call=True)
 
     def perform_dac_scan(self, chips, threshold, scan_range, dac_file,
                          path, hdf_file):
@@ -520,12 +520,14 @@ class ExcaliburTestAppInterface(object):
         """Read the given config files and load them onto the given chips.
 
         Args:
-            chips(list(int)): Chips to load config for
+            chips(list(int)): Chip(s) to load config for
             discl(str): File path for discl config
             disch(str): File path for disch config
             pixelmask(str): File path for pixelmask config
 
         """
+        logging.info("Loading config for chip(s) %s", chips)
+
         extra_parameters = [self.CONFIG]
 
         # TODO: Why does it always need to load discL, not just pixelmask?
@@ -554,7 +556,7 @@ class ExcaliburTestAppInterface(object):
             str: File path to local copied file
 
         """
-        logging.debug("Fetching remote file")
+        logging.info("Fetching remote file")
         file_name, extension = posixpath.splitext(server_source)
         full_source = "{server}:{source}".format(server=self.server_path,
                                                  source=server_source)
