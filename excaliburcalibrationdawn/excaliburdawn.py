@@ -1,4 +1,4 @@
-"""Python class to provide DAWN plotting, io and analysis to ExcaliburNode"""
+"""Python class to provide DAWN plotting, io and analysis to ExcaliburNode."""
 import math as m
 import logging
 
@@ -14,6 +14,7 @@ class ExcaliburDAWN(object):
     """An interface to DAWN Scisoftpy utilities."""
 
     def __init__(self):
+        """Set up plot and io APIs."""
         self.plot = scisoftpy.plot
         self.io = scisoftpy.io
 
@@ -169,6 +170,7 @@ class ExcaliburDAWN(object):
 
     def plot_histogram_with_mask(self, chips, image_data, mask, name, x_name):
         """Plot a histogram for each of the given chips, after applying a mask.
+
         Args:
             chips(list(int)): Chips to plot for
             image_data(numpy.array): Data for full array
@@ -201,7 +203,7 @@ class ExcaliburDAWN(object):
                            x_name, "Bin Counts", name, label)
 
     def fit_dac_scan(self, scan_data, dac_axis):
-        """############## NOT TESTED"""
+        """############## NOT TESTED."""
         parameters_estimate = [100, 0.8, 3]
         for chip_data in scan_data:
             # dnp.plot.addline(dacAxis, chipDacScan[chip,:])

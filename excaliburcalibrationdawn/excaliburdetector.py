@@ -58,6 +58,7 @@ class ExcaliburDetector(object):
 
     @property
     def detector_range(self):
+        """Generate detector range from range and number of nodes."""
         return [range(8)] * len(self.Nodes)
 
     def read_chip_ids(self):
