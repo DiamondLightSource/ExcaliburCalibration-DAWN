@@ -3,6 +3,8 @@ import os
 import time
 from datetime import datetime
 import numpy as np
+import logging
+logging.basicConfig(level=logging.DEBUG)
 
 
 def grab_slice(array, start, stop):
@@ -94,6 +96,7 @@ def wait_for_file(file_path, wait_time):
         wait_time: Time to wait before
 
     """
+    logging.info("Waiting up to %s seconds for file %s", wait_time, file_path)
     loop_time = 0.1
     loops = wait_time / loop_time
 
@@ -101,7 +104,11 @@ def wait_for_file(file_path, wait_time):
     while loop < loops:
         time.sleep(0.1)
         if os.path.isfile(file_path):
+            logging.info("File appeared!")
             return True
         loop += 1
+        if loop % 10 == 0 and loop > 0:
+            logging.info("%s seconds", loop / 10)
 
+    logging.info("File didn't appear within given time.")
     return False
