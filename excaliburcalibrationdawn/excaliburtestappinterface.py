@@ -60,13 +60,14 @@ import os
 import posixpath
 import subprocess
 
-import util
+from excaliburcalibrationdawn import util
 
 import logging
 logging.basicConfig(level=logging.DEBUG)
 
 
 class ExcaliburTestAppInterface(object):
+
     """A class to make subprocess calls to the excaliburTestApp tool."""
 
     # ExcaliburTestApp flags & example usage
@@ -126,7 +127,7 @@ class ExcaliburTestAppInterface(object):
         Args:
             node(int): Specifier for node to communicate with
             ip_address(str): IP address of node
-            port(str): Port to communicate on
+            port(int): Port to communicate on
             server_name(str): Name of server to connect to
 
         """
@@ -345,7 +346,7 @@ class ExcaliburTestAppInterface(object):
             extra_params.extend([self.PATH + str(path)])
         if hdf_file is not None:
             if path is None:
-                path = "/tmp"
+                path = "/tmp"  # Default path used by excaliburTestApp
             full_path = posixpath.join(path, hdf_file)
             if os.path.isfile(full_path):
                 raise IOError("File already exists")
@@ -551,7 +552,7 @@ class ExcaliburTestAppInterface(object):
             command = self._construct_command(chips, *extra_parameters)
             self._send_command(command)
         else:
-            print(str(discl) + " does not exist !")
+            print("{} does not exist !".format(discl))
 
     def grab_remote_file(self, server_source):
         """Use scp to copy the given file from the server to the local host.

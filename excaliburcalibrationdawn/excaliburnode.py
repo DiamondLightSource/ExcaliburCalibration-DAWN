@@ -13,8 +13,8 @@ import numpy as np
 from excaliburcalibrationdawn.excaliburtestappinterface import \
     ExcaliburTestAppInterface
 from excaliburcalibrationdawn.excaliburdawn import ExcaliburDAWN
-import config
 from excaliburcalibrationdawn import util
+import config.MPX3RX as CONFIG
 
 logging.basicConfig(level=logging.DEBUG)
 # logging.basicConfig(level=logging.INFO)
@@ -55,7 +55,7 @@ class ExcaliburNode(object):
     calib_dir = posixpath.join(root_path, '3M-RX001/calib')
     config_dir = posixpath.join(root_path, 'TestApplication_15012015/config')
     default_dacs = posixpath.join(config_dir, "Default_SPM.dacs")
-    config = config.MPX3RX
+    config = CONFIG
 
     output_folder = "/tmp"  # Location to save data files to
     file_name = "image"  # Default base name for data files
@@ -133,23 +133,23 @@ class ExcaliburNode(object):
     @property
     def discL_bits(self):
         """Generate discL_bits file paths for current template path."""
-        tp = posixpath.join(self.template_path, '{disc}.chip{chip}')
-        return [tp.format(disc="discLbits",
-                          chip=chip) for chip in self.chip_range]
+        template = posixpath.join(self.template_path, '{disc}.chip{chip}')
+        return [template.format(disc="discLbits",
+                                chip=chip) for chip in self.chip_range]
 
     @property
     def discH_bits(self):
         """Generate discH_bits file paths for current template path."""
-        tp = posixpath.join(self.template_path, '{disc}.chip{chip}')
-        return [tp.format(disc="discHbits",
-                          chip=chip) for chip in self.chip_range]
+        template = posixpath.join(self.template_path, '{disc}.chip{chip}')
+        return [template.format(disc="discHbits",
+                                chip=chip) for chip in self.chip_range]
 
     @property
     def pixel_mask(self):
         """Generate pixelmask file paths for current template path."""
-        tp = posixpath.join(self.template_path, '{disc}.chip{chip}')
-        return [tp.format(disc="pixelmask",
-                          chip=chip) for chip in self.chip_range]
+        template = posixpath.join(self.template_path, '{disc}.chip{chip}')
+        return [template.format(disc="pixelmask",
+                                chip=chip) for chip in self.chip_range]
 
     @property
     def dacs_file(self):
@@ -227,13 +227,13 @@ class ExcaliburNode(object):
             tp_mask(str): Mask file in config directory
 
         """
-        mask_path = os.path.join(self.config_dir, tp_mask)
+        mask_path = posixpath.join(self.config_dir, tp_mask)
 
         if os.path.isfile(mask_path):
             self.app.load_tp_mask(self.chip_range, mask_path)
             self.app.acquire_tp_image(self.chip_range)
         else:
-            raise(IOError("Mask file '%s' does not exist", mask_path))
+            raise IOError("Mask file '%s' does not exist", mask_path)
 
     def threshold_equalization(self, chips=range(8)):
         """Calibrate discriminator equalization.
@@ -861,7 +861,6 @@ class ExcaliburNode(object):
             numpy.array: Flat-field coefficients
 
         """
-        file_name = "FlatField.hdf5"
         self.settings['exposure'] = exposure
 
         ff_image = 0
@@ -874,8 +873,8 @@ class ExcaliburNode(object):
         # Set all zero elements in the chip to the mean value
         ff_image[ff_image == 0] = chip_mean
         # Coeff array is array of means divided by actual values
-        ff_coeff = np.ones([256, 256*8]) * chip_mean
-        ff_coeff = ff_coeff/ff_image
+        ff_coeff = np.ones([256, 256 * 8]) * chip_mean
+        ff_coeff = ff_coeff / ff_image
 
         self.dawn.plot_image(self._grab_chip_slice(ff_image, chip),
                              name="Flat Field coefficients")
@@ -903,11 +902,10 @@ class ExcaliburNode(object):
         images = self.dawn.load_image_data(image_path)
 
         for image_idx in range(num_images):
-            # TODO: Find better name than ff
-            ff = images[image_idx, :, :] * ff_coeff
-            ff[ff > 3000] = 0
+            ff_mask = images[image_idx, :, :] * ff_coeff
+            ff_mask[ff_mask > 3000] = 0
             chip = 3
-            self.dawn.plot_image(self._grab_chip_slice(ff, chip),
+            self.dawn.plot_image(self._grab_chip_slice(ff_mask, chip),
                                  name="Image data Cor")
 
     def logo_test(self):
@@ -916,7 +914,7 @@ class ExcaliburNode(object):
         self.set_dac(self.chip_range, "Threshold0", 40)
         self.expose(10)  # TODO: Why does it need to set* and expose here?
 
-        logo_tp = np.ones([256, 8*256])
+        logo_tp = np.ones([256, 8 * 256])
         logo_file = posixpath.join(self.config_dir, "logo.txt")
         logo_small = np.loadtxt(logo_file)
         util.set_slice(logo_tp, [7, 225], [249, 1822], logo_small)
@@ -928,8 +926,8 @@ class ExcaliburNode(object):
 
             # TODO: Why is this done for each chip?
             test_bits_file = posixpath.join(self.calib_dir,
-                                            "Logo_chip{chip}_mask").format(
-                                            chip=chip)
+                                            "Logo_chip{chip}_mask".format(
+                                                chip=chip))
             np.savetxt(test_bits_file, self._grab_chip_slice(logo_tp, chip),
                        fmt='%.18g', delimiter=' ')
 
@@ -962,19 +960,11 @@ class ExcaliburNode(object):
 
     def test_pulse(self, chips, test_bits, pulses):
         """Test the detector using the given mask bits."""
-        if type(test_bits) == str:
-            test_bits_file = test_bits
-        else:
-            discLbits_file = self.calib_dir + 'fem' + \
-                str(self.fem) + '/' + self.settings['mode'] + \
-                '/' + self.settings['gain'] + '/' + 'testbits.tmp'
-            np.savetxt(test_bits_file, test_bits, fmt='%.18g', delimiter=' ')
-
         file_name = util.generate_file_name("TPImage")
 
         for chip in chips:
             dac_file = posixpath.join(self.calib_dir, 'dacs')
-            self.app.configure_test_pulse([chip], dac_file, test_bits_file)
+            self.app.configure_test_pulse([chip], dac_file, test_bits)
 
         self.app.acquire(chips,
                          self.settings['frames'],
@@ -986,19 +976,19 @@ class ExcaliburNode(object):
         image = self.dawn.load_image_data(image_path)
         self.dawn.plot_image(image, name="Image_{}".format(time.asctime()))
 
-    def save_discbits(self, chips, discbits, discbitsFilename):
+    def save_discbits(self, chips, discbits, disc):
         """Save discbit array into file in the calibration directory.
 
         Args:
             chips(list(int)): Chips to save for
             discbits(numpy.array): Numpy array to save
-            discbitsFilename(str): File name to save to (discL or discH)
+            disc(str): File name to save to (discL or discH)
 
         """
         for chip_idx in chips:
             discbits_file = posixpath.join(
                 self.template_path, '{disc}.chip{chip}'.format(
-                    disc=discbitsFilename, chip=chip_idx))
+                    disc=disc, chip=chip_idx))
 
             logging.info("Saving discbits to %s", discbits_file)
             np.savetxt(discbits_file,
@@ -1228,7 +1218,7 @@ class ExcaliburNode(object):
         for step in range(steps):
             roi_full_mask = self.roi(chips, step, steps, roi_type)
             discbits_roi = self._load_discbits(chips, disc_name +
-                                              'bits_roi_' + str(step))
+                                               'bits_roi_' + str(step))
             discbits[roi_full_mask.astype(bool)] = \
                 discbits_roi[roi_full_mask.astype(bool)]
             # TODO: Should this be +=? Currently just uses final ROI
@@ -1355,8 +1345,8 @@ class ExcaliburNode(object):
 
         self.dawn.clear_plot(calib_plot_name)
         for chip_idx in chips:
-            self.dawn.add_plot_line(np.asarray(dac_disc_range[0:idx + 1]),
-                                    x0[chip_idx, 0:idx + 1],
+            self.dawn.add_plot_line(np.asarray(dac_disc_range),
+                                    x0[chip_idx, :],
                                     "Disc Value", "Edges", calib_plot_name,
                                     label="Chip {}".format(chip_idx))
 
@@ -1424,7 +1414,7 @@ class ExcaliburNode(object):
         # Find noise edges
         edge_dacs = self.find_max(chips, dac_scan_data, dac_range)
 
-        scan_data = [None]*8
+        scan_data = [None] * 8
         for chip_idx in self.chip_range:
             if chip_idx in chips:
                 scan_data[chip_idx] = self._grab_chip_slice(edge_dacs,
@@ -1569,8 +1559,7 @@ class ExcaliburNode(object):
 
                 plot_name = "Histogram of Final Discbits"
                 self.dawn.plot_histogram_with_mask(chips, discbits, inv_mask,
-                                                   plot_name, "Bin Counts",
-                                                   "Bit Value")
+                                                   plot_name, "Bit Value")
         else:
             raise NotImplementedError("Equalization method not implemented.")
 
@@ -1621,8 +1610,6 @@ class ExcaliburNode(object):
             dac_range(Range): Range to scan DAC over (?)
 
         """
-        pass  # TODO: Function doesn't work, what is `roi`?
-
         self.load_config(chips)
         equ_pix_tot = np.zeros(self.num_chips)
         self.file_name = 'dacscan'
@@ -1821,13 +1808,13 @@ class ExcaliburNode(object):
                                                    chip=chip_idx)
             if os.path.isfile(discLbits_file):
                 util.rotate_array(discLbits_file)
-                logging.info("{file} rotated".format(file=discLbits_file))
+                logging.info("%s rotated", discLbits_file)
             if os.path.isfile(discHbits_file):
                 util.rotate_array(discHbits_file)
-                logging.info("{file} rotated".format(file=discHbits_file))
+                logging.info("%s rotated", discHbits_file)
             if os.path.isfile(pixel_mask_file):
                 util.rotate_array(pixel_mask_file)
-                logging.info("{file} rotated".format(file=pixel_mask_file))
+                logging.info("%s rotated", pixel_mask_file)
 
     def _grab_chip_slice(self, array, chip_idx):
         """Grab a chip from a full array.

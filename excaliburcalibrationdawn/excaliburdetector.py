@@ -17,7 +17,7 @@ class ExcaliburDetector(object):
 
     """A abstract class representing an Excalibur RX detector."""
 
-    node_shape = [256, 8*256]
+    node_shape = [256, 8 * 256]
     valid_nodes = [1, 2, 3, 4, 5, 6]
 
     root_path = '/dls/detectors/support/silicon_pixels/excaliburRX/'
@@ -38,7 +38,7 @@ class ExcaliburDetector(object):
 
         if len(nodes) > len(set(nodes)):
             raise ValueError("Given duplicate node in {nodes}".format(
-                                 nodes=nodes))
+                nodes=nodes))
         if not set(nodes).issubset(self.valid_nodes):
             raise ValueError("Given nodes {nodes} not valid, should be in "
                              "{valid_nodes}".format(
