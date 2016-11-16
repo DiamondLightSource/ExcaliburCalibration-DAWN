@@ -6,6 +6,8 @@ import numpy as np
 import logging
 logging.basicConfig(level=logging.DEBUG)
 
+CHIP_SIZE = 256  # The width and height of a detector chip
+
 
 def grab_slice(array, start, stop):
     """Grab a section of a 2D numpy array.
@@ -36,6 +38,46 @@ def set_slice(array, start, stop, value):
 
     """
     array[start[0]:stop[0] + 1, start[1]:stop[1] + 1] = value
+
+
+def grab_chip_slice(array, chip_idx):
+    """Grab a chip from a full array.
+
+    Args:
+        array(numpy.array): Array to grab from
+        chip_idx(int): Index of section of array to grab
+
+    Returns:
+        numpy.array: Sub array
+
+    """
+    start, stop = generate_chip_range(chip_idx)
+    return grab_slice(array, start, stop)
+
+
+def set_chip_slice(array, chip_idx, value):
+    """Grab a section of a 2D numpy array.
+
+    Args:
+        array(numpy.array): Array to grab from
+        chip_idx(int): Index of section of array to grab
+        value(numpy.array/int/float): Value to set slice to
+
+    """
+    start, stop = generate_chip_range(chip_idx)
+    set_slice(array, start, stop, value)
+
+
+def generate_chip_range(chip_idx):
+    """Calculate start and stop coordinates of given chip.
+
+    Args:
+        chip_idx(int): Chip to calculate range for
+
+    """
+    start = [0, chip_idx * CHIP_SIZE]
+    stop = [CHIP_SIZE - 1, (chip_idx + 1) * CHIP_SIZE - 1]
+    return start, stop
 
 
 def rotate_array(config_file):

@@ -37,6 +37,41 @@ class FunctionsTest(unittest.TestCase):
 
         np.testing.assert_array_equal(expected_array, self.array)
 
+    @patch(util_patch_path + '.grab_slice')
+    @patch(util_patch_path + '.generate_chip_range')
+    def test_grab_chip_slice(self, generate_mock, grab_mock):
+        array = MagicMock()
+        generate_mock.return_value = MagicMock(), MagicMock
+
+        value = util.grab_chip_slice(array, 1)
+
+        generate_mock.assert_called_once_with(1)
+        grab_mock.assert_called_once_with(array, generate_mock.return_value[0],
+                                          generate_mock.return_value[1])
+        self.assertEqual(grab_mock.return_value, value)
+
+    @patch(util_patch_path + '.set_slice')
+    @patch(util_patch_path + '.generate_chip_range')
+    def test_set_chip_slice(self, generate_mock, set_mock):
+        array = np.array([[1, 2, 3, 4, 5],
+                          [10, 20, 30, 40, 50],
+                          [100, 200, 300, 400, 500]])
+        generate_mock.return_value = MagicMock(), MagicMock
+
+        util.set_chip_slice(array, 1, 0)
+
+        generate_mock.assert_called_once_with(1)
+        set_mock.assert_called_once_with(array, generate_mock.return_value[0], generate_mock.return_value[1], 0)
+
+    def test_generate_chip_range(self):
+        expected_start = [0, 256]
+        expected_stop = [255, 511]
+
+        start, stop = util.generate_chip_range(1)
+
+        np.testing.assert_array_equal(expected_start, start)
+        np.testing.assert_array_equal(expected_stop, stop)
+
     @patch('numpy.rot90')
     @patch('numpy.savetxt')
     @patch('numpy.loadtxt')

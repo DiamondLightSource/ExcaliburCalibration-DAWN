@@ -31,7 +31,7 @@ class ExcaliburNode(object):
     module (8 MPX3-RX chips) of an EXCALIBUR-RX detector.
     These calibration scripts will work only inside the Python interpreter of
     DAWN software running on the PC server node connected to the FEM
-    controlling the half-module which you wish to calibrate
+    controlling the node that you wish to calibrate
     """
 
     # Threshold equalization will align pixel noise peaks at this DAC value
@@ -869,14 +869,14 @@ class ExcaliburNode(object):
             ff_image += image
 
         chip = 3  # TODO: Why?
-        chip_mean = self._grab_chip_slice(ff_image, chip).mean()
+        chip_mean = util.grab_chip_slice(ff_image, chip).mean()
         # Set all zero elements in the chip to the mean value
         ff_image[ff_image == 0] = chip_mean
         # Coeff array is array of means divided by actual values
         ff_coeff = np.ones([256, 256 * 8]) * chip_mean
         ff_coeff = ff_coeff / ff_image
 
-        self.dawn.plot_image(self._grab_chip_slice(ff_image, chip),
+        self.dawn.plot_image(util.grab_chip_slice(ff_image, chip),
                              name="Flat Field coefficients")
 
         # Set any elements outside range 0-2 to 1 TODO: Why?
@@ -905,7 +905,7 @@ class ExcaliburNode(object):
             ff_mask = images[image_idx, :, :] * ff_coeff
             ff_mask[ff_mask > 3000] = 0
             chip = 3
-            self.dawn.plot_image(self._grab_chip_slice(ff_mask, chip),
+            self.dawn.plot_image(util.grab_chip_slice(ff_mask, chip),
                                  name="Image data Cor")
 
     def logo_test(self):
@@ -928,7 +928,7 @@ class ExcaliburNode(object):
             test_bits_file = posixpath.join(self.calib_dir,
                                             "Logo_chip{chip}_mask".format(
                                                 chip=chip))
-            np.savetxt(test_bits_file, self._grab_chip_slice(logo_tp, chip),
+            np.savetxt(test_bits_file, util.grab_chip_slice(logo_tp, chip),
                        fmt='%.18g', delimiter=' ')
 
             # TODO: Do we really need to check these exist?
@@ -992,7 +992,7 @@ class ExcaliburNode(object):
 
             logging.info("Saving discbits to %s", discbits_file)
             np.savetxt(discbits_file,
-                       self._grab_chip_slice(discbits, chip_idx),
+                       util.grab_chip_slice(discbits, chip_idx),
                        fmt='%.18g', delimiter=' ')
 
     def mask_columns(self, chips, start, stop):
@@ -1059,8 +1059,7 @@ class ExcaliburNode(object):
 
         bad_pix_tot = np.zeros(8)
         for chip_idx in chips:
-            bad_pix_tot[chip_idx] = \
-                self._grab_chip_slice(data, chip_idx).sum()
+            bad_pix_tot[chip_idx] = util.grab_chip_slice(data, chip_idx).sum()
 
             print('####### {pix} noisy pixels in chip {chip} ({tot}%)'.format(
                 pix=str(bad_pix_tot[chip_idx]),
@@ -1069,7 +1068,7 @@ class ExcaliburNode(object):
 
         self._apply_mask(chips, data)
 
-        print('####### {pix} noisy pixels in half module ({tot}%)'.format(
+        print('####### {pix} noisy pixels in node ({tot}%)'.format(
             pix=str(bad_pix_tot.sum()),
             tot=str(100 * bad_pix_tot.sum() / (8 * 256**2))))
 
@@ -1082,8 +1081,7 @@ class ExcaliburNode(object):
         """
         for chip_idx in chips:
             pixel_mask_file = self.pixel_mask[chip_idx]
-            np.savetxt(pixel_mask_file,
-                       self._grab_chip_slice(mask, chip_idx),
+            np.savetxt(pixel_mask_file, util.grab_chip_slice(mask, chip_idx),
                        fmt='%.18g', delimiter=' ')
 
         self.load_config(chips)
@@ -1195,7 +1193,7 @@ class ExcaliburNode(object):
                 self.template_path, '{disc}.chip{chip}'.format(
                     disc=discbits_filename, chip=chip_idx))
 
-            self._set_chip_slice(discbits, chip_idx, np.loadtxt(discbits_file))
+            util.set_chip_slice(discbits, chip_idx, np.loadtxt(discbits_file))
 
         return discbits
 
@@ -1290,7 +1288,7 @@ class ExcaliburNode(object):
         """
         image_data = []
         for chip_idx in chips:
-            image_data.append(self._grab_chip_slice(data, chip_idx))
+            image_data.append(util.grab_chip_slice(data, chip_idx))
         self.dawn.plot_histogram(image_data, name, x_name)
 
     def _optimize_dac_disc(self, chips, disc_name, roi_mask):
@@ -1417,8 +1415,7 @@ class ExcaliburNode(object):
         scan_data = [None] * 8
         for chip_idx in self.chip_range:
             if chip_idx in chips:
-                scan_data[chip_idx] = self._grab_chip_slice(edge_dacs,
-                                                            chip_idx)
+                scan_data[chip_idx] = util.grab_chip_slice(edge_dacs, chip_idx)
         x0, sigma = self.dawn.plot_gaussian_fit(scan_data, plot_name, p0, bins)
 
         return x0, sigma
@@ -1596,9 +1593,9 @@ class ExcaliburNode(object):
                                  .format(bad_disc=disc_name))
 
             self.load_temp_config(chip,
-                                  self._grab_chip_slice(discLbits, chip),
-                                  self._grab_chip_slice(discHbits, chip),
-                                  self._grab_chip_slice(mask, chip))
+                                  util.grab_chip_slice(discLbits, chip),
+                                  util.grab_chip_slice(discHbits, chip),
+                                  util.grab_chip_slice(mask, chip))
 
     def check_calib(self, chips, dac_range):
         """Check if dac scan looks OK after threshold calibration.
@@ -1815,43 +1812,6 @@ class ExcaliburNode(object):
             if os.path.isfile(pixel_mask_file):
                 util.rotate_array(pixel_mask_file)
                 logging.info("%s rotated", pixel_mask_file)
-
-    def _grab_chip_slice(self, array, chip_idx):
-        """Grab a chip from a full array.
-
-        Args:
-            array(numpy.array): Array to grab from
-            chip_idx(int): Index of section of array to grab
-
-        Returns:
-            numpy.array: Sub array
-
-        """
-        start, stop = self._generate_chip_range(chip_idx)
-        return util.grab_slice(array, start, stop)
-
-    def _set_chip_slice(self, array, chip_idx, value):
-        """Grab a section of a 2D numpy array.
-
-        Args:
-            array(numpy.array): Array to grab from
-            chip_idx(int): Index of section of array to grab
-            value(numpy.array/int/float): Value to set slice to
-
-        """
-        start, stop = self._generate_chip_range(chip_idx)
-        util.set_slice(array, start, stop, value)
-
-    def _generate_chip_range(self, chip_idx):
-        """Calculate start and stop coordinates of given chip.
-
-        Args:
-            chip_idx(int): Chip to calculate range for
-
-        """
-        start = [0, chip_idx * self.chip_size]
-        stop = [self.chip_size - 1, (chip_idx + 1) * self.chip_size - 1]
-        return start, stop
 
     def display_masks(self):
         """Print list of masks in config directory."""

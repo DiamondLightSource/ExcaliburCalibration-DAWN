@@ -6,6 +6,8 @@ import numpy as np
 from scipy.optimize import curve_fit
 import scisoftpy
 
+from excaliburcalibrationdawn import util
+
 logging.basicConfig(level=logging.DEBUG)
 
 
@@ -181,8 +183,8 @@ class ExcaliburDAWN(object):
         """
         self.clear_plot(name)
         for chip_idx in chips:
-            chip_mask = mask[0:256, chip_idx * 256:(chip_idx + 1) * 256]
-            chip_data = image_data[0:256, chip_idx * 256:(chip_idx + 1) * 256]
+            chip_mask = util.grab_chip_slice(mask, chip_idx)
+            chip_data = util.grab_chip_slice(image_data, chip_idx)
             masked_data = chip_data[chip_mask.astype(bool)]
             self._add_histogram(masked_data, name, x_name,
                                 label="Chip {}".format(chip_idx))

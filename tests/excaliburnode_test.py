@@ -606,7 +606,7 @@ class TestAppCallsTest(unittest.TestCase):
     rand = np.random.RandomState(123)
 
     @patch(Node_patch_path + '.load_temp_config')
-    @patch(Node_patch_path + '._grab_chip_slice')
+    @patch(util_patch_path + '.grab_chip_slice')
     @patch(Node_patch_path + '._load_discbits',
            side_effect=[rand.randint(2, size=[256, 256]),
                         rand.randint(2, size=[256, 256])])
@@ -626,7 +626,7 @@ class TestAppCallsTest(unittest.TestCase):
                                           grab_mock.return_value)
 
     @patch(Node_patch_path + '.load_temp_config')
-    @patch(Node_patch_path + '._grab_chip_slice')
+    @patch(util_patch_path + '.grab_chip_slice')
     @patch(Node_patch_path + '._load_discbits')
     def test_load_all_discbits_H(self, open_mock, grab_mock, load_mock):
         chips = [0]
@@ -644,7 +644,7 @@ class TestAppCallsTest(unittest.TestCase):
                                           grab_mock.return_value)
 
     @patch(Node_patch_path + '.load_temp_config')
-    @patch(Node_patch_path + '._grab_chip_slice')
+    @patch(util_patch_path + '.grab_chip_slice')
     @patch(Node_patch_path + '._load_discbits')
     def test_load_all_discbits_error(self, _, _1, _2):
         chips = [0]
@@ -1315,7 +1315,7 @@ class FindTest(unittest.TestCase):  # TODO: Improve
         np.testing.assert_array_equal(expected_array, display_mock.call_args[0][1])
         np.testing.assert_array_equal(expected_array, value)
 
-    @patch(Node_patch_path + '._grab_chip_slice')
+    @patch(util_patch_path + '.grab_chip_slice')
     @patch(DAWN_patch_path + '.plot_histogram')
     def test_display_histogram(self, plot_histo_mock, grab_mock, _):
         mock_array = MagicMock()
@@ -1639,47 +1639,6 @@ class RotateTest(unittest.TestCase):
         self.e.rotate_config()
 
         rotate_mock.assert_not_called()
-
-
-class SliceGrabSetTest(unittest.TestCase):
-
-    def setUp(self):
-        self.e = ExcaliburNode(1)
-
-    @patch(util_patch_path + '.grab_slice')
-    @patch(Node_patch_path + '._generate_chip_range')
-    def test_grab_chip_slice(self, generate_mock, grab_mock):
-        array = MagicMock()
-        generate_mock.return_value = MagicMock(), MagicMock
-
-        value = self.e._grab_chip_slice(array, 1)
-
-        generate_mock.assert_called_once_with(1)
-        grab_mock.assert_called_once_with(array, generate_mock.return_value[0],
-                                          generate_mock.return_value[1])
-        self.assertEqual(grab_mock.return_value, value)
-
-    @patch(util_patch_path + '.set_slice')
-    @patch(Node_patch_path + '._generate_chip_range')
-    def test_set_chip_slice(self, generate_mock, set_mock):
-        array = np.array([[1, 2, 3, 4, 5],
-                          [10, 20, 30, 40, 50],
-                          [100, 200, 300, 400, 500]])
-        generate_mock.return_value = MagicMock(), MagicMock
-
-        self.e._set_chip_slice(array, 1, 0)
-
-        generate_mock.assert_called_once_with(1)
-        set_mock.assert_called_once_with(array, generate_mock.return_value[0], generate_mock.return_value[1], 0)
-
-    def test_generate_chip_range(self):
-        expected_start = [0, 256]
-        expected_stop = [255, 511]
-
-        start, stop = self.e._generate_chip_range(1)
-
-        np.testing.assert_array_equal(expected_start, start)
-        np.testing.assert_array_equal(expected_stop, stop)
 
 
 @patch('__builtin__.print')
