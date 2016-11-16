@@ -1419,7 +1419,6 @@ class EqualizeDiscbitsTest(unittest.TestCase):
 
     @patch(Node_patch_path + '.load_config')
     @patch(DAWN_patch_path + '.plot_histogram_with_mask')
-    @patch(DAWN_patch_path + '.clear_plot')
     @patch(DAWN_patch_path + '.plot_image')
     @patch(Node_patch_path + '.find_max',
            return_value=rand.randint(2, size=(4, 16)))
@@ -1427,8 +1426,7 @@ class EqualizeDiscbitsTest(unittest.TestCase):
            return_value=rand.randint(10, size=(3, 4, 16)))
     @patch(Node_patch_path + '.load_all_discbits')
     def test_equalize_discbits(self, load_mock, scan_mock, find_mock,
-                               plot_mock, clear_mock, histo_mock,
-                               load_config_mock):
+                               plot_mock, histo_mock, load_config_mock):
         chips = [0]
         roi = np.zeros([4, 16])
 
@@ -1446,6 +1444,9 @@ class EqualizeDiscbitsTest(unittest.TestCase):
         self.assertEqual((ANY,), plot_mock.call_args_list[0][0])
         self.assertEqual(dict(name="Discriminator Bits"),
                          plot_mock.call_args_list[0][1])
+        self.assertEqual((chips, ANY, ANY,
+                          "Histogram of Final Discbits", "Bit Value"),
+                         histo_mock.call_args_list[0][0])
         load_config_mock.assert_called_once_with(chips)
 
     def test_equalize_discbits_given_invalid_method_raises(self):

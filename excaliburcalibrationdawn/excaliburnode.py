@@ -1564,8 +1564,7 @@ class ExcaliburNode(object):
 
                 plot_name = "Histogram of Final Discbits"
                 self.dawn.plot_histogram_with_mask(chips, discbits, inv_mask,
-                                                   plot_name, "Bin Counts",
-                                                   "Bit Value")
+                                                   plot_name, "Bit Value")
         else:
             raise NotImplementedError("Equalization method not implemented.")
 
