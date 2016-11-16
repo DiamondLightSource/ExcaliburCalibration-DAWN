@@ -9,7 +9,7 @@ import numpy as np
 from excaliburcalibrationdawn import ExcaliburDetector, ExcaliburNode, Range
 Detector_patch_path = "excaliburcalibrationdawn.excaliburdetector" \
                       ".ExcaliburDetector"
-Node_patch_path = "excaliburcalibrationdawn.excalibur1M.ExcaliburNode"
+Node_patch_path = "excaliburcalibrationdawn.excaliburdetector.ExcaliburNode"
 DAWN_patch_path = "excaliburcalibrationdawn.excaliburdetector.ExcaliburDAWN"
 util_patch_path = "excaliburcalibrationdawn.util"
 
@@ -22,12 +22,13 @@ class InitTest(unittest.TestCase):
     def setUp(self):
         self.e = ExcaliburDetector("test-server", [1, 2, 3, 4, 5, 6], 1)
 
-    def test_class_attributes_set(self):
+    def test_attributes_set(self):
         for node in range(6):
             self.assertIsInstance(self.e.Nodes[node], ExcaliburNode)
             self.assertEqual(node + 1, self.e.Nodes[node].fem)
 
         self.assertEqual(self.e.MasterNode, self.e.Nodes[0])
+        self.assertEqual(self.e.calib_dir, self.e.MasterNode.calib_dir)
 
     def test_given_invalid_node_then_error(self):
         with self.assertRaises(ValueError):

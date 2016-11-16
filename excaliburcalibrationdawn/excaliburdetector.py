@@ -20,9 +20,6 @@ class ExcaliburDetector(object):
     node_shape = [256, 8 * 256]
     valid_nodes = [1, 2, 3, 4, 5, 6]
 
-    root_path = '/dls/detectors/support/silicon_pixels/excaliburRX/'
-    calib_dir = posixpath.join(root_path, '3M-RX001/calib')
-
     def __init__(self, detector_name, nodes, master_node):
         """Initialise detector.
 
@@ -55,6 +52,11 @@ class ExcaliburDetector(object):
             self.Nodes.append(ExcaliburNode(node, self.server_root))
 
         self.dawn = ExcaliburDAWN()
+
+    @property
+    def calib_dir(self):
+        """Get calibration directory from MasterNode."""
+        return self.MasterNode.calib_dir
 
     @property
     def detector_range(self):
