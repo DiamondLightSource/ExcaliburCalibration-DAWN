@@ -134,13 +134,13 @@ class ExcaliburDAWN(object):
         for chip_idx, chip_data in enumerate(scan_data):
             if chip_data is not None:
                 bin_counts, bin_edges = np.histogram(chip_data, bins=bins)
-    
+
                 self.add_plot_line(bin_edges[0:-1], bin_counts,
                                    "Disc Value", "Bin Count", plot_name,
                                    label="Chip {}".format(chip_idx))
                 popt, _ = curve_fit(self.gauss_function, bin_edges[0:-2],
                                     bin_counts[0:-1], p0)
-    
+
                 a[chip_idx] = popt[0]
                 x0[chip_idx] = popt[1]
                 sigma[chip_idx] = popt[2]
@@ -181,8 +181,8 @@ class ExcaliburDAWN(object):
         """
         self.clear_plot(name)
         for chip_idx in chips:
-            chip_mask = mask[0:256, chip_idx*256:(chip_idx + 1)*256]
-            chip_data = image_data[0:256, chip_idx*256:(chip_idx + 1)*256]
+            chip_mask = mask[0:256, chip_idx * 256:(chip_idx + 1) * 256]
+            chip_data = image_data[0:256, chip_idx * 256:(chip_idx + 1) * 256]
             masked_data = chip_data[chip_mask.astype(bool)]
             self._add_histogram(masked_data, name, x_name,
                                 label="Chip {}".format(chip_idx))
@@ -274,7 +274,7 @@ class ExcaliburDAWN(object):
     @staticmethod
     def myerf(x_val, a, mu, sigma):
         """Function required to express S-curve."""
-        return a/2. * (1 + m.erf((x_val - mu) / (m.sqrt(2) * sigma)))
+        return a / 2. * (1 + m.erf((x_val - mu) / (m.sqrt(2) * sigma)))
 
     @staticmethod
     def lin_function(x_val, offset, gain):
@@ -290,4 +290,4 @@ class ExcaliburDAWN(object):
     def s_curve_function(cls, x_val, k, delta, e, sigma):
         """Function required to fit integral spectra."""
         erf = cls.myerf(x_val, k, e, sigma)
-        return k * ((1 - 2 * delta * (x_val / e - 0.5)) ** 2) * (1 - erf)
+        return k * ((1 - 2 * delta * (x_val / e - 0.5))**2) * (1 - erf)
