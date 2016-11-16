@@ -105,7 +105,7 @@ class ExcaliburNode(object):
 
         # Detector default settings - See excaliburtestappinterface for details
         self.settings = dict(mode="spm",  # spm or csm
-                             gain="shgm",  # slgm, lgm, hgm or shgm
+                             gain="slgm",  # slgm, lgm, hgm or shgm
                              bitdepth=12,  # 1, 8, 12 or 24; 24 bits needs
                                            # disccsmspm set at 1 to use discL
                              # TODO: Fix above comment
