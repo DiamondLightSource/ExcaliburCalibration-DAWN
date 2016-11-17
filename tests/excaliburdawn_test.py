@@ -90,22 +90,41 @@ class SimpleMethodsTest(unittest.TestCase):
 
     @patch('scisoftpy.plot.clear')
     def test_clear_plot(self, clear_mock):
+        self.e.current_plots.append("Test Plot")
 
         self.e.clear_plot("Test Plot")
 
         clear_mock.assert_called_once_with("Test Plot")
+        self.assertNotIn("Test Plot", self.e.current_plots)
 
     @patch('scisoftpy.plot.addline')
-    def test_add_plot_line(self, add_mock):
+    @patch('scisoftpy.plot.line')
+    def test_add_plot_line_to_empty(self, line_mock, add_mock):
         x = MagicMock()
         y = MagicMock()
         name = "Test"
 
         self.e.add_plot_line(x, y, "X-Axis", "Y-Axis", name, "Chip 0")
 
+        line_mock.assert_called_once_with({"X-Axis": x},
+                                          {"Y-Axis": (y, "Chip 0")},
+                                          name="Test", title="Test")
+        add_mock.assert_not_called()
+
+    @patch('scisoftpy.plot.addline')
+    @patch('scisoftpy.plot.line')
+    def test_add_plot_line_to_current(self, line_mock, add_mock):
+        x = MagicMock()
+        y = MagicMock()
+        name = "Test"
+        self.e.current_plots.append("Test")
+
+        self.e.add_plot_line(x, y, "X-Axis", "Y-Axis", name, "Chip 0")
+
         add_mock.assert_called_once_with({"X-Axis": x},
-                                         [{"Y-Axis": (y, "Chip 0")}],
+                                         {"Y-Axis": (y, "Chip 0")},
                                          name="Test", title="Test")
+        line_mock.assert_not_called()
 
     @patch(DAWN_patch_path + '.add_plot_line')
     @patch('numpy.histogram')

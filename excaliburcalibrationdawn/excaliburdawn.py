@@ -20,6 +20,8 @@ class ExcaliburDAWN(object):
         self.plot = scisoftpy.plot
         self.io = scisoftpy.io
 
+        self.current_plots = []
+
     def plot_image(self, data_set, name):
         """Plot the given data set as a 2D image.
 
@@ -55,15 +57,17 @@ class ExcaliburDAWN(object):
         image = image_raw.squeeze()
         return image
 
-    def clear_plot(self, name):
+    def clear_plot(self, plot_name):
         """Clear given plot.
 
         Args:
-            name(str): Name of plot to clear
+            plot_name(str): Name of plot to clear
 
         """
-        logging.debug("Clearing plot '%s'", name)
-        self.plot.clear(name)
+        logging.debug("Clearing plot '%s'", plot_name)
+        self.plot.clear(plot_name)
+        if plot_name in self.current_plots:
+            self.current_plots.remove(plot_name)
 
     def plot_linear_fit(self, x_data, y_data, estimate, x_name, y_name, label,
                         name=None, fit_name=None):
@@ -112,8 +116,13 @@ class ExcaliburDAWN(object):
             label(str): Label for plot line
 
         """
-        self.plot.addline({x_name: x}, [{y_name: (y, label)}],
-                          name=plot_name, title=plot_name)
+        if plot_name not in self.current_plots:
+            self.plot.line({x_name: x}, {y_name: (y, label)},
+                           name=plot_name, title=plot_name)
+            self.current_plots.append(plot_name)
+        else:
+            self.plot.addline({x_name: x}, {y_name: (y, label)},
+                              name=plot_name, title=plot_name)
 
     def plot_gaussian_fit(self, scan_data, plot_name, p0, bins):
         """Calculate the Gaussian least squares fit and plot the result.
