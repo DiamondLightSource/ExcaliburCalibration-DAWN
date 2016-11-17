@@ -19,7 +19,7 @@ logging.basicConfig(level=logging.DEBUG)
 # logging.basicConfig(level=logging.INFO)
 
 
-Range = namedtuple("Range", "start stop step")
+Range = namedtuple("Range", ["start", "stop", "step"])
 
 
 class ExcaliburNode(object):

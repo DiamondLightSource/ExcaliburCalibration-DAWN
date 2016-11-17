@@ -8,8 +8,8 @@ from collections import OrderedDict, namedtuple
 
 import numpy as np
 
-Detector = namedtuple("Detector", "name nodes master_node "
-                                  "servers ip_addresses")
+Detector = namedtuple("Detector", ["name", "nodes", "master_node",
+                                   "servers", "ip_addresses"])
 
 # Detector Specification:
 detector = Detector(name="detectorlab1", nodes=[1], master_node=1,
