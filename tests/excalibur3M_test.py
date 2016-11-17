@@ -13,7 +13,11 @@ class InitTest(unittest.TestCase):
 
     @patch(Detector_patch_path + '.__init__')
     def test_super_called(self, excalibur_detector_mock):
-        Excalibur3M("test-server", 1)
+        detector = MagicMock(name="test-detector", nodes=[1], master_node=1,
+                             servers=["test-server"],
+                             ip_addresses=["192.168.0.1"])
+        config = MagicMock(detector=detector)
 
-        excalibur_detector_mock.assert_called_once_with("test-server",
-                                                        [1, 2, 3, 4, 5, 6], 1)
+        Excalibur3M(config)
+
+        excalibur_detector_mock.assert_called_once_with(config)

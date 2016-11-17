@@ -1,6 +1,5 @@
 """An Excalibur RX detector."""
 import shutil
-import posixpath
 
 import numpy as np
 
@@ -20,36 +19,42 @@ class ExcaliburDetector(object):
     node_shape = [256, 8 * 256]
     valid_nodes = [1, 2, 3, 4, 5, 6]
 
-    def __init__(self, detector_name, nodes, master_node):
+    def __init__(self, detector_config):
         """Initialise detector.
 
         Args:
-            detector_name(str): Name of detector; string that gives the server
-                name for each node if the suffix is added - e.g. p99-excalibur0
-                where p99-excalibur01 is the server for node 6 (nodes reversed)
-            nodes(list(int)): List of identifiers for nodes of detector
-            master_node(int): Node to assign as master
+            detector_config(module): Module in config directory containing
+                specifications of detector
 
         """
-        self.server_root = detector_name
+        nodes = detector_config.detector.nodes
+        master_node = detector_config.detector.master_node
+        servers = detector_config.detector.servers
+        ip_addresses = detector_config.detector.ip_addresses
 
         if len(nodes) > len(set(nodes)):
             raise ValueError("Given duplicate node in {nodes}".format(
                 nodes=nodes))
         if not set(nodes).issubset(self.valid_nodes):
-            raise ValueError("Given nodes {nodes} not valid, should be in "
+            raise ValueError("Given nodes {nodes} not valid, should all be in "
                              "{valid_nodes}".format(
-                                 nodes=nodes, valid_nodes=self.valid_nodes))
+                                 nodes=nodes,
+                                 valid_nodes=self.valid_nodes))
         if master_node not in nodes:
             raise ValueError("Master node {master} not in given nodes "
-                             "{nodes}".format(master=master_node, nodes=nodes))
+                             "{nodes}".format(master=master_node,
+                                              nodes=nodes))
+        if len(nodes) != len(servers) or len(nodes) != len(ip_addresses):
+            raise ValueError("Nodes, servers and ip_addresses are different "
+                             "lengths")
 
-        self.MasterNode = ExcaliburNode(master_node, self.server_root)
-        self.Nodes = [self.MasterNode]
-        secondary_nodes = list(nodes)
-        secondary_nodes.remove(master_node)
-        for node in secondary_nodes:
-            self.Nodes.append(ExcaliburNode(node, self.server_root))
+        self.Nodes = []
+        for node_idx, server, ip_address in zip(nodes, servers, ip_addresses):
+            node = ExcaliburNode(node_idx, detector_config, server, ip_address)
+
+            self.Nodes.append(node)
+            if node_idx == master_node:
+                self.MasterNode = node
 
         self.dawn = ExcaliburDAWN()
 

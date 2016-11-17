@@ -14,7 +14,6 @@ from excaliburcalibrationdawn.excaliburtestappinterface import \
     ExcaliburTestAppInterface
 from excaliburcalibrationdawn.excaliburdawn import ExcaliburDAWN
 from excaliburcalibrationdawn import util
-import config.MPX3RX as CONFIG
 
 logging.basicConfig(level=logging.DEBUG)
 # logging.basicConfig(level=logging.INFO)
@@ -27,8 +26,8 @@ class ExcaliburNode(object):
 
     """Class to calibrate a node of an Excalibur-RX detector.
 
-    ExcaliburNode is a class defining methods required to calibrate each 1/2
-    module (8 MPX3-RX chips) of an EXCALIBUR-RX detector.
+    ExcaliburNode is a class defining methods required to calibrate each node
+    (8 MPX3-RX chips) of an EXCALIBUR-RX detector.
     These calibration scripts will work only inside the Python interpreter of
     DAWN software running on the PC server node connected to the FEM
     controlling the node that you wish to calibrate
@@ -51,11 +50,9 @@ class ExcaliburNode(object):
     # Shape of full 1/2 module array
     full_array_shape = [chip_size, num_chips * chip_size]
 
-    root_path = '/dls/detectors/support/silicon_pixels/excaliburRX/'
-    calib_dir = posixpath.join(root_path, '3M-RX001/calib')
-    config_dir = posixpath.join(root_path, 'TestApplication_15012015/config')
+    root_path = "/dls/detectors/support/silicon_pixels/excaliburRX/"
+    config_dir = posixpath.join(root_path, "TestApplication_15012015/config")
     default_dacs = posixpath.join(config_dir, "Default_SPM.dacs")
-    config = CONFIG
 
     output_folder = "/tmp"  # Location to save data files to
     file_name = "image"  # Default base name for data files
@@ -71,37 +68,40 @@ class ExcaliburNode(object):
     chip_range = range(num_chips)
     plot_name = ''
 
-    def __init__(self, node, server_root=None):
+    def __init__(self, node, config, server=None, ip_address=None):
         """Initialize Excalibur node object.
 
-        For example: On I13 the top FEM of EXCALIBUR-3M-RX001 is connected to
-        node 1 (i13-1-excalibur01) and the bottom fem to node 6
-        (i13-1-excalibur06).
-
         Args:
-            server_root(str): Server name root; add node number to get
-            real server
-            node(int): PC node number of 1/2 module (Between 1 and 6 for 3M)
+            node(int): Number of node (Between 1 and 6 for 3M)
+            config(module): Config for detector this node belongs to
+            server(str): Server name
+            ip_address(str): IP address of node on server
 
         """
         if node not in [1, 2, 3, 4, 5, 6]:
             raise ValueError("Node {node} is invalid. Should be 1-6.".format(
                 node=node))
-        suffix = 7 - node  # FEMs are numbered in reverse
 
         self.fem = node
-        self.ipaddress = "192.168.0.10{}".format(suffix)
+        if ip_address is not None:
+            self.ip_address = ip_address
+        else:
+            self.ip_address = "192.168.0.10{}".format(7 - node)
 
-        if server_root is not None:
-            self.server_name = "{root}{suffix}".format(root=server_root,
-                                                       suffix=suffix)
+        if server is not None:
+            self.server_name = server
             self.remote_node = True
         else:
             self.server_name = None
             self.remote_node = False
 
         logging.info("Creating ExcaliburNode with server %s and ip %s",
-                     self.server_name, self.ipaddress)
+                     self.server_name, self.ip_address)
+
+        self.config = config
+        self.calib_dir = posixpath.join(self.root_path,
+                                        "3M-RX001/calib_{}".format(
+                                            config.detector.name))
 
         # Detector default settings - See excaliburtestappinterface for details
         self.settings = dict(mode="spm",  # spm or csm
@@ -118,7 +118,7 @@ class ExcaliburNode(object):
                              frames=1)
 
         # Helper classes
-        self.app = ExcaliburTestAppInterface(self.fem, self.ipaddress, 6969,
+        self.app = ExcaliburTestAppInterface(self.fem, self.ip_address, 6969,
                                              self.server_name)
         self.dawn = ExcaliburDAWN()
 

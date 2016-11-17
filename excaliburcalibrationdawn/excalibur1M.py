@@ -10,22 +10,23 @@ class Excalibur1M(ExcaliburDetector):
 
     """A class representing a 1M Excalibur detector composed of two nodes."""
 
-    def __init__(self, detector_name, nodes, master_node):
-        """Initialise two ExcaliburNode instances as a 1M detector.
+    def __init__(self, detector_config):
+        """Initialise detector.
 
         Args:
-            detector_name(str): Name of detector; string that gives the server
-                name for each node if the suffix is added - e.g. p99-excalibur0
-                where p99-excalibur01 is the server for node 6 (nodes reversed)
-            nodes(list(int)): Two nodes making up 1M detector
-            master_node(int): Node to assign as master
+            detector_config(module): Module in config directory containing
+                specifications of detector
 
         """
-        if len(nodes) != 2:
+        detector = detector_config.detector
+
+        if len(detector.nodes) != 2:
             raise ValueError("Excalibur1M requires two nodes, given "
-                             "{nodes}".format(nodes=nodes))
+                             "{nodes}".format(nodes=detector.nodes))
 
-        super(Excalibur1M, self).__init__(detector_name, nodes, master_node)
+        logging.debug("Creating Excalibur1M with nodes %s (master node is %s) "
+                      "on servers %s with IPs %s",
+                      detector.nodes, detector.master_node,
+                      detector.servers, detector.ip_addresses)
 
-        logging.debug("Creating Excalibur1M with server %s and nodes %s "
-                      "(master node is %s)", detector_name, nodes, master_node)
+        super(Excalibur1M, self).__init__(detector_config)

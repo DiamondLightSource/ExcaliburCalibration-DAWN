@@ -16,11 +16,17 @@ util_patch_path = "excaliburcalibrationdawn.util"
 mock_list = [MagicMock(), MagicMock(), MagicMock(),
              MagicMock(), MagicMock(), MagicMock()]
 
+detector = MagicMock(name="test-detector", nodes=[1, 2, 3, 4, 5, 6],
+                     master_node=1, servers=["test-server{}".format(i)
+                                             for i in range(6)],
+                     ip_addresses=["192.168.0.{}".format(i) for i in range(6)])
+mock_config = MagicMock(detector=detector)
+
 
 class InitTest(unittest.TestCase):
 
     def setUp(self):
-        self.e = ExcaliburDetector("test-server", [1, 2, 3, 4, 5, 6], 1)
+        self.e = ExcaliburDetector(mock_config)
 
     def test_attributes_set(self):
         for node in range(6):
@@ -31,22 +37,41 @@ class InitTest(unittest.TestCase):
         self.assertEqual(self.e.calib_dir, self.e.MasterNode.calib_dir)
 
     def test_given_invalid_node_then_error(self):
+        detector_ = MagicMock(name="test-detector", nodes=[10],
+                              master_node=10, servers=["test-server10"],
+                              ip_addresses=["192.168.0.10"])
+        mock_config_ = MagicMock(detector=detector_)
+
         with self.assertRaises(ValueError):
-            ExcaliburDetector("test-server", [10], 10)
+            ExcaliburDetector(mock_config_)
 
     def test_given_duplicate_node_then_error(self):
+        detector_ = MagicMock(name="test-detector", nodes=[1, 1],
+                              master_node=1, servers=["test-server1",
+                                                      "test-server2"],
+                              ip_addresses=["192.168.0.1",
+                                            "192.168.0.2"])
+        mock_config_ = MagicMock(detector=detector_)
+
         with self.assertRaises(ValueError):
-            ExcaliburDetector("test-server", [1, 1], 1)
+            ExcaliburDetector(mock_config_)
 
     def test_given_master_node_not_in_nodes_then_error(self):
+        detector_ = MagicMock(name="test-detector", nodes=[1, 2],
+                              master_node=3, servers=["test-server1",
+                                                      "test-server2"],
+                              ip_addresses=["192.168.0.1",
+                                            "192.168.0.2"])
+        mock_config_ = MagicMock(detector=detector_)
+
         with self.assertRaises(ValueError):
-            ExcaliburDetector("test-server", [1, 2], 3)
+            ExcaliburDetector(mock_config_)
 
 
 class SetVoltageTest(unittest.TestCase):
 
     def setUp(self):
-        self.e = ExcaliburDetector("test-server", [1, 2, 3, 4, 5, 6], 1)
+        self.e = ExcaliburDetector(mock_config)
         self.e.Nodes = mock_list
         self.e.MasterNode = self.e.Nodes[0]
 
@@ -110,7 +135,7 @@ class SetVoltageTest(unittest.TestCase):
 class FunctionsTest(unittest.TestCase):
 
     def setUp(self):
-        self.e = ExcaliburDetector("test-server", [1, 2, 3, 4, 5, 6], 1)
+        self.e = ExcaliburDetector(mock_config)
         self.e.Nodes = mock_list
         self.e.MasterNode = self.e.Nodes[0]
 
@@ -279,7 +304,7 @@ class FunctionsTest(unittest.TestCase):
 class UtilTest(unittest.TestCase):
 
     def setUp(self):
-        self.e = ExcaliburDetector("test-server", [1, 2, 3, 4, 5, 6], 1)
+        self.e = ExcaliburDetector(mock_config)
 
     @patch(util_patch_path + '.grab_slice')
     @patch(Detector_patch_path + '._generate_node_range',
