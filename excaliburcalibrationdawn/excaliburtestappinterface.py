@@ -404,14 +404,15 @@ class ExcaliburTestAppInterface(object):
                                             self.READ_SLOW_PARAMS)
         self._send_command(command_2, loud_call=True)
 
-    def perform_dac_scan(self, chips, threshold, scan_range, dac_file,
-                         path, hdf_file):
+    def perform_dac_scan(self, chips, threshold, scan_range, exposure,
+                         dac_file, path, hdf_file):
         """Execute a DAC scan and save the results to the given file.
 
         Args:
             chips(list(int)): Chips to scan
             threshold(str): Threshold to scan
             scan_range(Range): Start, stop and step of scan
+            exposure(int): Exposure time for each acquisition of scan
             dac_file(str): File to load config from
             path(str): Folder to save into
             hdf_file(str): File to save to
@@ -424,7 +425,7 @@ class ExcaliburTestAppInterface(object):
 
         command = self._construct_command(chips,
                                           self.DAC_FILE + dac_file,
-                                          self.ACQ_TIME, "5",
+                                          self.ACQ_TIME, str(exposure),
                                           self.SCAN, scan_command,
                                           self.PATH + path,
                                           self.HDF_FILE + hdf_file)

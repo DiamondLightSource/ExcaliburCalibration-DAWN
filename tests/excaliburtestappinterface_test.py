@@ -306,7 +306,7 @@ class APICallsTest(unittest.TestCase):
         scan_range.stop = 10
         scan_range.step = 1
 
-        self.e.perform_dac_scan(self.chips, "Threshold1", scan_range,
+        self.e.perform_dac_scan(self.chips, "Threshold1", scan_range, 5,
                                 "dac_file", "path", "hdf_file")
 
         construct_mock.assert_called_once_with(self.chips, *expected_params)

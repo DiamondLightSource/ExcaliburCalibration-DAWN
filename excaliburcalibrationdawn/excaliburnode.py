@@ -697,12 +697,13 @@ class ExcaliburNode(object):
         """
         self.app.sense(self.chip_range, dac_name, self.dacs_file)
 
-    def scan_dac(self, chips, threshold, dac_range):
+    def scan_dac(self, chips, threshold, dac_range, exposure=5):
         """Perform a dac scan and plot the result (mean counts vs DAC values).
 
         Args:
             chips(Any from self.dac_number keys): Chips to scan
             threshold(str): Threshold to scan (ThresholdX DACs - X: 0-7)
+            exposure(int): Exposure time for each acquisition of scan
             dac_range(Range): Range of DAC values to scan over
 
         Returns:
@@ -715,8 +716,8 @@ class ExcaliburNode(object):
         dac_scan_file = util.generate_file_name("DACScan")
 
         dac_file = self.dacs_file
-        self.app.perform_dac_scan(chips, threshold, dac_range, dac_file,
-                                  self.output_folder, dac_scan_file)
+        self.app.perform_dac_scan(chips, threshold, exposure, dac_range,
+                                  dac_file, self.output_folder, dac_scan_file)
 
         file_path = posixpath.join(self.output_folder, dac_scan_file)
         if self.remote_node:
