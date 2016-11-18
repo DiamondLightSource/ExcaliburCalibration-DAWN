@@ -137,3 +137,11 @@ class FunctionsTest(unittest.TestCase):
                          [call[0][0] for call in sleep_mock.call_args_list])
         self.assertEqual(50, sleep_mock.call_count)
         self.assertEqual(50, isfile_mock.call_count)
+
+    @patch('filecmp.cmp')
+    def test_file_match(self, cmp_mock):
+
+        response = util.files_match("/path/to/file", "/path/to/file2")
+
+        cmp_mock.assert_called_once_with("/path/to/file", "/path/to/file2")
+        self.assertEqual(cmp_mock.return_value, response)

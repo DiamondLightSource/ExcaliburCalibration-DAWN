@@ -1,6 +1,7 @@
 """Utility functions for excaliburcalibrationdawn."""
 import os
 import time
+import filecmp
 from datetime import datetime
 import numpy as np
 import logging
@@ -154,3 +155,17 @@ def wait_for_file(file_path, wait_time):
 
     logging.info("File didn't appear within given time.")
     return False
+
+
+def files_match(file1, file2):
+    """Check if two files are identical.
+
+    Args:
+        file1(str): Path to first file
+        file2(str): Path to second file
+
+    Returns:
+        bool: True if the same, else False
+
+    """
+    return filecmp.cmp(file1, file2)

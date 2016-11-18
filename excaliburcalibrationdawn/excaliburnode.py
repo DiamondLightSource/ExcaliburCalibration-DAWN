@@ -100,8 +100,8 @@ class ExcaliburNode(object):
 
         self.config = config
         self.calib_dir = posixpath.join(self.root_path,
-                                        "3M-RX001/calib_{}".format(
-                                            config.detector.name))
+                                        "3M-RX001/{detector}/calib".format(
+                                            detector=config.detector.name))
 
         # Detector default settings - See excaliburtestappinterface for details
         self.settings = dict(mode="spm",  # spm or csm
@@ -156,9 +156,36 @@ class ExcaliburNode(object):
         """Generate DACs file path for current template path."""
         return posixpath.join(self.template_path, "dacs")
 
+    def setup_new_detector(self):
+        """Set up the folder structure for the given detector config."""
+        if os.path.isdir(self.calib_dir):
+            raise IOError("Calib directory %s already exists", self.calib_dir)
+
+        self.create_calib_structure()
+        self.log_chip_ids()
+        # Reset to default mode and gain
+        self.settings['gain'] = "slgm"
+        self.settings['mode'] = "spm"
+        # Create dacs file
+        shutil.copy(self.default_dacs, self.dacs_file)
+        # Create discLbits for each chip
+        zeros = np.zeros(shape=self.full_array_shape)
+        self.save_discbits(self.chip_range, zeros, "discLbits")
+        self.copy_slgm_into_other_gain_modes()
+
+    def create_calib_structure(self):
+        """Create the calibration directory for a new detector."""
+        logging.info("Creating calibration directory folder structure.")
+        template = posixpath.join(self.calib_dir, "fem{}".format(self.fem),
+                                  "spm/{gain}")
+        paths = [template.format(gain=gain)
+                 for gain in ["shgm", "hgm", "lgm", "slgm"]]
+        for path_ in paths:
+            os.makedirs(path_)
+
     def setup(self):
         """Perform necessary initialisation."""
-        self.read_chip_ids()
+        self.check_chip_ids()
         self.app.load_dacs(self.chip_range, self.default_dacs)
         self.load_config(self.chip_range)
         self.copy_slgm_into_other_gain_modes()
@@ -220,6 +247,26 @@ class ExcaliburNode(object):
         print("DACs Loaded: {}".format(self.app.dacs_loaded))
         print("Initialised: {}".format(self.app.initialised))
 
+    def check_chip_ids(self):
+        """Read the eFuse IDs for the current detector and compare to config.
+
+        Raises:
+            IOError: If files don't match
+
+        """
+        temp_file = posixpath.join(self.output_folder, "temp_id.txt")
+        with open(temp_file, "w") as output_file:
+            self.app.read_chip_ids(stdout=output_file)
+
+        node_id = posixpath.join(self.calib_dir, "fem{}".format(self.fem),
+                                 "efuseIDs")
+
+        if util.files_match(temp_file, node_id):
+            logging.info("Detector config ID is a match.")
+        else:
+            raise IOError("Given detector config does not match current "
+                          "detector ID")
+
     def acquire_tp_image(self, tp_mask):
         """Load the given test pulse mask and capture a tp image.
 
@@ -250,7 +297,7 @@ class ExcaliburNode(object):
         self.settings['mode'] = 'spm'
         self.settings['gain'] = 'slgm'
 
-        self.check_calib_dir()
+        self.backup_calib_dir()
         self.log_chip_ids()
         self.set_dacs(chips)
         self.set_gnd_fbk_cas(chips)
@@ -304,7 +351,7 @@ class ExcaliburNode(object):
         E1 = 5.9
         dac0 = self.dac_target * np.ones([6, 8]).astype('float')
 
-        self.check_calib_dir()
+        self.backup_calib_dir()
 
         gain = gain_values[self.settings['gain']]
         dac1 = dac0 + gain * (default_6kev_dac - dac0) * \
@@ -1120,30 +1167,13 @@ class ExcaliburNode(object):
             self.app.load_config(chip_idx, discL_bits_file, discH_bits_file,
                                  self.pixel_mask[chip_idx])
 
-    def check_calib_dir(self):
-        """Check if calibration directory exists and backs it up."""
-        calib_dir = posixpath.join(self.calib_dir,
-                                   'fem{fem}',
-                                   self.settings['mode'],
-                                   self.settings['gain']).format(
-            fem=self.fem)
-
-        if (os.path.isdir(calib_dir)) == 0:
-            os.makedirs(calib_dir)
-        else:
-            logging.info("Backing up calib directory.")
-            backup_dir = "{calib}_backup_{time_stamp}".format(
-                calib=self.calib_dir, time_stamp=util.get_time_stamp())
-            shutil.copytree(self.calib_dir, backup_dir)
-            logging.debug("Backup directory: %s", backup_dir)
-
-        dac_file = posixpath.join(calib_dir, 'dacs')
-        if os.path.isfile(dac_file) == 0:
-            shutil.copy(posixpath.join(self.config_dir, 'dacs'), calib_dir)
-
-        # if os.path.isfile(dac_file) == 0:
-        #     shutil.copy(self.config_dir + 'zeros.mask',
-        #                 calib_dir)
+    def backup_calib_dir(self):
+        """Back up calibration directory with time stamp."""
+        logging.info("Backing up calib directory.")
+        backup_dir = "{calib}_{time_stamp}".format(
+            calib=self.calib_dir, time_stamp=util.get_time_stamp())
+        shutil.copytree(self.calib_dir, backup_dir)
+        logging.debug("Backup directory: %s", backup_dir)
 
     def copy_slgm_into_other_gain_modes(self):
         """Copy slgm calibration folder into lgm, hgm and shgm folders.

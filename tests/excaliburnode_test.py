@@ -30,7 +30,7 @@ class InitTest(unittest.TestCase):
         self.assertEqual(self.e.dac_target, 10)
         self.assertEqual(self.e.num_sigma, 3.2)
         self.assertEqual(self.e.allowed_delta, 4)
-        self.assertEqual(self.e.calib_dir, "/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib_testdetector")
+        self.assertEqual(self.e.calib_dir, "/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib")
         self.assertEqual(self.e.config_dir, "/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/config")
         self.assertEqual(self.e.settings, {'mode': 'spm',
                                            'gain': 'slgm',
@@ -90,13 +90,13 @@ class InitTest(unittest.TestCase):
     @patch(Node_patch_path + '.copy_slgm_into_other_gain_modes')
     @patch(Node_patch_path + '.load_config')
     @patch(ETAI_patch_path + '.load_dacs')
-    @patch(Node_patch_path + '.read_chip_ids')
-    def test_setup(self, read_mock, load_dacs_mock, load_config_mock,
+    @patch(Node_patch_path + '.check_chip_ids')
+    def test_setup(self, check_mock, load_dacs_mock, load_config_mock,
                    copy_mock):
 
         self.e.setup()
 
-        read_mock.assert_called_once_with()
+        check_mock.assert_called_once_with()
         load_dacs_mock.assert_called_once_with(
             range(8), '/dls/detectors/support/silicon_pixels/excaliburRX/'
                       'TestApplication_15012015/config/Default_SPM.dacs')
@@ -183,6 +183,56 @@ class SimpleFunctionsTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.e.set_quiet("True")
 
+    @patch('os.path.isdir', return_value=False)
+    @patch(Node_patch_path + '.create_calib_structure')
+    @patch(Node_patch_path + '.log_chip_ids')
+    @patch('shutil.copy')
+    @patch(Node_patch_path + '.save_discbits')
+    @patch(Node_patch_path + '.copy_slgm_into_other_gain_modes')
+    def test_setup_new_detector(self, copy_gain, save_mock, copy_mock,
+                                log_mock, create_mock, _):
+        expected_source = "/dls/detectors/support/silicon_pixels/excaliburRX" \
+                          "/TestApplication_15012015/config/Default_SPM.dacs"
+        expected_target = "/dls/detectors/support/silicon_pixels/excaliburRX" \
+                          "/3M-RX001/testdetector/calib/fem1/spm/slgm/dacs"
+        self.e.setup_new_detector()
+
+        create_mock.assert_called_once_with()
+        log_mock.assert_called_once_with()
+        copy_mock.assert_called_once_with(expected_source, expected_target)
+        save_mock.assert_called_once_with(range(8), ANY, "discLbits")
+        np.testing.assert_array_equal(np.zeros(shape=[256, 8*256]),
+                                      save_mock.call_args[0][1])
+        copy_gain.assert_called_once_with()
+
+    @patch('os.path.isdir', return_value=True)
+    @patch(Node_patch_path + '.create_calib_structure')
+    @patch(Node_patch_path + '.log_chip_ids')
+    @patch('shutil.copy')
+    @patch(Node_patch_path + '.save_discbits')
+    @patch(Node_patch_path + '.copy_slgm_into_other_gain_modes')
+    def test_setup_new_detector_exists_then_error(self, copy_gain, save_mock,
+                                                  copy_mock, log_mock,
+                                                  create_mock, _):
+        with self.assertRaises(IOError):
+            self.e.setup_new_detector()
+
+        create_mock.assert_not_called()
+        log_mock.assert_not_called()
+        copy_mock.assert_not_called()
+        save_mock.assert_not_called()
+        copy_gain.assert_not_called()
+
+    @patch('os.makedirs')
+    def test_create_calib_structure(self, makedirs_mock):
+        expected_path = "/dls/detectors/support/silicon_pixels/excaliburRX" \
+                        "/3M-RX001/testdetector/calib/fem1/spm/"
+        self.e.create_calib_structure()
+
+        expected_calls = [call(expected_path + gain)
+                               for gain in ["shgm", "hgm", "lgm", "slgm"]]
+        makedirs_mock.assert_has_calls(expected_calls)
+
 
 class CaptureTPImageTest(unittest.TestCase):
 
@@ -220,7 +270,7 @@ class CaptureTPImageTest(unittest.TestCase):
         acquire_mock.assert_not_called()
 
 
-@patch(Node_patch_path + '.check_calib_dir')
+@patch(Node_patch_path + '.backup_calib_dir')
 @patch(Node_patch_path + '.log_chip_ids')
 @patch(Node_patch_path + '.set_dacs')
 @patch(Node_patch_path + '.set_gnd_fbk_cas')
@@ -244,7 +294,7 @@ class ThresholdEqualizationTest(unittest.TestCase):
         calibrate_mock.assert_called_once_with(chips)
 
 
-@patch(Node_patch_path + '.check_calib_dir')
+@patch(Node_patch_path + '.backup_calib_dir')
 @patch(Node_patch_path + '.save_kev2dac_calib')
 class ThresholdCalibrationTest(unittest.TestCase):
 
@@ -347,7 +397,7 @@ class SaveKev2DacCalibTest(unittest.TestCase):
         self.gain = [1.1, 0.7, 1.1, 1.3, 1.0, 0.9, 1.2, 0.9]
         self.offset = [0.2, -0.7, 0.1, 0.0, 0.3, -0.1, 0.2, 0.5]
         self.expected_array = np.array([self.gain, self.offset])
-        self.expected_filename = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib_testdetector/fem1/spm/slgm/threshold0'
+        self.expected_filename = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib/fem1/spm/slgm/threshold0'
 
     @patch('numpy.savetxt')
     @patch('os.chmod')
@@ -404,7 +454,7 @@ class SetThreshEnergyTest(unittest.TestCase):
     def test_correct_calls_made(self, expose_mock, set_dac_mock, gen_mock,
                                 sleep_mock):
         e = ExcaliburNode(1, mock_config)
-        expected_filepath = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib_testdetector/fem1/spm/slgm/threshold0'
+        expected_filepath = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib/fem1/spm/slgm/threshold0'
 
         e.set_thresh_energy(0, 7.0)
 
@@ -446,7 +496,7 @@ class TestAppCallsTest(unittest.TestCase):
         self.e.file_index = 5
 
     @patch(ETAI_patch_path + '.read_chip_ids')
-    def test_read_chip_id(self, read_mock):
+    def test_read_chip_ids(self, read_mock):
 
         self.e.read_chip_ids()
 
@@ -454,11 +504,30 @@ class TestAppCallsTest(unittest.TestCase):
 
     @patch(ETAI_patch_path + '.read_chip_ids')
     @patch('__builtin__.open', return_value=file_mock)
-    def test_log_chip_id(self, _, read_mock):
+    def test_log_chip_ids(self, open_mock, read_mock):
 
         self.e.log_chip_ids()
 
-        read_mock.assert_called_once_with(stdout=self.file_mock.__enter__.return_value)
+        open_mock.assert_called_once_with(
+            "/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001"
+            "/testdetector/calib/fem1/efuseIDs", "w")
+        read_mock.assert_called_once_with(
+            stdout=self.file_mock.__enter__.return_value)
+
+    @patch(util_patch_path + '.files_match', return_value=True)
+    @patch(ETAI_patch_path + '.read_chip_ids')
+    @patch('__builtin__.open', return_value=file_mock)
+    def test_check_chip_ids(self, open_mock, read_mock, match_mock):
+        expected_temp = "/tmp/temp_id.txt"
+        expected_target = "/dls/detectors/support/silicon_pixels/excaliburRX" \
+                          "/3M-RX001/testdetector/calib/fem1/efuseIDs"
+
+        self.e.check_chip_ids()
+
+        open_mock.assert_called_once_with(expected_temp, "w")
+        read_mock.assert_called_once_with(
+            stdout=self.file_mock.__enter__.return_value)
+        match_mock.assert_called_once_with(expected_temp, expected_target)
 
     @patch(ETAI_patch_path + '.read_slow_control_parameters')
     def test_monitor(self, read_mock):
@@ -560,7 +629,7 @@ class TestAppCallsTest(unittest.TestCase):
     @patch(ETAI_patch_path + '.load_dacs')
     @patch('__builtin__.open', return_value=file_mock)
     def test_set_dac(self, open_mock, load_mock):
-        dac_file = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib_testdetector/fem1/spm/slgm/dacs'
+        dac_file = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib/fem1/spm/slgm/dacs'
         expected_lines = ['Heading', 'Threshold0 = 40\r\n', 'Line2']
         readlines_mock = ['Heading', 'Line1', 'Line2']
         self.file_mock.__enter__.return_value.readlines.return_value = readlines_mock[:]  # Don't pass by reference
@@ -576,7 +645,7 @@ class TestAppCallsTest(unittest.TestCase):
 
     @patch(ETAI_patch_path + '.sense')
     def test_read_dac(self, sense_mock):
-        expected_file = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib_testdetector/fem1/spm/slgm/dacs'
+        expected_file = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib/fem1/spm/slgm/dacs'
         chips = range(8)
 
         self.e.read_dac('Threshold0')
@@ -586,11 +655,11 @@ class TestAppCallsTest(unittest.TestCase):
     @patch(ETAI_patch_path + '.load_config')
     @patch('numpy.savetxt')
     def test_load_temp_config(self, save_mock, load_mock):
-        filepath = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib_testdetector/fem1/spm/slgm/'
+        filepath = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib/fem1/spm/slgm/'
         expected_kwargs = dict(fmt='%.18g', delimiter=' ')
-        expected_file_1 = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib_testdetector/fem1/spm/slgm/discLbits.tmp'
-        expected_file_2 = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib_testdetector/fem1/spm/slgm/discHbits.tmp'
-        expected_file_3 = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib_testdetector/fem1/spm/slgm/pixelmask.tmp'
+        expected_file_1 = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib/fem1/spm/slgm/discLbits.tmp'
+        expected_file_2 = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib/fem1/spm/slgm/discHbits.tmp'
+        expected_file_3 = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib/fem1/spm/slgm/pixelmask.tmp'
         chips = [0]
         discLbits = MagicMock()
         discHbits = MagicMock()
@@ -677,11 +746,11 @@ class LoadConfigTest(unittest.TestCase):
 
     def test_correct_calls_made(self, expose_mock, set_mock, load_mock):
         expected_file_1 = '/dls/detectors/support/silicon_pixels/excaliburRX/' \
-                          '3M-RX001/calib_testdetector/fem1/spm/slgm/discLbits.chip0'
+                          '3M-RX001/testdetector/calib/fem1/spm/slgm/discLbits.chip0'
         expected_file_2 = '/dls/detectors/support/silicon_pixels/excaliburRX/' \
-                          '3M-RX001/calib_testdetector/fem1/spm/slgm/discHbits.chip0'
+                          '3M-RX001/testdetector/calib/fem1/spm/slgm/discHbits.chip0'
         expected_file_3 = '/dls/detectors/support/silicon_pixels/excaliburRX/' \
-                          '3M-RX001/calib_testdetector/fem1/spm/slgm/pixelmask.chip0'
+                          '3M-RX001/testdetector/calib/fem1/spm/slgm/pixelmask.chip0'
 
         self.e.load_config(self.chips)
 
@@ -729,7 +798,7 @@ class Fe55ImageRX001Test(unittest.TestCase):
 class ScanDacTest(unittest.TestCase):
 
     def setUp(self):
-        self.dac_file = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib_testdetector/fem1/spm/slgm/dacs'
+        self.dac_file = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib/fem1/spm/slgm/dacs'
         self.e = ExcaliburNode(1, mock_config)
         self.chips = [0]
         self.dac_range = Range(1, 10, 1)
@@ -884,11 +953,11 @@ class LogoTestTest(unittest.TestCase):
                                    shoot_mock, set_mock, acquire_mock,
                                    load_image_mock, plot_mock, save_mock, _2,
                                    sleep_mock, gen_mock):
-        expected_dac_file = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib_testdetector/dacs'
-        mask_file = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib_testdetector/Logo_chip0_mask'
-        disc_files = dict(discH='/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib_testdetector/fem1/spm/slgm/discHbits.chip0',
-                          pixel_mask='/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib_testdetector/fem1/spm/slgm/pixelmask.chip0',
-                          discL='/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib_testdetector/fem1/spm/slgm/discLbits.chip0')
+        expected_dac_file = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib/dacs'
+        mask_file = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib/Logo_chip0_mask'
+        disc_files = dict(discH='/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib/fem1/spm/slgm/discHbits.chip0',
+                          pixel_mask='/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib/fem1/spm/slgm/pixelmask.chip0',
+                          discL='/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib/fem1/spm/slgm/discLbits.chip0')
         chips = [0]
 
         self.e.logo_test()
@@ -904,7 +973,7 @@ class LogoTestTest(unittest.TestCase):
                                              hdf_file=gen_mock.return_value)
         sleep_mock.assert_called_once_with(0.2)
 
-        self.assertEqual(save_mock.call_args[0][0], '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib_testdetector/Logo_chip0_mask')
+        self.assertEqual(save_mock.call_args[0][0], '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib/Logo_chip0_mask')
         np.testing.assert_array_equal(self.logo_tp[0:256, 0:256], save_mock.call_args[0][1])
         self.assertEqual(save_mock.call_args[1], dict(fmt='%.18g',
                                                       delimiter=' '))
@@ -920,8 +989,8 @@ class LogoTestTest(unittest.TestCase):
                                         shoot_mock, set_mock, acquire_mock,
                                         load_image_mock, plot_mock, save_mock,
                                         _2, sleep_mock, gen_mock):
-        expected_dac_file = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib_testdetector/dacs'
-        mask_file = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib_testdetector/Logo_chip0_mask'
+        expected_dac_file = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib/dacs'
+        mask_file = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib/Logo_chip0_mask'
         chips = [0]
 
         self.e.logo_test()
@@ -937,7 +1006,7 @@ class LogoTestTest(unittest.TestCase):
                                              hdf_file=gen_mock.return_value)
         sleep_mock.assert_called_once_with(0.2)
 
-        self.assertEqual(save_mock.call_args[0][0], '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib_testdetector/Logo_chip0_mask')
+        self.assertEqual(save_mock.call_args[0][0], '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib/Logo_chip0_mask')
         np.testing.assert_array_equal(self.logo_tp[0:256, 0:256], save_mock.call_args[0][1])
         self.assertEqual(save_mock.call_args[1], dict(fmt='%.18g',
                                                       delimiter=' '))
@@ -964,7 +1033,7 @@ class TestPulseTest(unittest.TestCase):
     @patch('numpy.savetxt')
     def test_test_pulse(self, save_mock,  gen_mock, configure_mock,
                         acquire_mock, load_mock, plot_mock, _):
-        expected_dac_file = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib_testdetector/dacs'
+        expected_dac_file = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib/dacs'
         mask_file = 'excaliburRx/config/triangle.mask'
         chips = [0]
 
@@ -993,7 +1062,7 @@ class SaveDiscbitsTest(unittest.TestCase):
 
         call_args = save_mock.call_args[0]
         call_kwargs = save_mock.call_args[1]
-        self.assertEqual('/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib_testdetector/fem1/spm/slgm/test.chip0',
+        self.assertEqual('/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib/fem1/spm/slgm/test.chip0',
                          call_args[0])
         self.assertTrue((expected_subarray == call_args[1]).all())
         self.assertEqual(dict(fmt='%.18g', delimiter=' '), call_kwargs)
@@ -1095,7 +1164,7 @@ class MaskUnmaskTest(unittest.TestCase):
         mask = np.random.randint(10, size=(256, 8*256))
         expected_mask = mask[:, 0:256]
         expected_file = "/dls/detectors/support/silicon_pixels/excaliburRX/" \
-                        "3M-RX001/calib_testdetector/fem1/spm/slgm/pixelmask.chip0"
+                        "3M-RX001/testdetector/calib/fem1/spm/slgm/pixelmask.chip0"
 
         self.e._apply_mask([0], mask)
 
@@ -1109,11 +1178,11 @@ class MaskUnmaskTest(unittest.TestCase):
     @patch('numpy.savetxt')
     def test_unmask_all_pixels(self, save_mock, load_mock):
         expected_file_1 = "/dls/detectors/support/silicon_pixels/excaliburRX" \
-                          "/3M-RX001/calib_testdetector/fem1/spm/slgm/discLbits.chip0"
+                          "/3M-RX001/testdetector/calib/fem1/spm/slgm/discLbits.chip0"
         expected_file_2 = "/dls/detectors/support/silicon_pixels/excaliburRX" \
-                          "/3M-RX001/calib_testdetector/fem1/spm/slgm/discHbits.chip0"
+                          "/3M-RX001/testdetector/calib/fem1/spm/slgm/discHbits.chip0"
         expected_file_3 = "/dls/detectors/support/silicon_pixels/excaliburRX" \
-                          "/3M-RX001/calib_testdetector/fem1/spm/slgm/pixelmask.tmp"
+                          "/3M-RX001/testdetector/calib/fem1/spm/slgm/pixelmask.tmp"
         zeros = np.zeros([256, 256])
 
         self.e.unmask_pixels([0])
@@ -1128,11 +1197,11 @@ class MaskUnmaskTest(unittest.TestCase):
     @patch('numpy.savetxt')
     def test_unequalize_pixels(self, save_mock, load_mock):
         expected_file_1 = "/dls/detectors/support/silicon_pixels/excaliburRX" \
-                          "/3M-RX001/calib_testdetector/fem1/spm/slgm/discLbits.tmp"
+                          "/3M-RX001/testdetector/calib/fem1/spm/slgm/discLbits.tmp"
         expected_file_2 = "/dls/detectors/support/silicon_pixels/excaliburRX" \
-                          "/3M-RX001/calib_testdetector/fem1/spm/slgm/discHbits.tmp"
+                          "/3M-RX001/testdetector/calib/fem1/spm/slgm/discHbits.tmp"
         expected_file_3 = "/dls/detectors/support/silicon_pixels/excaliburRX" \
-                          "/3M-RX001/calib_testdetector/fem1/spm/slgm/pixelmask.chip0"
+                          "/3M-RX001/testdetector/calib/fem1/spm/slgm/pixelmask.chip0"
         zeros = np.zeros([256, 256])
 
         self.e.unequalize_pixels([0])
@@ -1149,43 +1218,20 @@ class MaskUnmaskTest(unittest.TestCase):
 
 
 @patch('shutil.copytree')
-@patch('shutil.copy')
-@patch('os.makedirs')
 class CheckCalibDirTest(unittest.TestCase):
 
-    @patch('os.path.isfile', return_value=False)
-    @patch('os.path.isdir', return_value=False)
-    def test_doesnt_exist_then_create(self, isdir_mock, isfile_mock,
-                                      make_mock, copy_mock, copy_tree_mock):
-        expected_path = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib_testdetector/fem1/spm/slgm'
-        e = ExcaliburNode(1, mock_config)
-
-        e.check_calib_dir()
-
-        isdir_mock.assert_called_once_with(expected_path)
-        isfile_mock.assert_called_once_with(expected_path + '/dacs')
-        make_mock.assert_called_once_with(expected_path)
-        copy_mock.assert_called_once_with('/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/config/dacs',
-                                          expected_path)
-        self.assertFalse(copy_tree_mock.call_count)
-
     @patch(util_patch_path + '.get_time_stamp',
-           return_value="2016-10-20_15:45:48")
-    @patch('os.path.isfile', return_value=True)
-    @patch('os.path.isdir', return_value=True)
-    def test_does_exist_then_backup(self, isdir_mock, isfile_mock, _,
-                                    make_mock, copy_mock, copy_tree_mock):
-        expected_path = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib_testdetector/fem1/spm/slgm'
+           return_value="20161020~154548")
+    def test_does_exist_then_backup(self, _, copy_tree_mock):
         e = ExcaliburNode(1, mock_config)
 
-        e.check_calib_dir()
+        e.backup_calib_dir()
 
-        isdir_mock.assert_called_once_with(expected_path)
-        isfile_mock.assert_called_once_with(expected_path + '/dacs')
-        self.assertFalse(make_mock.call_count)
-        copy_tree_mock.assert_called_once_with('/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib_testdetector',
-                                               '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib_testdetector_backup_2016-10-20_15:45:48')
-        self.assertFalse(copy_mock.call_count)
+        copy_tree_mock.assert_called_once_with(
+            '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001'
+            '/testdetector/calib',
+            '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001'
+            '/testdetector/calib_20161020~154548')
 
 
 @patch('shutil.copytree')
@@ -1194,7 +1240,7 @@ class CopySLGMIntoOtherGainModesTest(unittest.TestCase):
 
     @patch('os.path.exists', return_value=True)
     def test_exist_then_rm_and_copy(self, exists_mock, rm_mock, copytree_mock):
-        expected_path = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib_testdetector/fem1/spm/'
+        expected_path = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib/fem1/spm/'
         e = ExcaliburNode(1, mock_config)
 
         e.copy_slgm_into_other_gain_modes()
@@ -1215,7 +1261,7 @@ class CopySLGMIntoOtherGainModesTest(unittest.TestCase):
     @patch('os.path.exists', return_value=False)
     def test_dont_exist_then_just_copy(self, exists_mock, rm_mock,
                                        copytree_mock):
-        expected_path = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib_testdetector/fem1/spm/'
+        expected_path = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib/fem1/spm/'
         e = ExcaliburNode(1, mock_config)
 
         e.copy_slgm_into_other_gain_modes()
@@ -1232,13 +1278,13 @@ class CopySLGMIntoOtherGainModesTest(unittest.TestCase):
         self.assertEqual((expected_path + 'slgm', expected_path + 'shgm'), copytree_mock.call_args_list[2][0])
 
 
-class OpenDiscbitsFileTest(unittest.TestCase):
+class LoadDiscbitsTest(unittest.TestCase):
 
     mock_array = np.random.randint(10, size=(256, 256))
 
     @patch('numpy.loadtxt', return_value=mock_array)
     def test_correct_call_made(self, load_mock):
-        expected_path = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib_testdetector/fem1/spm/slgm/test_file.chip0'
+        expected_path = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib/fem1/spm/slgm/test_file.chip0'
         e = ExcaliburNode(1, mock_config)
 
         value = e._load_discbits([0], 'test_file')
@@ -1261,7 +1307,7 @@ class CombineROIsTest(unittest.TestCase):
                         rand.randint(2, size=[256, 256])])
     def test_correct_calls_made(self, open_mock, save_mock, roi_mock,
                                plot_mock):
-        expected_path = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/calib_testdetector/fem1/spm/slgm/test_file.chip0'
+        expected_path = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib/fem1/spm/slgm/test_file.chip0'
         e = ExcaliburNode(1, mock_config)
 
         value = e.combine_rois([0], 'test_file', 1, 'rect')
@@ -1634,7 +1680,7 @@ class RotateTest(unittest.TestCase):
     def test_rotate_config_files_exist(self, _, rotate_mock):
         self.e.chip_range = [0]  # Make test easier
         root_path = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/'
-        expected_epics_path = root_path + 'calib_testdetector_epics'
+        expected_epics_path = root_path + 'testdetector/calib_epics'
         expected_discL_path = expected_epics_path + '/fem1/spm/slgm/discLbits.chip0'
         expected_discH_path = expected_epics_path + '/fem1/spm/slgm/discHbits.chip0'
         expected_mask_path = expected_epics_path + '/fem1/spm/slgm/pixelmask.chip0'

@@ -12,9 +12,9 @@ Detector = namedtuple("Detector", ["name", "nodes", "master_node",
                                    "servers", "ip_addresses"])
 
 # Detector Specification:
-detector = Detector(name="detectorlab1", nodes=[1], master_node=1,
+detector = Detector(name="detectorlab1", nodes=[6], master_node=6,
                     servers=["p99-excalibur01"],
-                    ip_addresses=["192.168.0.1"])
+                    ip_addresses=["192.168.0.101"])
 
 # Default DAC Values:
 DACS = OrderedDict([('Threshold1', 0),
