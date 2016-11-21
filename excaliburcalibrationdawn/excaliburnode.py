@@ -47,7 +47,7 @@ class ExcaliburNode(object):
     num_chips = 8
     # Shape of chip
     chip_shape = [chip_size, chip_size]
-    # Shape of full 1/2 module array
+    # Shape of full row
     full_array_shape = [chip_size, num_chips * chip_size]
 
     root_path = "/dls/detectors/support/silicon_pixels/excaliburRX/"
@@ -68,12 +68,12 @@ class ExcaliburNode(object):
     chip_range = range(num_chips)
     plot_name = ''
 
-    def __init__(self, node, config, server=None, ip_address=None):
+    def __init__(self, node, detector_config, server=None, ip_address=None):
         """Initialize Excalibur node object.
 
         Args:
             node(int): Number of node (Between 1 and 6 for 3M)
-            config(module): Config for detector this node belongs to
+            detector_config(module): Config for detector this node belongs to
             server(str): Server name
             ip_address(str): IP address of node on server
 
@@ -98,10 +98,10 @@ class ExcaliburNode(object):
         logging.info("Creating ExcaliburNode with server %s and ip %s",
                      self.server_name, self.ip_address)
 
-        self.config = config
+        self.config = detector_config
         self.calib_dir = posixpath.join(self.root_path,
-                                        "3M-RX001/{detector}/calib".format(
-                                            detector=config.detector.name))
+                                        "3M-RX001/{}/calib".format(
+                                            detector_config.detector.name))
 
         # Detector default settings - See excaliburtestappinterface for details
         self.settings = dict(mode="spm",  # spm or csm

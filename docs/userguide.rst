@@ -45,6 +45,18 @@ Getting Started
 
 .. include:: quickstart.rst
 
+Setting up a new Detector
+-------------------------
+
+To interface with a new detector you must create a config module. Copy the detectorlab1 module in ExcaliburCalibration-DAWN/config into the same directory and name it after your detector. You the need to edit the new module to match the new detector; change the Detector name and master_node as well as entering the node, server and IP address of each FEM of the new detector. These three lists must correlate, i.e.::
+
+
+    detector = Detector(name="newdetector", nodes=[1, 2], master_node=1,
+                        servers=["node1-server", "node2-server"],
+                        ip_addresses=["node1-ip", "node2-ip"])
+
+If you have them you can update the GND, FBK and Cas arrays and the Energy-DAC arrays. Now you can instantiate an ExcaliburNode or ExcaliburDetector (1M or 3M) with this module as the detector_config and it will make the connections to each of the nodes given.
+
 Calibration
 -----------
 
@@ -130,8 +142,9 @@ Full Detector Calibration
 The Excalibur1M class allows some operations to be performed on two FEMs with a single command. To create an Excalibur1M instance::
 
     >>> from excaliburcalibrationdawn import Excalibur1M
-    >>> x = Excalibur1M(detector_name="p99-excalibur-0", nodes=[5, 6], master=6)
+    >>> from config import test1M
+    >>> x = Excalibur1M(test1M)
 
-Where detector_name is the root of the server name, without the FEM specifier on the end, i.e. the server for FEM 6 will be p99-excalibur-06, which will be added to the server path on the ExcaliburNode instance for the master node. Nodes is a list of the nodes making up the 1M and master is the node set to control the power supply card. The class will then ssh into each node server, perform the relevant commands and return with any response.
+Where test1M is the config module for a detector with two nodes. The class will then ssh into each node server, perform the relevant commands and return with any response.
 
 You can capture images in the same way as with a single node using the expose() function. The images from both nodes will be loaded, combined and plotted in DAWN to give a full image.
