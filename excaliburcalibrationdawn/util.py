@@ -117,6 +117,20 @@ def generate_file_name(base_name):
                                            tag=get_time_stamp())
 
 
+def generate_plot_name(base_name):
+    """Generate plot name with a time stamp from a given base_name.
+
+    Args:
+        base_name(str): Base plot name - e.g. Image, DAC Scan
+
+    Returns:
+        str: New plot name
+
+    """
+    return "{base_name} - {tag}".format(base_name=base_name,
+                                        tag=get_time_stamp())
+
+
 def to_list(value):
     """Return a list of value, or value if already a list.
 

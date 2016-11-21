@@ -234,40 +234,58 @@ class SimpleFunctionsTest(unittest.TestCase):
         makedirs_mock.assert_has_calls(expected_calls)
 
 
+@patch(DAWN_patch_path + '.plot_image')
+@patch(util_patch_path + '.generate_plot_name',
+       return_value="20161121~105720_TPImage.hdf5")
+@patch(util_patch_path + '.generate_file_name',
+       return_value="20161121~105725_TPImage.hdf5")
+@patch(DAWN_patch_path + '.load_image_data')
+@patch(util_patch_path + '.wait_for_file')
+@patch(ETAI_patch_path + '.grab_remote_file')
+@patch(ETAI_patch_path + '.configure_test_pulse')
+@patch(ETAI_patch_path + '.acquire_tp_image')
 class CaptureTPImageTest(unittest.TestCase):
 
     def setUp(self):
         self.e = ExcaliburNode(1, mock_config)
         self.e.chip_range = [0]
+        self.e.remote_node = True
 
-    @patch(ETAI_patch_path + '.load_tp_mask')
-    @patch(ETAI_patch_path + '.acquire_tp_image')
     @patch('os.path.isfile', return_value=True)
     def test_file_exist_then_capture_image(self, isfile_mock, acquire_mock,
-                                           load_mock):
-        expected_path = "/dls/detectors/support/silicon_pixels/excaliburRX" \
-                        "/TestApplication_15012015/config/triangles.mask"
+                                           configure_mock, grab_mock,
+                                           wait_mock, load_mock, _, _2,
+                                           plot_mock):
+        expected_mask = "/dls/detectors/support/silicon_pixels/excaliburRX/" \
+                        "TestApplication_15012015/config/triangles.mask"
+        expected_dacs = "/dls/detectors/support/silicon_pixels/excaliburRX/" \
+                        "3M-RX001/testdetector/calib/fem1/spm/slgm/dacs"
+        expected_config = dict(discL=self.e.discL_bits[0],
+                               discH=self.e.discH_bits[0],
+                               pixel_mask=self.e.pixel_mask[0])
+        expected_output = "/tmp/20161121~105725_TPImage.hdf5"
 
-        self.e.acquire_tp_image("triangles.mask")
+        self.e.acquire_tp_image("triangles.mask", 100, 1000)
 
-        isfile_mock.assert_called_once_with(expected_path)
-        load_mock.assert_called_once_with([0], expected_path)
-        acquire_mock.assert_called_once_with([0])
+        isfile_mock.assert_called_once_with(expected_mask)
+        configure_mock.assert_called_once_with(0, expected_mask,
+                                               expected_dacs, expected_config)
+        acquire_mock.assert_called_once_with([0], 100, 1000,
+                                             hdf_file="20161121~105725_TPImage.hdf5")
+        grab_mock.assert_called_once_with(expected_output)
+        wait_mock.assert_called_once_with(grab_mock.return_value, 10)
+        load_mock.assert_called_once_with(grab_mock.return_value)
+        plot_mock.assert_called_once_with(load_mock.return_value,
+                                          "20161121~105720_TPImage.hdf5")
 
-    @patch(ETAI_patch_path + '.load_tp_mask')
-    @patch(ETAI_patch_path + '.acquire_tp_image')
     @patch('os.path.isfile', return_value=False)
     def test_file_doesnt_exist_then_capture_image(self, isfile_mock,
-                                                  acquire_mock, load_mock):
-        expected_path = "/dls/detectors/support/silicon_pixels/excaliburRX" \
-                        "/TestApplication_15012015/config/none.mask"
+                                                  acquire_mock, configure_mock,
+                                                  grab_mock, wait_mock,
+                                                  load_mock, _, _2, plot_mock):
 
         with self.assertRaises(IOError):
             self.e.acquire_tp_image("none.mask")
-
-        isfile_mock.assert_called_once_with(expected_path)
-        load_mock.assert_not_called()
-        acquire_mock.assert_not_called()
 
 
 @patch(Node_patch_path + '.backup_calib_dir')
@@ -920,134 +938,6 @@ class ApplyFFCorrectionTest(unittest.TestCase):
         plot_mock.assert_called_once_with(load_mock.return_value.__getitem__().__mul__().__getitem__(), name='Image data Cor')
 
         # TODO: Finish once function completed
-
-
-@patch(util_patch_path + '.generate_file_name')
-@patch('time.sleep')
-@patch('time.asctime', return_value='Mon Sep 26 17:04:31 2016')
-@patch('numpy.savetxt')
-@patch(DAWN_patch_path + '.plot_image')
-@patch(DAWN_patch_path + '.load_image_data')
-@patch(ETAI_patch_path + '.acquire')
-@patch(Node_patch_path + '.set_dac')
-@patch(Node_patch_path + '.expose')
-class LogoTestTest(unittest.TestCase):
-
-    rand = np.random.RandomState(123)
-    mock_array = rand.randint(2, size=(243, 1598))
-
-    def setUp(self):
-        self.e = ExcaliburNode(1, mock_config)
-        self.e.file_index = 5
-        self.e.chip_range = [0]  # Make test easier - only run for one chip
-
-        logo_tp = np.ones([256, 8*256])
-        logo_tp[7:250, 225:1823] = self.mock_array
-        logo_tp[logo_tp > 0] = 1
-        self.logo_tp = 1 - logo_tp
-
-    @patch(ETAI_patch_path + '.configure_test_pulse')
-    @patch('numpy.loadtxt', return_value=mock_array)
-    @patch('os.path.isfile', return_value=True)
-    def test_logo_test_files_exist(self, _, load_mock, configure_mock,
-                                   shoot_mock, set_mock, acquire_mock,
-                                   load_image_mock, plot_mock, save_mock, _2,
-                                   sleep_mock, gen_mock):
-        expected_dac_file = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib/dacs'
-        mask_file = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib/Logo_chip0_mask'
-        disc_files = dict(discH='/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib/fem1/spm/slgm/discHbits.chip0',
-                          pixel_mask='/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib/fem1/spm/slgm/pixelmask.chip0',
-                          discL='/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib/fem1/spm/slgm/discLbits.chip0')
-        chips = [0]
-
-        self.e.logo_test()
-
-        set_mock.assert_called_once_with(chips, "Threshold0", 40)
-        shoot_mock.assert_called_once_with(10)
-        load_mock.assert_called_once_with('/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/config/logo.txt')
-
-        configure_mock.assert_called_once_with(chips, expected_dac_file,
-                                               mask_file, disc_files)
-        gen_mock.assert_called_once_with("TPImage")
-        acquire_mock.assert_called_once_with(chips, 1, 100, tp_count=100,
-                                             hdf_file=gen_mock.return_value)
-        sleep_mock.assert_called_once_with(0.2)
-
-        self.assertEqual(save_mock.call_args[0][0], '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib/Logo_chip0_mask')
-        np.testing.assert_array_equal(self.logo_tp[0:256, 0:256], save_mock.call_args[0][1])
-        self.assertEqual(save_mock.call_args[1], dict(fmt='%.18g',
-                                                      delimiter=' '))
-
-        load_image_mock.assert_called_once_with(gen_mock.return_value)
-        plot_mock.assert_called_once_with(load_image_mock.return_value,
-                                          name='Image_Mon Sep 26 17:04:31 2016')
-
-    @patch(ETAI_patch_path + '.configure_test_pulse')
-    @patch('numpy.loadtxt', return_value=mock_array)
-    @patch('os.path.isfile', return_value=False)
-    def test_logo_test_files_dont_exist(self, _, load_mock, configure_mock,
-                                        shoot_mock, set_mock, acquire_mock,
-                                        load_image_mock, plot_mock, save_mock,
-                                        _2, sleep_mock, gen_mock):
-        expected_dac_file = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib/dacs'
-        mask_file = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib/Logo_chip0_mask'
-        chips = [0]
-
-        self.e.logo_test()
-
-        set_mock.assert_called_once_with(chips, "Threshold0", 40)
-        shoot_mock.assert_called_once_with(10)
-        load_mock.assert_called_once_with('/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/config/logo.txt')
-
-        configure_mock.assert_called_once_with(chips, expected_dac_file,
-                                               mask_file, None)
-        gen_mock.assert_called_once_with("TPImage")
-        acquire_mock.assert_called_once_with(chips, 1, 100, tp_count=100,
-                                             hdf_file=gen_mock.return_value)
-        sleep_mock.assert_called_once_with(0.2)
-
-        self.assertEqual(save_mock.call_args[0][0], '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib/Logo_chip0_mask')
-        np.testing.assert_array_equal(self.logo_tp[0:256, 0:256], save_mock.call_args[0][1])
-        self.assertEqual(save_mock.call_args[1], dict(fmt='%.18g',
-                                                      delimiter=' '))
-
-        load_image_mock.assert_called_once_with(gen_mock.return_value)
-        plot_mock.assert_called_once_with(load_image_mock.return_value,
-                                          name='Image_Mon Sep 26 17:04:31 2016')
-
-
-class TestPulseTest(unittest.TestCase):
-
-    # TODO: Test other if branch?
-
-    def setUp(self):
-        self.e = ExcaliburNode(1, mock_config)
-        self.e.file_index = 5
-
-    @patch('time.asctime', return_value='Tue Sep 27 10:43:52 2016')
-    @patch(DAWN_patch_path + '.plot_image')
-    @patch(DAWN_patch_path + '.load_image_data')
-    @patch(ETAI_patch_path + '.acquire')
-    @patch(ETAI_patch_path + '.configure_test_pulse')
-    @patch(util_patch_path + '.generate_file_name')
-    @patch('numpy.savetxt')
-    def test_test_pulse(self, save_mock,  gen_mock, configure_mock,
-                        acquire_mock, load_mock, plot_mock, _):
-        expected_dac_file = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib/dacs'
-        mask_file = 'excaliburRx/config/triangle.mask'
-        chips = [0]
-
-        self.e.test_pulse(chips, mask_file, 1000)
-
-        configure_mock.assert_called_once_with(chips, expected_dac_file, mask_file)
-        gen_mock.assert_called_once_with("TPImage")
-        acquire_mock.assert_called_once_with(chips, 1, 100,
-                                             tp_count=1000,
-                                             hdf_file=gen_mock.return_value)
-        load_mock.assert_called_once_with(gen_mock.return_value)
-
-        plot_mock.assert_called_once_with(load_mock.return_value,
-                                          name='Image_Tue Sep 27 10:43:52 2016')
 
 
 class SaveDiscbitsTest(unittest.TestCase):

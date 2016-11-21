@@ -267,20 +267,38 @@ class ExcaliburNode(object):
             raise IOError("Given detector config does not match current "
                           "detector ID")
 
-    def acquire_tp_image(self, tp_mask):
+    def acquire_tp_image(self, tp_mask, exposure=100, tp_count=1000):
         """Load the given test pulse mask and capture a tp image.
 
         Args:
             tp_mask(str): Mask file in config directory
+            exposure(int) Exposure time for image
+            tp_count(int): Test pulse count
 
         """
         mask_path = posixpath.join(self.config_dir, tp_mask)
-
-        if os.path.isfile(mask_path):
-            self.app.load_tp_mask(self.chip_range, mask_path)
-            self.app.acquire_tp_image(self.chip_range)
-        else:
+        if not os.path.isfile(mask_path):
             raise IOError("Mask file '%s' does not exist", mask_path)
+
+        output_file = util.generate_file_name("TPImage")
+        output_path = posixpath.join(self.output_folder, output_file)
+
+        for chip_idx in self.chip_range:
+            config_files = dict(discL=self.discL_bits[chip_idx],
+                                discH=self.discH_bits[chip_idx],
+                                pixel_mask=self.pixel_mask[chip_idx])
+            self.app.configure_test_pulse(chip_idx, mask_path,
+                                          self.dacs_file, config_files)
+
+        self.app.acquire_tp_image(self.chip_range, exposure, tp_count,
+                                  hdf_file=output_file)
+
+        if self.remote_node:
+            output_path = self.app.grab_remote_file(output_path)
+        util.wait_for_file(output_path, 10)
+        image = self.dawn.load_image_data(output_path)
+        self.dawn.plot_image(image, util.generate_plot_name("TPImage"))
+        return image
 
     def threshold_equalization(self, chips=range(8)):
         """Calibrate discriminator equalization.
@@ -817,8 +835,7 @@ class ExcaliburNode(object):
         logging.info("Capturing image with %sms exposure", exposure)
         image = self._acquire(1, exposure)
 
-        plot_name = "Node Image - {time_stamp}".format(
-            time_stamp=util.get_time_stamp())
+        plot_name = util.generate_plot_name("Node Image")
         self.dawn.plot_image(image, plot_name)
 
         return image
@@ -955,74 +972,6 @@ class ExcaliburNode(object):
             chip = 3
             self.dawn.plot_image(util.grab_chip_slice(ff_mask, chip),
                                  name="Image data Cor")
-
-    def logo_test(self):
-        """Test the detector using test pulses representing excalibur logo."""
-        # TODO: Make this call through test_pulse
-        self.set_dac(self.chip_range, "Threshold0", 40)
-        self.expose(10)  # TODO: Why does it need to set* and expose here?
-
-        logo_tp = np.ones([256, 8 * 256])
-        logo_file = posixpath.join(self.config_dir, "logo.txt")
-        logo_small = np.loadtxt(logo_file)
-        util.set_slice(logo_tp, [7, 225], [249, 1822], logo_small)
-        logo_tp[logo_tp > 0] = 1
-        logo_tp = 1 - logo_tp
-
-        for chip in self.chip_range:
-            dac_file = posixpath.join(self.calib_dir, "dacs")
-
-            # TODO: Why is this done for each chip?
-            test_bits_file = posixpath.join(self.calib_dir,
-                                            "Logo_chip{chip}_mask".format(
-                                                chip=chip))
-            np.savetxt(test_bits_file, util.grab_chip_slice(logo_tp, chip),
-                       fmt='%.18g', delimiter=' ')
-
-            # TODO: Do we really need to check these exist?
-            if os.path.isfile(self.discL_bits[chip]) \
-                and os.path.isfile(self.discH_bits[chip])  \
-                    and os.path.isfile(self.pixel_mask[chip]):
-                config_files = dict(discL=self.discL_bits[chip],
-                                    discH=self.discH_bits[chip],
-                                    pixel_mask=self.pixel_mask[chip])
-            else:
-                config_files = None
-
-            self.app.configure_test_pulse([chip], dac_file, test_bits_file,
-                                          config_files)
-
-        time.sleep(0.2)
-
-        file_name = util.generate_file_name("TPImage")
-
-        self.app.acquire(self.chip_range,
-                         self.settings['frames'],
-                         self.settings['exposure'],
-                         tp_count=100,
-                         hdf_file=file_name)
-
-        image_path = posixpath.join(self.output_folder, file_name)
-        image = self.dawn.load_image_data(image_path)
-        self.dawn.plot_image(image, name="Image_{}".format(time.asctime()))
-
-    def test_pulse(self, chips, test_bits, pulses):
-        """Test the detector using the given mask bits."""
-        file_name = util.generate_file_name("TPImage")
-
-        for chip in chips:
-            dac_file = posixpath.join(self.calib_dir, 'dacs')
-            self.app.configure_test_pulse([chip], dac_file, test_bits)
-
-        self.app.acquire(chips,
-                         self.settings['frames'],
-                         self.settings['exposure'],
-                         tp_count=pulses,
-                         hdf_file=file_name)
-
-        image_path = posixpath.join(self.output_folder, file_name)
-        image = self.dawn.load_image_data(image_path)
-        self.dawn.plot_image(image, name="Image_{}".format(time.asctime()))
 
     def save_discbits(self, chips, discbits, disc):
         """Save discbit array into file in the calibration directory.

@@ -362,8 +362,8 @@ class APICallsTest(unittest.TestCase):
         self.assertIsNone(self.e.dacs_loaded)
 
     def test_configure_test_pulse(self, send_cmd_mock, construct_mock):
-        tp_mask = MagicMock()
-        expected_params = ['--dacs=test_file', '--tpmask=' + tp_mask]
+        tp_mask = "mask"
+        expected_params = ['--dacs=test_file', '--tpmask=' + tp_mask, '--config']
 
         self.e.configure_test_pulse(self.chips, tp_mask, "test_file")
 
@@ -371,14 +371,15 @@ class APICallsTest(unittest.TestCase):
         send_cmd_mock.assert_called_once_with(construct_mock.return_value)
 
     def test_configure_test_pulse_with_disc(self, send_cmd_mock, construct_mock):
-        tp_mask = MagicMock()
-        disc_l_mock = MagicMock()
-        disc_h_mock = MagicMock()
-        mask_mock = MagicMock()
+        tp_mask = "mask"
+        disc_l_mock = "discL"
+        disc_h_mock = "discH"
+        mask_mock = "pixel_mask"
         disc_files = dict(discL=disc_l_mock, discH=disc_h_mock,
                           pixel_mask=mask_mock)
         expected_params = ['--dacs=test_file', '--tpmask=' + tp_mask,
-                           '--discl=' + disc_l_mock, '--disch=' + disc_h_mock,
+                           '--config', '--discl=' + disc_l_mock,
+                           '--disch=' + disc_h_mock,
                            '--pixelmask=' + mask_mock]
 
         self.e.configure_test_pulse(self.chips, tp_mask, "test_file", disc_files)
@@ -387,7 +388,7 @@ class APICallsTest(unittest.TestCase):
         send_cmd_mock.assert_called_once_with(construct_mock.return_value)
 
     def test_load_tp_mask(self, send_cmd_mock, construct_mock):
-        tp_mask = MagicMock()
+        tp_mask = "mask"
         expected_params = ['--config', '--tpmask=' + tp_mask]
 
         self.e.load_tp_mask(self.chips, tp_mask)

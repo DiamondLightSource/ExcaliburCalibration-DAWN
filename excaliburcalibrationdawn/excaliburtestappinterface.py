@@ -472,26 +472,26 @@ class ExcaliburTestAppInterface(object):
         if success:
             self.dacs_loaded = dac_file.split('/')[-1]
 
-    def configure_test_pulse(self, chips, tp_mask, dac_file,
+    def configure_test_pulse(self, chip, tp_mask, dac_file,
                              config_files=None):
         """Load DAC file and test mask ready acquire test.
 
         Args:
-            chips(list(int)): List of chips to configure
+            chip(list(int)): Chip to configure
             tp_mask(numpy.array): Test pulse mask to load for test pulses
             dac_file(str): Path to file containing DAC values
             config_files(dict): Config files for discL, discH and pixel mask
 
         """
-        logging.debug("Sending configure test pulse command for chips %s",
-                      chips)
+        logging.debug("Sending configure test pulse command for chip %s",
+                      chip)
         # TODO: Check if this really needs to be coupled to loading DACs
-        extra_params = []
+        extra_params = [self.CONFIG]
         if config_files is not None:
             extra_params.extend([self.DISC_L + config_files['discL'],
                                  self.DISC_H + config_files['discH'],
                                  self.PIXEL_MASK + config_files['pixel_mask']])
-        command = self._construct_command(chips,
+        command = self._construct_command(chip,
                                           self.DAC_FILE + dac_file,
                                           self.TP_MASK + tp_mask,
                                           *extra_params)
