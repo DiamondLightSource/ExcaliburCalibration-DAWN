@@ -19,7 +19,8 @@ mock_list = [MagicMock(), MagicMock(), MagicMock(),
 detector = MagicMock(name="test-detector", nodes=[1, 2, 3, 4, 5, 6],
                      master_node=1, servers=["test-server{}".format(i)
                                              for i in range(6)],
-                     ip_addresses=["192.168.0.{}".format(i) for i in range(6)])
+                     ip_addresses=["192.168.0.10{}".format(i)
+                                   for i in range(6)])
 mock_config = MagicMock(detector=detector)
 
 
@@ -39,7 +40,7 @@ class InitTest(unittest.TestCase):
     def test_given_invalid_node_then_error(self):
         detector_ = MagicMock(name="test-detector", nodes=[10],
                               master_node=10, servers=["test-server10"],
-                              ip_addresses=["192.168.0.10"])
+                              ip_addresses=["192.168.0.101"])
         mock_config_ = MagicMock(detector=detector_)
 
         with self.assertRaises(ValueError):
@@ -49,8 +50,8 @@ class InitTest(unittest.TestCase):
         detector_ = MagicMock(name="test-detector", nodes=[1, 1],
                               master_node=1, servers=["test-server1",
                                                       "test-server2"],
-                              ip_addresses=["192.168.0.1",
-                                            "192.168.0.2"])
+                              ip_addresses=["192.168.0.101",
+                                            "192.168.0.102"])
         mock_config_ = MagicMock(detector=detector_)
 
         with self.assertRaises(ValueError):
@@ -60,8 +61,31 @@ class InitTest(unittest.TestCase):
         detector_ = MagicMock(name="test-detector", nodes=[1, 2],
                               master_node=3, servers=["test-server1",
                                                       "test-server2"],
-                              ip_addresses=["192.168.0.1",
-                                            "192.168.0.2"])
+                              ip_addresses=["192.168.0.101",
+                                            "192.168.0.102"])
+        mock_config_ = MagicMock(detector=detector_)
+
+        with self.assertRaises(ValueError):
+            ExcaliburDetector(mock_config_)
+
+    def test_given_mismatched_lengths_then_error(self):
+        detector_ = MagicMock(name="test-detector", nodes=[1, 2, 3],
+                              master_node=3, servers=["test-server1",
+                                                      "test-server2"],
+                              ip_addresses=["192.168.0.101",
+                                            "192.168.0.102",
+                                            "192.168.0.103"])
+        mock_config_ = MagicMock(detector=detector_)
+
+        with self.assertRaises(ValueError):
+            ExcaliburDetector(mock_config_)
+
+        detector_ = MagicMock(name="test-detector", nodes=[1, 2, 3],
+                              master_node=3, servers=["test-server1",
+                                                      "test-server2",
+                                                      "test-server3"],
+                              ip_addresses=["192.168.0.101",
+                                            "192.168.0.102"])
         mock_config_ = MagicMock(detector=detector_)
 
         with self.assertRaises(ValueError):

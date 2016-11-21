@@ -547,6 +547,14 @@ class TestAppCallsTest(unittest.TestCase):
             stdout=self.file_mock.__enter__.return_value)
         match_mock.assert_called_once_with(expected_temp, expected_target)
 
+    @patch(util_patch_path + '.files_match', return_value=False)
+    @patch(ETAI_patch_path + '.read_chip_ids')
+    @patch('__builtin__.open', return_value=file_mock)
+    def test_check_chip_ids_unmatched(self, open_mock, read_mock, match_mock):
+
+        with self.assertRaises(IOError):
+            self.e.check_chip_ids()
+
     @patch(ETAI_patch_path + '.read_slow_control_parameters')
     def test_monitor(self, read_mock):
 
@@ -645,18 +653,29 @@ class TestAppCallsTest(unittest.TestCase):
         acquire_mock.assert_called_once_with(100, 10, burst=True)
 
     @patch(ETAI_patch_path + '.load_dacs')
-    @patch('__builtin__.open', return_value=file_mock)
-    def test_set_dac(self, open_mock, load_mock):
+    @patch(Node_patch_path + '._write_dac')
+    def test_set_dac(self, write_mock, load_mock):
         dac_file = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib/fem1/spm/slgm/dacs'
         expected_lines = ['Heading', 'Threshold0 = 40\r\n', 'Line2']
         readlines_mock = ['Heading', 'Line1', 'Line2']
         self.file_mock.__enter__.return_value.readlines.return_value = readlines_mock[:]  # Don't pass by reference
         chips = [0]
 
-        self.e.set_dac(chips)
+        self.e.set_dac(chips, "Threshold0", 40)
 
+        write_mock.assert_called_with(0, "Threshold0", 40)
         load_mock.assert_called_once_with(chips, dac_file)
-        # Check file writing calls
+
+    @patch('__builtin__.open', return_value=file_mock)
+    def test_write_dac(self, open_mock):
+        dac_file = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib/fem1/spm/slgm/dacs'
+        expected_lines = ['Heading', 'Threshold0 = 40\r\n', 'Line2']
+        readlines_mock = ['Heading', 'Line1', 'Line2']
+        self.file_mock.__enter__.return_value.readlines.return_value = readlines_mock[:]  # Don't pass by reference
+        chips = [0]
+
+        self.e._write_dac(0, "Threshold0", 40)
+
         open_mock.assert_called_with(dac_file, 'w')
         self.assertEqual(2 * len(chips), open_mock.call_count)
         self.file_mock.__enter__.return_value.writelines.assert_called_once_with(expected_lines)
