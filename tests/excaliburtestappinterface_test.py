@@ -100,14 +100,13 @@ class SendCommandTest(unittest.TestCase):
 
         self.e._send_command(["test_command"], test=True)
 
-        self.assertEqual((expected_message, "test_command", "{'test': True}"),
-                         debug_mock.call_args_list[0][0])
+        debug_mock.assert_called_once_with(expected_message, "test_command",
+                                           "{'test': True}")
         output_mock.assert_called_once_with(["test_command"], test=True)
         call_mock.assert_not_called()
-        self.assertEqual(("Error Output:\n%s", "Invalid command"),
-                         debug_mock.call_args_list[1][0])
-        info_mock.assert_called_once_with("Set self.quiet to False to display "
-                                          "terminal output.")
+        info_mock.has_calls([call("Error Output:\n%s", "Invalid command"),
+                             call("Set self.quiet to False to display terminal"
+                                  " output.")])
 
     def test_subp_called_and_logged(self, call_mock, output_mock,
                                     debug_mock, _):
@@ -121,8 +120,8 @@ class SendCommandTest(unittest.TestCase):
                          debug_mock.call_args_list[0][0])
         call_mock.assert_called_once_with(["test_command"], test=True)
 
-    def test_error_raised_then_catch_and_log(self, call_mock, output_mock,
-                                             debug_mock, _):
+    def test_error_raised_then_catch_and_log(self, call_mock, _,
+                                             debug_mock, info_mock):
         expected_message = "Sending Command:\n'%s' with kwargs %s"
         call_mock.side_effect = CalledProcessError(1, "test_command",
                                                    output="Invalid command")
@@ -130,11 +129,12 @@ class SendCommandTest(unittest.TestCase):
         self.e.quiet = False
         self.e._send_command(["test_command"], test=True)
 
-        self.assertEqual((expected_message, "test_command", "{'test': True}"),
-                         debug_mock.call_args_list[0][0])
+        debug_mock.assert_called_once_with(expected_message, "test_command",
+                                           "{'test': True}")
         call_mock.assert_called_once_with(["test_command"], test=True)
-        self.assertEqual(("Error Output:\n%s", "Invalid command"),
-                         debug_mock.call_args_list[1][0])
+        info_mock.assert_has_calls([call("Exception during in subprocess call."),
+                                    call("Error Return Code: %s\nError Output:\n%s",
+                                         1, "Invalid command")])
 
 
 @patch(ETAI_patch_path + '._construct_command')

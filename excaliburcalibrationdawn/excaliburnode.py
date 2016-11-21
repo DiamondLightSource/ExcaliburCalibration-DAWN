@@ -578,15 +578,11 @@ class ExcaliburNode(object):
     def set_thresh_energy(self, threshold=0, thresh_energy=5.0):
         """Set given threshold in keV.
 
-        ThresholdX DACs are calculated using thresholdX calibration file
-        located in the calibration directory corresponding to the current mode
-        and gain setting
-
         Args:
             threshold(int): Threshold to set (0 or 1)
             thresh_energy(float): Energy to set
 
-        """  # TODO: Move docstring body somewhere more relevant
+        """
         fname = posixpath.join(self.calib_dir,
                                'fem{fem}',
                                self.settings['mode'],
@@ -734,7 +730,7 @@ class ExcaliburNode(object):
         dac_scan_file = util.generate_file_name("DACScan")
 
         dac_file = self.dacs_file
-        self.app.perform_dac_scan(chips, threshold, exposure, dac_range,
+        self.app.perform_dac_scan(chips, threshold, dac_range, exposure,
                                   dac_file, self.output_folder, dac_scan_file)
 
         file_path = posixpath.join(self.output_folder, dac_scan_file)

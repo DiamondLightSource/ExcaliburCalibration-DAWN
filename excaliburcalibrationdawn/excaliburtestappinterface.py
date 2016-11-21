@@ -217,7 +217,9 @@ class ExcaliburTestAppInterface(object):
             else:
                 subprocess.check_call(command, **cmd_kwargs)
         except subprocess.CalledProcessError as error:
-            logging.debug("Error Output:\n%s", error.output)
+            logging.info("Exception during in subprocess call.")
+            logging.info("Error Return Code: %s\nError Output:\n%s",
+                         error.returncode, error.output)
             if self.quiet:
                 logging.info("Set self.quiet to False to display terminal "
                              "output.")
