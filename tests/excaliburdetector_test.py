@@ -2,7 +2,7 @@ import unittest
 
 from pkg_resources import require
 require("mock")
-from mock import patch, MagicMock, ANY
+from mock import patch, MagicMock, ANY, call
 
 import numpy as np
 
@@ -17,9 +17,9 @@ mock_list = [MagicMock(), MagicMock(), MagicMock(),
              MagicMock(), MagicMock(), MagicMock()]
 
 detector = MagicMock(name="test-detector", nodes=[1, 2, 3, 4, 5, 6],
-                     master_node=1, servers=["test-server{}".format(i)
+                     master_node=1, servers=["test-server{}".format(i + 1)
                                              for i in range(6)],
-                     ip_addresses=["192.168.0.10{}".format(i)
+                     ip_addresses=["192.168.0.10{}".format(i + 1)
                                    for i in range(6)])
 mock_config = MagicMock(detector=detector)
 
@@ -167,11 +167,12 @@ class FunctionsTest(unittest.TestCase):
         for node in self.e.Nodes:
             node.reset_mock()
 
-    def test_read_chip_ids(self):
+    @patch(util_patch_path + '.spawn_thread')
+    def test_read_chip_ids(self, spawn_mock):
         self.e.read_chip_ids()
 
-        for node in self.e.Nodes:
-            node.read_chip_ids.assert_called_once_with()
+        spawn_mock.assert_has_calls([call(node.read_chip_ids)
+                                     for node in self.e.Nodes])
 
     def test_set_quiet(self):
         self.e.set_quiet(True)
@@ -185,11 +186,12 @@ class FunctionsTest(unittest.TestCase):
         for node in self.e.Nodes:
             node.monitor.assert_called_once_with()
 
-    def test_load_config(self):
+    @patch(util_patch_path + '.spawn_thread')
+    def test_load_config(self, spawn_mock):
         self.e.load_config()
 
-        for node in self.e.Nodes:
-            node.load_config.assert_called_once_with()
+        spawn_mock.assert_has_calls([call(node.load_config)
+                                     for node in self.e.Nodes])
 
     def test_display_status(self):
         self.e.display_status()
@@ -197,45 +199,50 @@ class FunctionsTest(unittest.TestCase):
         for node in self.e.Nodes:
             node.display_status.assert_called_once_with()
 
-    def test_setup(self):
+    @patch(util_patch_path + '.spawn_thread')
+    def test_setup(self, spawn_mock):
         self.e.setup()
 
         self.e.MasterNode.initialise_lv.assert_called_once_with()
         self.e.MasterNode.set_hv_bias.assert_called_once_with(120)
 
-        for node in self.e.Nodes:
-            node.setup.assert_called_once_with()
+        spawn_mock.assert_has_calls([call(node.setup)
+                                     for node in self.e.Nodes])
 
-    def test_set_gnd_fbk_cas(self):
+    @patch(util_patch_path + '.spawn_thread')
+    def test_set_gnd_fbk_cas(self, spawn_mock):
         self.e.set_gnd_fbk_cas([[0], [0], [0], [0], [0], [0]])
 
-        for node in self.e.Nodes:
-            node.set_gnd_fbk_cas.assert_called_once_with([0])
+        spawn_mock.assert_has_calls([call(node.set_gnd_fbk_cas, [0])
+                                     for node in self.e.Nodes])
 
-    def test_set_gnd_fbk_cas_default(self):
+    @patch(util_patch_path + '.spawn_thread')
+    def test_set_gnd_fbk_cas_default(self, spawn_mock):
         self.e.set_gnd_fbk_cas()
 
-        for node in self.e.Nodes:
-            node.set_gnd_fbk_cas.assert_called_once_with([0, 1, 2, 3,
-                                                          4, 5, 6, 7])
+        spawn_mock.assert_has_calls([call(node.set_gnd_fbk_cas, [0, 1, 2, 3,
+                                                                 4, 5, 6, 7])
+                                     for node in self.e.Nodes])
 
     def test_set_gnd_fbk_cas_given_invalid_chips(self):
 
         with self.assertRaises(ValueError):
             self.e.set_gnd_fbk_cas([0, 1, 2, 3, 4, 5, 6, 7])
 
-    def test_threshold_equalization(self):
+    @patch(util_patch_path + '.spawn_thread')
+    def test_threshold_equalization(self, spawn_mock):
         self.e.threshold_equalization([[0], [0], [0], [0], [0], [0]])
 
-        for node in self.e.Nodes:
-            node.threshold_equalization.assert_called_once_with([0])
+        spawn_mock.assert_has_calls([call(node.threshold_equalization, [0])
+                                     for node in self.e.Nodes])
 
-    def test_threshold_equalization_default(self):
+    @patch(util_patch_path + '.spawn_thread')
+    def test_threshold_equalization_default(self, spawn_mock):
         self.e.threshold_equalization()
 
-        for node in self.e.Nodes:
-            node.threshold_equalization.assert_called_once_with([0, 1, 2, 3,
-                                                                 4, 5, 6, 7])
+        spawn_mock.assert_has_calls([call(node.threshold_equalization,
+                                          [0, 1, 2, 3, 4, 5, 6, 7])
+                                     for node in self.e.Nodes])
 
     def test_threshold_equalization_given_invalid_chips(self):
 
@@ -243,10 +250,11 @@ class FunctionsTest(unittest.TestCase):
             self.e.threshold_equalization([0, 1, 2, 3, 4, 5, 6, 7])
 
     @patch(util_patch_path + '.get_time_stamp',
-           return_value="2016-10-21_16:42:50")
+           return_value="20161021~164250")
     @patch(Detector_patch_path + '._combine_images')
     @patch(DAWN_patch_path + '.plot_image')
-    def test_acquire_tp_image(self, plot_mock, combine_mock, _):
+    @patch(util_patch_path + '.spawn_thread')
+    def test_acquire_tp_image(self, spawn_mock, plot_mock, combine_mock, _):
 
         mock_image = MagicMock()
 
@@ -255,18 +263,21 @@ class FunctionsTest(unittest.TestCase):
 
         self.e.acquire_tp_image("triangles.mask")
 
-        for node in self.e.Nodes:
-            node.acquire_tp_image.assert_called_once_with("triangles.mask")
+        spawn_mock.assert_has_calls([call(node.acquire_tp_image,
+                                          "triangles.mask")
+                                     for node in self.e.Nodes])
 
-        combine_mock.assert_called_once_with([mock_image] * 6)
+        combine_mock.assert_called_once_with(
+            [spawn_mock.return_value.join.return_value] * 6)
         plot_mock.assert_called_once_with(combine_mock.return_value,
-                                          "TPImage - 2016-10-21_16:42:50")
+                                          "TPImage - 20161021~164250")
 
     @patch(util_patch_path + '.get_time_stamp',
-           return_value="2016-10-21_16:42:50")
+           return_value="20161021~164250")
     @patch(Detector_patch_path + '._combine_images')
     @patch(DAWN_patch_path + '.plot_image')
-    def test_expose(self, plot_mock, combine_mock, _):
+    @patch(util_patch_path + '.spawn_thread')
+    def test_expose(self, spawn_mock, plot_mock, combine_mock, _):
 
         mock_image = MagicMock()
 
@@ -275,12 +286,13 @@ class FunctionsTest(unittest.TestCase):
 
         self.e.expose(100)
 
-        for node in self.e.Nodes:
-            node.expose.assert_called_once_with(100)
+        spawn_mock.assert_has_calls([call(node.expose, 100)
+                                     for node in self.e.Nodes])
 
-        combine_mock.assert_called_once_with([mock_image] * 6)
+        combine_mock.assert_called_once_with(
+            [spawn_mock.return_value.join.return_value] * 6)
         plot_mock.assert_called_once_with(combine_mock.return_value,
-                                          "Image - 2016-10-21_16:42:50")
+                                          "Image - 20161021~164250")
 
     def test_scan_dac(self):
 

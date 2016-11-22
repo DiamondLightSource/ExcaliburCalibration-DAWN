@@ -151,3 +151,59 @@ class FunctionsTest(unittest.TestCase):
 
         cmp_mock.assert_called_once_with("/path/to/file", "/path/to/file2")
         self.assertEqual(cmp_mock.return_value, response)
+
+    @patch(util_patch_path + '._ReturnThread')
+    def test_spawn_thread(self, thread_init_mock):
+        thread_mock = MagicMock()
+        thread_init_mock.return_value = thread_mock
+
+        def test_function(arg1, arg2=None):
+            pass
+
+        response = util.spawn_thread(test_function, "arg1", arg2="arg2")
+
+        thread_init_mock.assert_called_once_with(target=test_function,
+                                                 args=("arg1",),
+                                                 kwargs=dict(arg2="arg2"))
+        thread_mock.start.assert_called_once_with()
+        self.assertEqual(thread_mock, response)
+
+
+@patch('threading.Thread.__init__')
+class ReturnThreadTest(unittest.TestCase):
+
+    def test_function(self, arg1, arg2=None):
+        pass
+
+    def test_init(self, thread_mock):
+        thread = util._ReturnThread(group="group", target="target",
+                                    name="name", args="args", kwargs="kwargs",
+                                    verbose="verbose")
+
+        thread_mock.assert_called_once_with("group", "target", "name", "args",
+                                            "kwargs", "verbose")
+        self.assertIsNone(thread._return)
+
+    def test_run(self, _):
+        function_mock = MagicMock()
+        thread = util._ReturnThread(target=function_mock,
+                                    args="args", kwargs=dict(arg2="arg2"))
+        thread._Thread__target = function_mock
+        thread._Thread__args = ["args"]
+        thread._Thread__kwargs = dict(arg2="arg2")
+
+        thread.run()
+
+        function_mock.assert_called_once_with("args", arg2="arg2")
+        self.assertEqual(thread._return, function_mock.return_value)
+
+    @patch('threading.Thread.join')
+    def test_join(self, join_mock, _):
+        thread = util._ReturnThread()
+        return_mock = MagicMock()
+        thread._return = return_mock
+
+        response = thread.join("timeout")
+
+        join_mock.assert_called_once_with("timeout")
+        self.assertEqual(response, return_mock)
