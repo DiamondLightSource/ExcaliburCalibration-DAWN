@@ -293,12 +293,12 @@ class ExcaliburTestAppInterface(object):
             acq_time(int): Exposure time for each frame
             burst(bool): Enable burst mode capture
             pixel_mode(str): Pixel mode (SPM*, CSM = 0*, 1)
-            disc_mode(int): Discriminator mode (DiscL*, DiscH = 0*, 1)
+            disc_mode(str): Discriminator mode (discL*, discH = 0*, 1)
             depth(int): Counter depth (1, 6, 12*, 24)
             counter(int): Counter to read (0* or 1)
             equalization(int): Enable equalization (0*, 1 = off*, on)
             gain_mode(str): Gain mode (SHGM*, HGM, LGM, SLGM = 0*, 1, 2, 3)
-            read_mode(str): Readout mode (0*, 1 = sequential, continuous)
+            read_mode(str): Readout mode (sequential, continuous = 0*, 1)
             trig_mode(int): Trigger mode (internal*, shutter, sync = 0*, 1, 2)
             tp_count(int): Set test pulse count (0*)
             path(str): Path to image folder (/tmp*)
