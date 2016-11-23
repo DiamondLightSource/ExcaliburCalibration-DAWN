@@ -13,14 +13,17 @@ from excaliburcalibrationdawn import ExcaliburDAWN
 
 class InitTest(unittest.TestCase):
 
+    @patch('logging.getLogger')
     @patch('scisoftpy.io')
     @patch('scisoftpy.plot')
-    def test_init(self, plot_mock, io_mock):
+    def test_init(self, plot_mock, io_mock, get_mock):
         e = ExcaliburDAWN("Node 1")
 
         self.assertEqual(plot_mock, e.plot)
         self.assertEqual(io_mock, e.io)
         self.assertEqual("Node 1 - {}", e.name_template)
+        self.assertEqual(get_mock.return_value, e.logger)
+        get_mock.assert_called_once_with("DAWN")
 
 
 class FunctionsTest(unittest.TestCase):

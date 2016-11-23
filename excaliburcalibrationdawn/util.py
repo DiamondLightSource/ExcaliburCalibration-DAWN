@@ -194,10 +194,11 @@ def spawn_thread(function, *args, **kwargs):
     Args:
         function: Function to call
         *args: Arguments for function call
-        **kwargs: Keyword arguments fro function call
+        **kwargs: Keyword arguments for function call
 
     Returns:
         Thread: Worker thread calling function
+
     """
     thread = _ReturnThread(target=function, args=args, kwargs=kwargs)
     thread.start()
@@ -205,6 +206,7 @@ def spawn_thread(function, *args, **kwargs):
 
 
 class _ReturnThread(Thread):
+
     """A Thread with a return value."""
 
     def __init__(self, group=None, target=None, name=None,

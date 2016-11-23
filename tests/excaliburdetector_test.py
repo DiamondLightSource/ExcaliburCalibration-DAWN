@@ -26,16 +26,19 @@ mock_config = MagicMock(detector=detector)
 
 class InitTest(unittest.TestCase):
 
-    def setUp(self):
-        self.e = ExcaliburDetector(mock_config)
+    @patch('logging.getLogger')
+    def test_attributes_set(self, get_mock):
 
-    def test_attributes_set(self):
+        e = ExcaliburDetector(mock_config)
+
         for node in range(6):
-            self.assertIsInstance(self.e.Nodes[node], ExcaliburNode)
-            self.assertEqual(node + 1, self.e.Nodes[node].fem)
+            self.assertIsInstance(e.Nodes[node], ExcaliburNode)
+            self.assertEqual(node + 1, e.Nodes[node].fem)
 
-        self.assertEqual(self.e.MasterNode, self.e.Nodes[0])
-        self.assertEqual(self.e.calib_root, self.e.MasterNode.calib_root)
+        self.assertEqual(e.MasterNode, e.Nodes[0])
+        self.assertEqual(e.calib_root, e.MasterNode.calib_root)
+        self.assertIn(call("ExcaliburDetector"), get_mock.mock_calls)
+        self.assertEqual(get_mock.return_value, e.logger)
 
     def test_given_invalid_node_then_error(self):
         detector_ = MagicMock(name="test-detector", nodes=[10],

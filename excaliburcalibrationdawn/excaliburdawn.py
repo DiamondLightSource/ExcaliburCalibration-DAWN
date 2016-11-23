@@ -8,8 +8,6 @@ import scisoftpy
 
 from excaliburcalibrationdawn import util
 
-logging.basicConfig(level=logging.DEBUG)
-
 
 class ExcaliburDAWN(object):
 
@@ -28,6 +26,8 @@ class ExcaliburDAWN(object):
         self.name_template = parent_name + " - {}"
         self.current_plots = []
 
+        self.logger = logging.getLogger("DAWN")
+
     def plot_image(self, data_set, name):
         """Plot the given data set as a 2D image.
 
@@ -37,7 +37,7 @@ class ExcaliburDAWN(object):
 
         """
         self.plot.image(data_set, name=self.name_template.format(name))
-        logging.info("Image plotted in DAWN as '%s'", name)
+        self.logger.info("Image plotted in DAWN as '%s'", name)
 
     def load_image(self, path):
         """Load image data in given file into a numpy array.
@@ -49,7 +49,7 @@ class ExcaliburDAWN(object):
             numpy.array: Image data
 
         """
-        logging.info("Loading HDF5 file; %s", path)
+        self.logger.info("Loading HDF5 file; %s", path)
         return self.io.load(path).image[...]
 
     def load_image_data(self, path):
@@ -70,7 +70,7 @@ class ExcaliburDAWN(object):
             plot_name(str): Name of plot to clear
 
         """
-        logging.debug("Clearing plot '%s'", plot_name)
+        self.logger.debug("Clearing plot '%s'", plot_name)
         self.plot.clear(plot_name)
         if plot_name in self.current_plots:
             self.current_plots.remove(plot_name)
@@ -93,7 +93,7 @@ class ExcaliburDAWN(object):
             Optimal offset and gain values for least squares fit
 
         """
-        logging.info("Performing linear fit")
+        self.logger.info("Performing linear fit")
 
         if name is not None:
             self.clear_plot(name)
@@ -141,7 +141,7 @@ class ExcaliburDAWN(object):
             bins(int): Bins to plot in histogram
 
         """
-        logging.info("Performing Gaussian fit")
+        self.logger.info("Performing Gaussian fit")
         fit_plot_name = plot_name + " (fitted)"
         a = np.zeros([8])
         x0 = np.zeros([8])

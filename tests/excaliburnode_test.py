@@ -22,59 +22,71 @@ type(detector).name = PropertyMock(return_value="testdetector")
 
 class InitTest(unittest.TestCase):
 
-    def setUp(self):
-        self.node = 3
-        self.e = ExcaliburNode(self.node, mock_config)
+    @patch(ETAI_patch_path)
+    @patch(DAWN_patch_path)
+    @patch('logging.getLogger')
+    def test_attributes_set(self, get_mock, DAWN_mock, ETAI_mock):
+        node = 3
+        e = ExcaliburNode(node, mock_config)
 
-    def test_class_attributes_set(self):
-        self.assertEqual(self.e.dac_target, 10)
-        self.assertEqual(self.e.num_sigma, 3.2)
-        self.assertEqual(self.e.allowed_delta, 4)
-        self.assertEqual(self.e.calib_root, "/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib")
-        self.assertEqual(self.e.config_dir, "/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/config")
-        self.assertEqual(self.e.settings, {'mode': 'spm',
-                                           'gain': 'slgm',
-                                           'bitdepth': 12,
-                                           'readmode': 'sequential',
-                                           'counter': 0,
-                                           'disccsmspm': 'discL',
-                                           'equalization': 0,
-                                           'trigmode': 0,
-                                           'exposure': 100,
-                                           'frames': 1})
-        self.assertEqual(self.e.dac_number, {'Threshold0': 1,
-                                             'Threshold1': 2,
-                                             'Threshold2': 3,
-                                             'Threshold3': 4,
-                                             'Threshold4': 5,
-                                             'Threshold5': 6,
-                                             'Threshold6': 7,
-                                             'Threshold7': 8,
-                                             'Preamp': 9,
-                                             'Ikrum': 10,
-                                             'Shaper': 11,
-                                             'Disc': 12,
-                                             'DiscLS': 13,
-                                             'ShaperTest': 14,
-                                             'DACDiscL': 15,
-                                             'DACTest': 16,
-                                             'DACDiscH': 17,
-                                             'Delay': 18,
-                                             'TPBuffIn': 19,
-                                             'TPBuffOut': 20,
-                                             'RPZ': 21,
-                                             'GND': 22,
-                                             'TPREF': 23,
-                                             'FBK': 24,
-                                             'Cas': 25,
-                                             'TPREFA': 26,
-                                             'TPREFB': 27})
-        self.assertEqual(self.e.chip_range, [0, 1, 2, 3, 4, 5, 6, 7])
-        self.assertEqual(self.e.plot_name, '')
+        ETAI_mock.assert_called_once_with(3, "192.168.0.104", 6969, None)
+        DAWN_mock.assert_called_once_with("Node 3")
+        self.assertEqual(ETAI_mock.return_value, e.app)
+        self.assertEqual(DAWN_mock.return_value, e.dawn)
 
-    def test_instance_attributes_set(self):
-        self.assertEqual(self.e.fem, self.node)
-        self.assertEqual(self.e.ip_address, "192.168.0.104")
+        self.assertEqual(e.fem, node)
+        self.assertEqual(e.ip_address, "192.168.0.104")
+
+        self.assertEqual(e.dac_target, 10)
+        self.assertEqual(e.num_sigma, 3.2)
+        self.assertEqual(e.allowed_delta, 4)
+        self.assertEqual(e.calib_root,
+                         "/dls/detectors/support/silicon_pixels/excaliburRX/"
+                         "3M-RX001/testdetector/calib")
+        self.assertEqual(e.config_dir,
+                         "/dls/detectors/support/silicon_pixels/excaliburRX/"
+                         "TestApplication_15012015/config")
+        self.assertEqual(e.settings, {'mode': 'spm',
+                                      'gain': 'slgm',
+                                      'bitdepth': 12,
+                                      'readmode': 'sequential',
+                                      'counter': 0,
+                                      'disccsmspm': 'discL',
+                                      'equalization': 0,
+                                      'trigmode': 0,
+                                      'exposure': 100,
+                                      'frames': 1})
+        self.assertEqual(e.dac_number, {'Threshold0': 1,
+                                        'Threshold1': 2,
+                                        'Threshold2': 3,
+                                        'Threshold3': 4,
+                                        'Threshold4': 5,
+                                        'Threshold5': 6,
+                                        'Threshold6': 7,
+                                        'Threshold7': 8,
+                                        'Preamp': 9,
+                                        'Ikrum': 10,
+                                        'Shaper': 11,
+                                        'Disc': 12,
+                                        'DiscLS': 13,
+                                        'ShaperTest': 14,
+                                        'DACDiscL': 15,
+                                        'DACTest': 16,
+                                        'DACDiscH': 17,
+                                        'Delay': 18,
+                                        'TPBuffIn': 19,
+                                        'TPBuffOut': 20,
+                                        'RPZ': 21,
+                                        'GND': 22,
+                                        'TPREF': 23,
+                                        'FBK': 24,
+                                        'Cas': 25,
+                                        'TPREFA': 26,
+                                        'TPREFB': 27})
+        self.assertEqual(e.chip_range, [0, 1, 2, 3, 4, 5, 6, 7])
+        self.assertEqual(e.plot_name, '')
+
+        get_mock.assert_called_once_with("Node3")
 
     def test_server_used(self):
         e = ExcaliburNode(1, mock_config, "test-server")
@@ -86,22 +98,6 @@ class InitTest(unittest.TestCase):
             ExcaliburNode(0, mock_config)
         with self.assertRaises(ValueError):
             ExcaliburNode(7, mock_config)
-
-    @patch(Node_patch_path + '.copy_slgm_into_other_gain_modes')
-    @patch(Node_patch_path + '.load_config')
-    @patch(ETAI_patch_path + '.load_dacs')
-    @patch(Node_patch_path + '.check_chip_ids')
-    def test_setup(self, check_mock, load_dacs_mock, load_config_mock,
-                   copy_mock):
-
-        self.e.setup()
-
-        check_mock.assert_called_once_with()
-        load_dacs_mock.assert_called_once_with(
-            range(8), '/dls/detectors/support/silicon_pixels/excaliburRX/'
-                      'TestApplication_15012015/config/Default_SPM.dacs')
-        load_config_mock.assert_called_once_with(range(8))
-        copy_mock.assert_called_once_with()
 
 
 class SetVoltageTest(unittest.TestCase):
@@ -232,6 +228,20 @@ class SimpleFunctionsTest(unittest.TestCase):
         expected_calls = [call(expected_path + gain)
                                for gain in ["shgm", "hgm", "lgm", "slgm"]]
         makedirs_mock.assert_has_calls(expected_calls)
+
+    @patch(Node_patch_path + '.copy_slgm_into_other_gain_modes')
+    @patch(Node_patch_path + '.load_config')
+    @patch(Node_patch_path + '.check_chip_ids')
+    def test_setup(self, check_mock, load_config_mock, copy_mock):
+
+        self.e.setup()
+
+        check_mock.assert_called_once_with()
+        self.app_mock.load_dacs.assert_called_once_with(
+            range(8), '/dls/detectors/support/silicon_pixels/excaliburRX/'
+                      'TestApplication_15012015/config/Default_SPM.dacs')
+        load_config_mock.assert_called_once_with(range(8))
+        copy_mock.assert_called_once_with()
 
 
 @patch(DAWN_patch_path + '.plot_image')

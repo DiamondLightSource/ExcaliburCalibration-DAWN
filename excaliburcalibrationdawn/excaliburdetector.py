@@ -1,15 +1,12 @@
 """An Excalibur RX detector."""
 import shutil
+import logging
 
 import numpy as np
 
 from excaliburcalibrationdawn.excaliburnode import ExcaliburNode
 from excaliburcalibrationdawn.excaliburdawn import ExcaliburDAWN
 from excaliburcalibrationdawn import util
-
-import logging
-logging.basicConfig(level=logging.DEBUG)
-# logging.basicConfig(level=logging.INFO)
 
 
 class ExcaliburDetector(object):
@@ -57,6 +54,7 @@ class ExcaliburDetector(object):
                 self.MasterNode = node
 
         self.dawn = ExcaliburDAWN("Detector")
+        self.logger = logging.getLogger("ExcaliburDetector")
 
     @property
     def calib_root(self):
@@ -154,8 +152,8 @@ class ExcaliburDetector(object):
                              "for each node, got {}".format(chips))
 
         for node_idx, node in enumerate(self.Nodes):
-            logging.info("Setting GND, FBK and Cas values from config script "
-                         "for node %s", node_idx)
+            self.logger.info("Setting GND, FBK and Cas values from config "
+                             "script for node %s", node_idx)
             util.spawn_thread(node.set_gnd_fbk_cas, chips[node_idx])
 
     def threshold_equalization(self, chips=None):
@@ -172,7 +170,7 @@ class ExcaliburDetector(object):
                              "for each node, got {}".format(chips))
 
         for node_idx, node in enumerate(self.Nodes):
-            logging.info("Equalizing node %s", node_idx)
+            self.logger.info("Equalizing node %s", node_idx)
             util.spawn_thread(node.threshold_equalization, chips[node_idx])
 
     def acquire_tp_image(self, tp_mask):
@@ -234,7 +232,7 @@ class ExcaliburDetector(object):
             numpy.array: DAC scan data
 
         """
-        logging.info("Performing DAC Scan on node %s", node_idx)
+        self.logger.info("Performing DAC Scan on node %s", node_idx)
         scan_data = self.Nodes[node_idx].scan_dac(chips, threshold, dac_range)
         return scan_data
 
@@ -266,7 +264,7 @@ class ExcaliburDetector(object):
         """
         epics_calib_path = self.calib_root + '_epics'
         shutil.copytree(self.calib_root, epics_calib_path)
-        logging.debug("EPICS calibration directory: %s", epics_calib_path)
+        self.logger.debug("EPICS calibration directory: %s", epics_calib_path)
 
         for node_idx in [1, 3, 5]:
             self.Nodes[node_idx].rotate_config()

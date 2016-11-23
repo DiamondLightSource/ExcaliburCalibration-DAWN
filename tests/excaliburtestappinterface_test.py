@@ -9,32 +9,50 @@ from excaliburcalibrationdawn import ExcaliburTestAppInterface
 ETAI_patch_path = "excaliburcalibrationdawn.excaliburtestappinterface.ExcaliburTestAppInterface"
 
 
-@patch('logging.info')
+@patch('logging.getLogger')
 class InitTest(unittest.TestCase):
 
-    def test_attributes_set(self, info_mock):
+    def test_attributes_set(self, get_mock):
+        logger_mock = MagicMock()
+        get_mock.return_value = logger_mock
         e = ExcaliburTestAppInterface(1, "test_ip", "test_port")
-        expected_path = "/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp"
+        expected_path = "/dls/detectors/support/silicon_pixels/excaliburRX" \
+                        "/TestApplication_15012015/excaliburTestApp"
 
         self.assertEqual(expected_path, e.path)
         self.assertEqual("test_ip", e.ip_address)
         self.assertEqual("test_port", e.port)
-        self.assertEqual(['/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp', '-i', 'test_ip', '-p', 'test_port'], e.base_cmd)
-        self.assertEqual(e.dac_code, {'Threshold0': '1', 'Threshold1': '2', 'Threshold2': '3', 'Threshold3': '4', 'Threshold4': '5', 'Threshold5': '6', 'Threshold6': '7',
-                                      'Threshold7': '8', 'Preamp': '9', 'Ikrum': '10', 'Shaper': '11', 'Disc': '12', 'DiscLS': '13', 'ShaperTest': '14', 'DACDiscL': '15',
-                                      'DACTest': '30', 'DACDiscH': '31', 'Delay': '16', 'TPBuffIn': '17', 'TPBuffOut': '18', 'RPZ': '19', 'GND': '20', 'TPREF': '21',
-                                      'FBK': '22', 'Cas': '23', 'TPREFA': '24', 'TPREFB': '25'})
-        self.assertEqual(['/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
+        self.assertEqual(['/dls/detectors/support/silicon_pixels/excaliburRX'
+                          '/TestApplication_15012015/excaliburTestApp',
+                          '-i', 'test_ip', '-p', 'test_port'], e.base_cmd)
+        self.assertEqual(e.dac_code, {'Threshold0': '1', 'Threshold1': '2',
+                                      'Threshold2': '3', 'Threshold3': '4',
+                                      'Threshold4': '5', 'Threshold5': '6',
+                                      'Threshold6': '7', 'Threshold7': '8',
+                                      'Preamp': '9', 'Ikrum': '10',
+                                      'Shaper': '11', 'Disc': '12',
+                                      'DiscLS': '13', 'ShaperTest': '14',
+                                      'DACDiscL': '15', 'DACTest': '30',
+                                      'DACDiscH': '31', 'Delay': '16',
+                                      'TPBuffIn': '17', 'TPBuffOut': '18',
+                                      'RPZ': '19', 'GND': '20', 'TPREF': '21',
+                                      'FBK': '22', 'Cas': '23', 'TPREFA': '24',
+                                      'TPREFB': '25'})
+        self.assertEqual(['/dls/detectors/support/silicon_pixels/excaliburRX'
+                          '/TestApplication_15012015/excaliburTestApp',
                           '-i', 'test_ip',
                           '-p', 'test_port'], e.base_cmd)
-        info_mock.assert_called_once_with("Set self.quiet to False to display "
-                                          "terminal output.")
+        get_mock.assert_called_once_with("ETAI")
+        self.assertEqual(get_mock.return_value, e.logger)
+        logger_mock.info.assert_called_once_with("Set self.quiet to False to "
+                                                 "display terminal output.")
 
     def test_base_cmd_with_server_given(self, _):
         e = ExcaliburTestAppInterface(1, "test_ip", "test_port", "test_server")
         self.assertEqual(['ssh',
                           'test_server.diamond.ac.uk',
-                          '/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
+                          '/dls/detectors/support/silicon_pixels/excaliburRX'
+                          '/TestApplication_15012015/excaliburTestApp',
                           '-i', 'test_ip',
                           '-p', 'test_port'], e.base_cmd)
 
@@ -44,7 +62,8 @@ class ConstructCommandTest(unittest.TestCase):
 
     def test_returns(self, mask_mock):
         e = ExcaliburTestAppInterface(1, "test_ip", "test_port")
-        expected_command = ['/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
+        expected_command = ['/dls/detectors/support/silicon_pixels/excaliburRX'
+                            '/TestApplication_15012015/excaliburTestApp',
                             '-i', 'test_ip',
                             '-p', 'test_port',
                             '-m', mask_mock.return_value]
@@ -57,7 +76,8 @@ class ConstructCommandTest(unittest.TestCase):
 
     def test_adds_args_and_returns(self, mask_mock):
         e = ExcaliburTestAppInterface(1, "test_ip", "test_port")
-        expected_command = ['/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/excaliburTestApp',
+        expected_command = ['/dls/detectors/support/silicon_pixels/excaliburRX'
+                            '/TestApplication_15012015/excaliburTestApp',
                             '-i', 'test_ip',
                             '-p', 'test_port',
                             '-m', mask_mock.return_value,
@@ -71,57 +91,58 @@ class ConstructCommandTest(unittest.TestCase):
         self.assertEqual(expected_command, command)
 
 
-@patch('logging.info')
-@patch('logging.debug')
 @patch('subprocess.check_output')
 @patch('subprocess.check_call')
 class SendCommandTest(unittest.TestCase):
 
     def setUp(self):
         self.e = ExcaliburTestAppInterface(1, "test_ip", "test_port")
+        self.logger_mock = MagicMock()
+        self.e.logger = self.logger_mock
 
-    def test_quiet_subp_called_and_logged(self, call_mock, output_mock,
-                                          debug_mock, _):
+    def test_quiet_subp_called_and_logged(self, call_mock, output_mock):
         expected_message = "Sending Command:\n'%s' with kwargs %s"
         output_mock.return_value = "Success"
 
         self.e._send_command(["test_command"], test=True)
 
-        self.assertEqual((expected_message, "test_command", "{'test': True}"),
-                         debug_mock.call_args_list[0][0])
+        self.logger_mock.debug.assert_called_once_with(expected_message,
+                                                       "test_command",
+                                                       "{'test': True}")
         output_mock.assert_called_once_with(["test_command"], test=True)
         call_mock.assert_not_called()
 
-    def test_quiet_error_raised_then_catch_and_log(self, call_mock, output_mock,
-                                                   debug_mock, info_mock):
+    def test_quiet_error_raised_then_catch_and_log(self, call_mock,
+                                                   output_mock):
         expected_message = "Sending Command:\n'%s' with kwargs %s"
         output_mock.side_effect = CalledProcessError(1, "test_command",
                                                      output="Invalid command")
 
         self.e._send_command(["test_command"], test=True)
 
-        debug_mock.assert_called_once_with(expected_message, "test_command",
-                                           "{'test': True}")
+        self.logger_mock.debug.assert_called_once_with(expected_message,
+                                                       "test_command",
+                                                       "{'test': True}")
         output_mock.assert_called_once_with(["test_command"], test=True)
         call_mock.assert_not_called()
-        info_mock.has_calls([call("Error Output:\n%s", "Invalid command"),
-                             call("Set self.quiet to False to display terminal"
-                                  " output.")])
+        self.logger_mock.info.has_calls([call("Error Output:\n%s",
+                                              "Invalid command"),
+                                         call("Set self.quiet to False to "
+                                              "display terminal output.")])
 
-    def test_subp_called_and_logged(self, call_mock, output_mock,
-                                    debug_mock, _):
+    def test_subp_called_and_logged(self, call_mock, _):
         expected_message = "Sending Command:\n'%s' with kwargs %s"
         call_mock.return_value = "Success"
 
         self.e.quiet = False
         self.e._send_command(["test_command"], test=True)
 
-        self.assertEqual((expected_message, "test_command", "{'test': True}"),
-                         debug_mock.call_args_list[0][0])
+        self.logger_mock.debug.assert_called_once_with(expected_message,
+                                                       "test_command",
+                                                       "{'test': True}")
         call_mock.assert_called_once_with(["test_command"], test=True)
 
-    def test_error_raised_then_catch_and_log(self, call_mock, _,
-                                             debug_mock, info_mock):
+    def test_error_raised_then_catch_and_log(self, call_mock, _):
         expected_message = "Sending Command:\n'%s' with kwargs %s"
         call_mock.side_effect = CalledProcessError(1, "test_command",
                                                    output="Invalid command")
@@ -129,12 +150,15 @@ class SendCommandTest(unittest.TestCase):
         self.e.quiet = False
         self.e._send_command(["test_command"], test=True)
 
-        debug_mock.assert_called_once_with(expected_message, "test_command",
-                                           "{'test': True}")
+        self.logger_mock.debug.assert_called_once_with(expected_message,
+                                                       "test_command",
+                                                       "{'test': True}")
         call_mock.assert_called_once_with(["test_command"], test=True)
-        info_mock.assert_has_calls([call("Exception during in subprocess call."),
-                                    call("Error Return Code: %s\nError Output:\n%s",
-                                         1, "Invalid command")])
+        self.logger_mock.info.assert_has_calls([call("Exception during in "
+                                                     "subprocess call."),
+                                                call("Error Return Code: %s\n"
+                                                     "Error Output:\n%s", 1,
+                                                     "Invalid command")])
 
 
 @patch(ETAI_patch_path + '._construct_command')
@@ -363,14 +387,16 @@ class APICallsTest(unittest.TestCase):
 
     def test_configure_test_pulse(self, send_cmd_mock, construct_mock):
         tp_mask = "mask"
-        expected_params = ['--dacs=test_file', '--tpmask=' + tp_mask, '--config']
+        expected_params = ['--dacs=test_file', '--tpmask=' + tp_mask,
+                           '--config']
 
         self.e.configure_test_pulse(self.chips, tp_mask, "test_file")
 
         construct_mock.assert_called_once_with(self.chips, *expected_params)
         send_cmd_mock.assert_called_once_with(construct_mock.return_value)
 
-    def test_configure_test_pulse_with_disc(self, send_cmd_mock, construct_mock):
+    def test_configure_test_pulse_with_disc(self, send_cmd_mock,
+                                            construct_mock):
         tp_mask = "mask"
         disc_l_mock = "discL"
         disc_h_mock = "discH"
@@ -382,7 +408,8 @@ class APICallsTest(unittest.TestCase):
                            '--disch=' + disc_h_mock,
                            '--pixelmask=' + mask_mock]
 
-        self.e.configure_test_pulse(self.chips, tp_mask, "test_file", disc_files)
+        self.e.configure_test_pulse(self.chips, tp_mask, "test_file",
+                                    disc_files)
 
         construct_mock.assert_called_once_with(self.chips, *expected_params)
         send_cmd_mock.assert_called_once_with(construct_mock.return_value)
@@ -412,7 +439,8 @@ class CheckArgumentValidTest(unittest.TestCase):
 
     def test_given_valid_then_True(self):
 
-        response = ExcaliburTestAppInterface._arg_valid("Test", 5, [1, 2, 3, 4, 5])
+        response = ExcaliburTestAppInterface._arg_valid("Test", 5,
+                                                        [1, 2, 3, 4, 5])
 
         self.assertTrue(response)
 
@@ -460,7 +488,9 @@ class LoadConfigTest(unittest.TestCase):
 
     @patch('os.path.isfile', return_value=True)
     def test_load_config_all_exist(self, _, construct_mock, send_mock):
-        expected_params = ['--config', '--discl=' + self.discl, '--disch=' + self.disch, '--pixelmask=' + self.pixelmask]
+        expected_params = ['--config', '--discl=' + self.discl,
+                           '--disch=' + self.disch,
+                           '--pixelmask=' + self.pixelmask]
 
         self.e.load_config(self.chips, self.discl, self.disch, self.pixelmask)
 
@@ -469,7 +499,8 @@ class LoadConfigTest(unittest.TestCase):
 
     @patch('os.path.isfile', side_effect=[True, True, False])
     def test_load_config_L_and_H(self, _, construct_mock, send_mock):
-        expected_params = ['--config', '--discl=' + self.discl, '--disch=' + self.disch]
+        expected_params = ['--config', '--discl=' + self.discl,
+                           '--disch=' + self.disch]
 
         self.e.load_config(self.chips, self.discl, self.disch, self.pixelmask)
 
@@ -478,7 +509,8 @@ class LoadConfigTest(unittest.TestCase):
 
     @patch('os.path.isfile', side_effect=[True, False, True])
     def test_load_config_L_and_pixel(self, _, construct_mock, send_mock):
-        expected_params = ['--config', '--discl=' + self.discl, '--pixelmask=' + self.pixelmask]
+        expected_params = ['--config', '--discl=' + self.discl,
+                           '--pixelmask=' + self.pixelmask]
 
         self.e.load_config(self.chips, self.discl, self.disch, self.pixelmask)
 

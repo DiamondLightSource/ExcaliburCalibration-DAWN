@@ -2,8 +2,6 @@
 from excaliburcalibrationdawn.excaliburdetector import ExcaliburDetector
 
 import logging
-logging.basicConfig(level=logging.DEBUG)
-# logging.basicConfig(level=logging.INFO)
 
 
 class Excalibur3M(ExcaliburDetector):
@@ -22,9 +20,10 @@ class Excalibur3M(ExcaliburDetector):
         """
         detector = detector_config.detector
 
-        logging.debug("Creating Excalibur3M with nodes %s (master node is %s) "
-                      "on servers %s with IPs %s",
-                      detector.nodes, detector.master_node,
-                      detector.servers, detector.ip_addresses)
+        self.logger = logging.getLogger("Excalibur3M")
+        self.logger.debug("Creating Excalibur3M with nodes %s "
+                          "(master node is %s) on servers %s with IPs %s",
+                          detector.nodes, detector.master_node,
+                          detector.servers, detector.ip_addresses)
 
         super(Excalibur3M, self).__init__(detector_config)
