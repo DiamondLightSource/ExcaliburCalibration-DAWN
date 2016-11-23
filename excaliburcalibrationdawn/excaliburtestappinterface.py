@@ -472,7 +472,7 @@ class ExcaliburTestAppInterface(object):
         command = self._construct_command(chips, self.DAC_FILE + dac_file)
         success = self._send_command(command)
         if success:
-            self.dacs_loaded = dac_file.split('/')[-1]
+            self.dacs_loaded = dac_file
 
     def configure_test_pulse(self, chip, tp_mask, dac_file,
                              config_files=None):

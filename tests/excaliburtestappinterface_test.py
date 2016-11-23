@@ -349,7 +349,7 @@ class APICallsTest(unittest.TestCase):
 
         construct_mock.assert_called_once_with(self.chips, *expected_params)
         send_cmd_mock.assert_called_once_with(construct_mock.return_value)
-        self.assertEqual("test_file", self.e.dacs_loaded)
+        self.assertEqual("test_path/test_file", self.e.dacs_loaded)
 
     def test_load_dacs_fails(self, send_cmd_mock, construct_mock):
         send_cmd_mock.return_value = False
