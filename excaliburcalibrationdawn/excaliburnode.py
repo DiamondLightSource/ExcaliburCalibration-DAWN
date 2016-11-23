@@ -278,7 +278,7 @@ class ExcaliburNode(object):
         if not os.path.isfile(mask_path):
             raise IOError("Mask file '%s' does not exist", mask_path)
 
-        output_file = util.generate_file_name("TPImage")
+        output_file = util.generate_file_name("TPImage", self.fem)
         output_path = posixpath.join(self.output_folder, output_file)
 
         for chip_idx in self.chip_range:
@@ -292,7 +292,7 @@ class ExcaliburNode(object):
                                   hdf_file=output_file)
 
         if self.remote_node:
-            output_path = self.app.grab_remote_file(output_path)
+            self.app.grab_remote_file(output_path)
         util.wait_for_file(output_path, 10)
         image = self.dawn.load_image_data(output_path)
         self.dawn.plot_image(image, util.generate_plot_name("TPImage"))
@@ -726,7 +726,7 @@ class ExcaliburNode(object):
         self.logger.info("Performing DAC Scan of %s; Start: %s, Stop: %s, "
                          "Step: %s", threshold, *dac_range.__dict__.values())
 
-        dac_scan_file = util.generate_file_name("DACScan")
+        dac_scan_file = util.generate_file_name("DACScan", self.fem)
 
         dac_file = self.dacs_file
         self.app.perform_dac_scan(chips, threshold, dac_range, exposure,
@@ -734,7 +734,7 @@ class ExcaliburNode(object):
 
         file_path = posixpath.join(self.output_folder, dac_scan_file)
         if self.remote_node:
-            file_path = self.app.grab_remote_file(file_path)
+            self.app.grab_remote_file(file_path)
 
         util.wait_for_file(file_path, 10)
         scan_data = self.dawn.load_image_data(file_path)
@@ -884,7 +884,7 @@ class ExcaliburNode(object):
             burst(bool): Set burst mode for acquisition
 
         """
-        file_name = util.generate_file_name("Image")
+        file_name = util.generate_file_name("Image", self.fem)
 
         self.app.acquire(self.chip_range, frames, exposure,
                          burst=burst,
@@ -901,7 +901,7 @@ class ExcaliburNode(object):
 
         file_path = posixpath.join(self.output_folder, file_name)
         if self.remote_node:
-            file_path = self.app.grab_remote_file(file_path)
+            self.app.grab_remote_file(file_path)
 
         util.wait_for_file(file_path, 10)
         image = self.dawn.load_image_data(file_path)
@@ -956,7 +956,7 @@ class ExcaliburNode(object):
 
         """
         # TODO: This just plots, but doesn't apply it
-        file_name = util.generate_file_name("FFImage")
+        file_name = util.generate_file_name("FFImage", self.fem)
 
         image_path = posixpath.join(self.output_folder, file_name)
         images = self.dawn.load_image_data(image_path)

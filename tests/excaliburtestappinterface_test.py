@@ -565,4 +565,4 @@ class GrabRemoteFile(unittest.TestCase):
 
         send_mock.assert_called_once_with(
             ['scp', 'test_server.diamond.ac.uk:/tmp/test_file',
-             '/tmp/test_file_fem1'])
+             '/tmp/test_file'])

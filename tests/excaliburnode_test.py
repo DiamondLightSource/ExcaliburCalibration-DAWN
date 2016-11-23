@@ -245,10 +245,8 @@ class SimpleFunctionsTest(unittest.TestCase):
 
 
 @patch(DAWN_patch_path + '.plot_image')
-@patch(util_patch_path + '.generate_plot_name',
-       return_value="20161121~105720_TPImage.hdf5")
-@patch(util_patch_path + '.generate_file_name',
-       return_value="20161121~105725_TPImage.hdf5")
+@patch(util_patch_path + '.generate_plot_name')
+@patch(util_patch_path + '.generate_file_name')
 @patch(DAWN_patch_path + '.load_image_data')
 @patch(util_patch_path + '.wait_for_file')
 @patch(ETAI_patch_path + '.grab_remote_file')
@@ -264,8 +262,8 @@ class CaptureTPImageTest(unittest.TestCase):
     @patch('os.path.isfile', return_value=True)
     def test_file_exist_then_capture_image(self, isfile_mock, acquire_mock,
                                            configure_mock, grab_mock,
-                                           wait_mock, load_mock, _, _2,
-                                           plot_mock):
+                                           wait_mock, load_mock, gen_file_mock,
+                                           gen_plot_mock, plot_mock):
         expected_mask = "/dls/detectors/support/silicon_pixels/excaliburRX/" \
                         "TestApplication_15012015/config/triangles.mask"
         expected_dacs = "/dls/detectors/support/silicon_pixels/excaliburRX/" \
@@ -273,26 +271,26 @@ class CaptureTPImageTest(unittest.TestCase):
         expected_config = dict(discL=self.e.discL_bits[0],
                                discH=self.e.discH_bits[0],
                                pixel_mask=self.e.pixel_mask[0])
-        expected_output = "/tmp/20161121~105725_TPImage.hdf5"
 
         self.e.acquire_tp_image("triangles.mask", 100, 1000)
 
         isfile_mock.assert_called_once_with(expected_mask)
         configure_mock.assert_called_once_with(0, expected_mask,
                                                expected_dacs, expected_config)
-        acquire_mock.assert_called_once_with([0], 100, 1000,
-                                             hdf_file="20161121~105725_TPImage.hdf5")
-        grab_mock.assert_called_once_with(expected_output)
-        wait_mock.assert_called_once_with(grab_mock.return_value, 10)
-        load_mock.assert_called_once_with(grab_mock.return_value)
+        acquire_mock.assert_called_once_with(
+            [0], 100, 1000, hdf_file=gen_file_mock.return_value)
+        grab_mock.assert_called_once_with(gen_file_mock.return_value)
+        wait_mock.assert_called_once_with(gen_file_mock.return_value, 10)
+        load_mock.assert_called_once_with(gen_file_mock.return_value)
         plot_mock.assert_called_once_with(load_mock.return_value,
-                                          "20161121~105720_TPImage.hdf5")
+                                          gen_plot_mock.return_value)
 
     @patch('os.path.isfile', return_value=False)
     def test_file_doesnt_exist_then_capture_image(self, isfile_mock,
                                                   acquire_mock, configure_mock,
                                                   grab_mock, wait_mock,
-                                                  load_mock, _, _2, plot_mock):
+                                                  load_mock, gen_file_mock,
+                                                  gen_plot_mock, plot_mock):
 
         with self.assertRaises(IOError):
             self.e.acquire_tp_image("none.mask")
@@ -582,7 +580,7 @@ class TestAppCallsTest(unittest.TestCase):
 
         self.e._acquire(10, 100, burst=True)
 
-        gen_mock.assert_called_once_with("Image")
+        gen_mock.assert_called_once_with("Image", 1)
         acquire_mock.assert_called_once_with(
             [0, 1, 2, 3, 4, 5, 6, 7], 10, 100, trig_mode=0, gain_mode='slgm',
             burst=True, pixel_mode='spm', counter=0, equalization=0,
@@ -603,15 +601,15 @@ class TestAppCallsTest(unittest.TestCase):
 
         self.e._acquire(10, 100, burst=True)
 
-        gen_mock.assert_called_once_with("Image")
+        gen_mock.assert_called_once_with("Image", 1)
         acquire_mock.assert_called_once_with(
             [0, 1, 2, 3, 4, 5, 6, 7], 10, 100, trig_mode=0, gain_mode='slgm',
             burst=True, pixel_mode='spm', counter=0, equalization=0,
             disc_mode='discL', hdf_file=gen_mock.return_value, path='/tmp',
             depth=12, read_mode='sequential')
         grab_mock.assert_called_once_with(gen_mock.return_value)
-        wait_mock.assert_called_once_with(grab_mock.return_value, 10)
-        load_mock.assert_called_once_with(grab_mock.return_value)
+        wait_mock.assert_called_once_with(gen_mock.return_value, 10)
+        load_mock.assert_called_once_with(gen_mock.return_value)
 
     @patch(util_patch_path + '.get_time_stamp', return_value="20161028~151003")
     @patch(DAWN_patch_path + '.plot_image')
@@ -855,7 +853,7 @@ class ScanDacTest(unittest.TestCase):
                                          gen_mock, load_mock, display_mock):
         self.e.scan_dac(self.chips, 'Threshold0', self.dac_range)
 
-        gen_mock.assert_called_once_with("DACScan")
+        gen_mock.assert_called_once_with("DACScan", 1)
         scan_mock.assert_called_once_with(self.chips, 'Threshold0',
                                           self.dac_range, 5, self.dac_file,
                                           '/tmp', gen_mock.return_value)
@@ -872,15 +870,17 @@ class ScanDacTest(unittest.TestCase):
                                               scan_mock, gen_mock,
                                               load_mock, display_mock):
         self.e.remote_node = True
+        expected_output = "/tmp/20161020~154548_TestImage.hdf5"
+
         self.e.scan_dac(self.chips, 'Threshold0', self.dac_range)
 
-        gen_mock.assert_called_once_with("DACScan")
+        gen_mock.assert_called_once_with("DACScan", 1)
         scan_mock.assert_called_once_with(self.chips, 'Threshold0',
                                           self.dac_range, 5, self.dac_file,
                                           '/tmp', gen_mock.return_value,)
-        grab_mock.assert_called_once_with("/tmp/20161020~154548_TestImage.hdf5")
-        wait_mock.assert_called_once_with(grab_mock.return_value, 10)
-        load_mock.assert_called_once_with(grab_mock.return_value)
+        grab_mock.assert_called_once_with(expected_output)
+        wait_mock.assert_called_once_with(expected_output, 10)
+        load_mock.assert_called_once_with(expected_output)
         display_mock.assert_called_once_with(self.chips,
                                              load_mock.return_value,
                                              self.dac_range)
@@ -962,7 +962,7 @@ class ApplyFFCorrectionTest(unittest.TestCase):
 
         e.apply_ff_correction(1, 0.1)
 
-        gen_mock.assert_called_once_with("FFImage")
+        gen_mock.assert_called_once_with("FFImage", 1)
         load_mock.assert_called_once_with(gen_mock.return_value)
         plot_mock.assert_called_once_with(load_mock.return_value.__getitem__().__mul__().__getitem__(), name='Image data Cor')
 

@@ -99,9 +99,9 @@ class FunctionsTest(unittest.TestCase):
 
     @patch(util_patch_path + '.get_time_stamp', return_value="20161020~154548")
     def test_generate_file_name(self, _):
-        file_name = util.generate_file_name("TestImage")
+        file_name = util.generate_file_name("TestImage", 1)
 
-        self.assertEqual("20161020~154548_TestImage.hdf5", file_name)
+        self.assertEqual("20161020~154548_TestImage_1.hdf5", file_name)
 
     @patch(util_patch_path + '.get_time_stamp', return_value="20161020~154548")
     def test_generate_plot_name(self, _):

@@ -558,25 +558,19 @@ class ExcaliburTestAppInterface(object):
         else:
             print("{} does not exist !".format(discl))
 
-    def grab_remote_file(self, server_source):
+    def grab_remote_file(self, file_path):
         """Use scp to copy the given file from the server to the local host.
 
         Args:
-            server_source(str): File path on server
+            file_path(str): File path on server
 
         Returns:
             str: File path to local copied file
 
         """
         self.logger.info("Fetching remote file")
-        file_name, extension = posixpath.splitext(server_source)
         full_source = "{server}:{source}".format(server=self.server_path,
-                                                 source=server_source)
-        new_file = "{base}_fem{node}{ext}".format(base=file_name,
-                                                  node=self.node,
-                                                  ext=extension)
+                                                 source=file_path)
 
-        command = ["scp", full_source, new_file]
+        command = ["scp", full_source, file_path]
         self._send_command(command)
-
-        return new_file
