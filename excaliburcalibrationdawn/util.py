@@ -205,6 +205,23 @@ def spawn_thread(function, *args, **kwargs):
     return thread
 
 
+def wait_for_threads(threads):
+    """Wait for the given threads to finish and return list of returns.
+
+    Args:
+        threads(list(_ReturnThread): Threads to wait for
+
+    Returns:
+        list: The values the functions called in the threads return
+
+    """
+    returns = []
+    for thread in threads:
+        returns.append(thread.join())
+
+    return returns
+
+
 class _ReturnThread(Thread):
 
     """A Thread with a return value."""

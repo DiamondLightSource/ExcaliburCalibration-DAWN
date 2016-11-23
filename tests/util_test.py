@@ -156,25 +156,29 @@ class FunctionsTest(unittest.TestCase):
     def test_spawn_thread(self, thread_init_mock):
         thread_mock = MagicMock()
         thread_init_mock.return_value = thread_mock
+        function_mock = MagicMock()
 
-        def test_function(arg1, arg2=None):
-            pass
+        response = util.spawn_thread(function_mock, "arg1", arg2="arg2")
 
-        response = util.spawn_thread(test_function, "arg1", arg2="arg2")
-
-        thread_init_mock.assert_called_once_with(target=test_function,
+        thread_init_mock.assert_called_once_with(target=function_mock,
                                                  args=("arg1",),
                                                  kwargs=dict(arg2="arg2"))
         thread_mock.start.assert_called_once_with()
         self.assertEqual(thread_mock, response)
 
+    def test_wait_for_threads(self):
+        mocks = [MagicMock(), MagicMock(), MagicMock(), MagicMock()]
 
-@patch('threading.Thread.__init__')
+        response = util.wait_for_threads(mocks)
+
+        for idx, mock in enumerate(mocks):
+            mock.join.assert_called_once_with()
+            self.assertEqual(mock.join.return_value, response[idx])
+
+
 class ReturnThreadTest(unittest.TestCase):
 
-    def test_function(self, arg1, arg2=None):
-        pass
-
+    @patch('threading.Thread.__init__')
     def test_init(self, thread_mock):
         thread = util._ReturnThread(group="group", target="target",
                                     name="name", args="args", kwargs="kwargs",
@@ -184,7 +188,7 @@ class ReturnThreadTest(unittest.TestCase):
                                             "kwargs", "verbose")
         self.assertIsNone(thread._return)
 
-    def test_run(self, _):
+    def test_run(self):
         function_mock = MagicMock()
         thread = util._ReturnThread(target=function_mock,
                                     args="args", kwargs=dict(arg2="arg2"))
@@ -198,7 +202,7 @@ class ReturnThreadTest(unittest.TestCase):
         self.assertEqual(thread._return, function_mock.return_value)
 
     @patch('threading.Thread.join')
-    def test_join(self, join_mock, _):
+    def test_join(self, join_mock):
         thread = util._ReturnThread()
         return_mock = MagicMock()
         thread._return = return_mock

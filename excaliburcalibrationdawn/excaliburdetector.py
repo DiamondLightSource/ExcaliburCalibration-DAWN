@@ -68,8 +68,10 @@ class ExcaliburDetector(object):
 
     def read_chip_ids(self):
         """Read chip IDs for all chips in all nodes."""
+        node_threads = []
         for node in self.Nodes:
-            util.spawn_thread(node.read_chip_ids)
+            node_threads.append(util.spawn_thread(node.read_chip_ids))
+        util.wait_for_threads(node_threads)
 
     def initialise_lv(self):
         """Initialise LV."""
@@ -121,8 +123,11 @@ class ExcaliburDetector(object):
         self.MasterNode.initialise_lv()
         self.MasterNode.set_hv_bias(120)
         # self.MasterNode.enable_hv()
+
+        node_threads = []
         for node in self.Nodes:
-            util.spawn_thread(node.setup)
+            node_threads.append(util.spawn_thread(node.setup))
+        util.wait_for_threads(node_threads)
 
     def disable(self):
         """Set HV bias to 0 and disable LV and HV."""
@@ -135,8 +140,10 @@ class ExcaliburDetector(object):
 
     def load_config(self):
         """Load detector configuration files and default thresholds."""
+        node_threads = []
         for node in self.Nodes:
-            util.spawn_thread(node.load_config)
+            node_threads.append(util.spawn_thread(node.load_config))
+        util.wait_for_threads(node_threads)
 
     def set_gnd_fbk_cas(self, chips=None):
         """Set GND, FBK and CAS values from the config python script.
@@ -151,10 +158,13 @@ class ExcaliburDetector(object):
             raise ValueError("Argument chips must be a list of lists of chips "
                              "for each node, got {}".format(chips))
 
+        node_threads = []
         for node_idx, node in enumerate(self.Nodes):
             self.logger.info("Setting GND, FBK and Cas values from config "
                              "script for node %s", node_idx)
-            util.spawn_thread(node.set_gnd_fbk_cas, chips[node_idx])
+            node_threads.append(util.spawn_thread(node.set_gnd_fbk_cas,
+                                                  chips[node_idx]))
+        util.wait_for_threads(node_threads)
 
     def threshold_equalization(self, chips=None):
         """Calibrate discriminator equalization for given chips in detector.
@@ -169,9 +179,12 @@ class ExcaliburDetector(object):
             raise ValueError("Argument chips must be a list of lists of chips "
                              "for each node, got {}".format(chips))
 
+        node_threads = []
         for node_idx, node in enumerate(self.Nodes):
             self.logger.info("Equalizing node %s", node_idx)
-            util.spawn_thread(node.threshold_equalization, chips[node_idx])
+            node_threads.append(util.spawn_thread(node.threshold_equalization,
+                                                  chips[node_idx]))
+        util.wait_for_threads(node_threads)
 
     def acquire_tp_image(self, tp_mask):
         """Load the given test pulse mask and capture a tp image.
@@ -185,9 +198,7 @@ class ExcaliburDetector(object):
             node_threads.append(
                 util.spawn_thread(node.acquire_tp_image, tp_mask))
 
-        images = []
-        for thread in node_threads:
-            images.append(thread.join())
+        images = util.wait_for_threads(node_threads)
 
         detector_image = self._combine_images(images)
 
@@ -209,9 +220,7 @@ class ExcaliburDetector(object):
         for node in self.Nodes:
             node_threads.append(util.spawn_thread(node.expose, exposure_time))
 
-        images = []
-        for thread in node_threads:
-            images.append(thread.join())
+        images = util.wait_for_threads(node_threads)
 
         detector_image = self._combine_images(images)
 

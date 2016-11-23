@@ -170,12 +170,14 @@ class FunctionsTest(unittest.TestCase):
         for node in self.e.Nodes:
             node.reset_mock()
 
+    @patch(util_patch_path + '.wait_for_threads')
     @patch(util_patch_path + '.spawn_thread')
-    def test_read_chip_ids(self, spawn_mock):
+    def test_read_chip_ids(self, spawn_mock, wait_mock):
         self.e.read_chip_ids()
 
         spawn_mock.assert_has_calls([call(node.read_chip_ids)
                                      for node in self.e.Nodes])
+        wait_mock.assert_called_once_with([spawn_mock.return_value] * 6)
 
     def test_set_quiet(self):
         self.e.set_quiet(True)
@@ -189,12 +191,14 @@ class FunctionsTest(unittest.TestCase):
         for node in self.e.Nodes:
             node.monitor.assert_called_once_with()
 
+    @patch(util_patch_path + '.wait_for_threads')
     @patch(util_patch_path + '.spawn_thread')
-    def test_load_config(self, spawn_mock):
+    def test_load_config(self, spawn_mock, wait_mock):
         self.e.load_config()
 
         spawn_mock.assert_has_calls([call(node.load_config)
                                      for node in self.e.Nodes])
+        wait_mock.assert_called_once_with([spawn_mock.return_value] * 6)
 
     def test_display_status(self):
         self.e.display_status()
@@ -202,8 +206,9 @@ class FunctionsTest(unittest.TestCase):
         for node in self.e.Nodes:
             node.display_status.assert_called_once_with()
 
+    @patch(util_patch_path + '.wait_for_threads')
     @patch(util_patch_path + '.spawn_thread')
-    def test_setup(self, spawn_mock):
+    def test_setup(self, spawn_mock, wait_mock):
         self.e.setup()
 
         self.e.MasterNode.initialise_lv.assert_called_once_with()
@@ -211,41 +216,50 @@ class FunctionsTest(unittest.TestCase):
 
         spawn_mock.assert_has_calls([call(node.setup)
                                      for node in self.e.Nodes])
+        wait_mock.assert_called_once_with([spawn_mock.return_value] * 6)
 
+    @patch(util_patch_path + '.wait_for_threads')
     @patch(util_patch_path + '.spawn_thread')
-    def test_set_gnd_fbk_cas(self, spawn_mock):
+    def test_set_gnd_fbk_cas(self, spawn_mock, wait_mock):
         self.e.set_gnd_fbk_cas([[0], [0], [0], [0], [0], [0]])
 
         spawn_mock.assert_has_calls([call(node.set_gnd_fbk_cas, [0])
                                      for node in self.e.Nodes])
+        wait_mock.assert_called_once_with([spawn_mock.return_value] * 6)
 
+    @patch(util_patch_path + '.wait_for_threads')
     @patch(util_patch_path + '.spawn_thread')
-    def test_set_gnd_fbk_cas_default(self, spawn_mock):
+    def test_set_gnd_fbk_cas_default(self, spawn_mock, wait_mock):
         self.e.set_gnd_fbk_cas()
 
         spawn_mock.assert_has_calls([call(node.set_gnd_fbk_cas, [0, 1, 2, 3,
                                                                  4, 5, 6, 7])
                                      for node in self.e.Nodes])
+        wait_mock.assert_called_once_with([spawn_mock.return_value] * 6)
 
     def test_set_gnd_fbk_cas_given_invalid_chips(self):
 
         with self.assertRaises(ValueError):
             self.e.set_gnd_fbk_cas([0, 1, 2, 3, 4, 5, 6, 7])
 
+    @patch(util_patch_path + '.wait_for_threads')
     @patch(util_patch_path + '.spawn_thread')
-    def test_threshold_equalization(self, spawn_mock):
+    def test_threshold_equalization(self, spawn_mock, wait_mock):
         self.e.threshold_equalization([[0], [0], [0], [0], [0], [0]])
 
         spawn_mock.assert_has_calls([call(node.threshold_equalization, [0])
                                      for node in self.e.Nodes])
+        wait_mock.assert_called_once_with([spawn_mock.return_value] * 6)
 
+    @patch(util_patch_path + '.wait_for_threads')
     @patch(util_patch_path + '.spawn_thread')
-    def test_threshold_equalization_default(self, spawn_mock):
+    def test_threshold_equalization_default(self, spawn_mock, wait_mock):
         self.e.threshold_equalization()
 
         spawn_mock.assert_has_calls([call(node.threshold_equalization,
                                           [0, 1, 2, 3, 4, 5, 6, 7])
                                      for node in self.e.Nodes])
+        wait_mock.assert_called_once_with([spawn_mock.return_value] * 6)
 
     def test_threshold_equalization_given_invalid_chips(self):
 
