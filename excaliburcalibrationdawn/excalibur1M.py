@@ -2,8 +2,6 @@
 from excaliburcalibrationdawn.excaliburdetector import ExcaliburDetector
 
 import logging
-logging.basicConfig(level=logging.DEBUG)
-# logging.basicConfig(level=logging.INFO)
 
 
 class Excalibur1M(ExcaliburDetector):
@@ -24,9 +22,10 @@ class Excalibur1M(ExcaliburDetector):
             raise ValueError("Excalibur1M requires two nodes, given "
                              "{nodes}".format(nodes=detector.nodes))
 
-        logging.debug("Creating Excalibur1M with nodes %s (master node is %s) "
-                      "on servers %s with IPs %s",
-                      detector.nodes, detector.master_node,
-                      detector.servers, detector.ip_addresses)
+        self.logger = logging.getLogger("Excalibur1M")
+        self.logger.debug("Creating Excalibur1M with nodes %s "
+                          "(master node is %s) on servers %s with IPs %s",
+                          detector.nodes, detector.master_node,
+                          detector.servers, detector.ip_addresses)
 
         super(Excalibur1M, self).__init__(detector_config)

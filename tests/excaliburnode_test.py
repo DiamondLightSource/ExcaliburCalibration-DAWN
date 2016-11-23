@@ -22,59 +22,71 @@ type(detector).name = PropertyMock(return_value="testdetector")
 
 class InitTest(unittest.TestCase):
 
-    def setUp(self):
-        self.node = 3
-        self.e = ExcaliburNode(self.node, mock_config)
+    @patch(ETAI_patch_path)
+    @patch(DAWN_patch_path)
+    @patch('logging.getLogger')
+    def test_attributes_set(self, get_mock, DAWN_mock, ETAI_mock):
+        node = 3
+        e = ExcaliburNode(node, mock_config)
 
-    def test_class_attributes_set(self):
-        self.assertEqual(self.e.dac_target, 10)
-        self.assertEqual(self.e.num_sigma, 3.2)
-        self.assertEqual(self.e.allowed_delta, 4)
-        self.assertEqual(self.e.calib_root, "/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib")
-        self.assertEqual(self.e.config_dir, "/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/config")
-        self.assertEqual(self.e.settings, {'mode': 'spm',
-                                           'gain': 'slgm',
-                                           'bitdepth': 12,
-                                           'readmode': 'sequential',
-                                           'counter': 0,
-                                           'disccsmspm': 'discL',
-                                           'equalization': 0,
-                                           'trigmode': 0,
-                                           'exposure': 100,
-                                           'frames': 1})
-        self.assertEqual(self.e.dac_number, {'Threshold0': 1,
-                                             'Threshold1': 2,
-                                             'Threshold2': 3,
-                                             'Threshold3': 4,
-                                             'Threshold4': 5,
-                                             'Threshold5': 6,
-                                             'Threshold6': 7,
-                                             'Threshold7': 8,
-                                             'Preamp': 9,
-                                             'Ikrum': 10,
-                                             'Shaper': 11,
-                                             'Disc': 12,
-                                             'DiscLS': 13,
-                                             'ShaperTest': 14,
-                                             'DACDiscL': 15,
-                                             'DACTest': 16,
-                                             'DACDiscH': 17,
-                                             'Delay': 18,
-                                             'TPBuffIn': 19,
-                                             'TPBuffOut': 20,
-                                             'RPZ': 21,
-                                             'GND': 22,
-                                             'TPREF': 23,
-                                             'FBK': 24,
-                                             'Cas': 25,
-                                             'TPREFA': 26,
-                                             'TPREFB': 27})
-        self.assertEqual(self.e.chip_range, [0, 1, 2, 3, 4, 5, 6, 7])
-        self.assertEqual(self.e.plot_name, '')
+        ETAI_mock.assert_called_once_with(3, "192.168.0.104", 6969, None)
+        DAWN_mock.assert_called_once_with("Node 3")
+        self.assertEqual(ETAI_mock.return_value, e.app)
+        self.assertEqual(DAWN_mock.return_value, e.dawn)
 
-    def test_instance_attributes_set(self):
-        self.assertEqual(self.e.fem, self.node)
-        self.assertEqual(self.e.ip_address, "192.168.0.104")
+        self.assertEqual(e.fem, node)
+        self.assertEqual(e.ip_address, "192.168.0.104")
+
+        self.assertEqual(e.dac_target, 10)
+        self.assertEqual(e.num_sigma, 3.2)
+        self.assertEqual(e.allowed_delta, 4)
+        self.assertEqual(e.calib_root,
+                         "/dls/detectors/support/silicon_pixels/excaliburRX/"
+                         "3M-RX001/testdetector/calib")
+        self.assertEqual(e.config_dir,
+                         "/dls/detectors/support/silicon_pixels/excaliburRX/"
+                         "TestApplication_15012015/config")
+        self.assertEqual(e.settings, {'mode': 'spm',
+                                      'gain': 'slgm',
+                                      'bitdepth': 12,
+                                      'readmode': 'sequential',
+                                      'counter': 0,
+                                      'disccsmspm': 'discL',
+                                      'equalization': 0,
+                                      'trigmode': 0,
+                                      'exposure': 100,
+                                      'frames': 1})
+        self.assertEqual(e.dac_number, {'Threshold0': 1,
+                                        'Threshold1': 2,
+                                        'Threshold2': 3,
+                                        'Threshold3': 4,
+                                        'Threshold4': 5,
+                                        'Threshold5': 6,
+                                        'Threshold6': 7,
+                                        'Threshold7': 8,
+                                        'Preamp': 9,
+                                        'Ikrum': 10,
+                                        'Shaper': 11,
+                                        'Disc': 12,
+                                        'DiscLS': 13,
+                                        'ShaperTest': 14,
+                                        'DACDiscL': 15,
+                                        'DACTest': 16,
+                                        'DACDiscH': 17,
+                                        'Delay': 18,
+                                        'TPBuffIn': 19,
+                                        'TPBuffOut': 20,
+                                        'RPZ': 21,
+                                        'GND': 22,
+                                        'TPREF': 23,
+                                        'FBK': 24,
+                                        'Cas': 25,
+                                        'TPREFA': 26,
+                                        'TPREFB': 27})
+        self.assertEqual(e.chip_range, [0, 1, 2, 3, 4, 5, 6, 7])
+        self.assertEqual(e.plot_name, '')
+
+        get_mock.assert_called_once_with("Node3")
 
     def test_server_used(self):
         e = ExcaliburNode(1, mock_config, "test-server")
@@ -86,22 +98,6 @@ class InitTest(unittest.TestCase):
             ExcaliburNode(0, mock_config)
         with self.assertRaises(ValueError):
             ExcaliburNode(7, mock_config)
-
-    @patch(Node_patch_path + '.copy_slgm_into_other_gain_modes')
-    @patch(Node_patch_path + '.load_config')
-    @patch(ETAI_patch_path + '.load_dacs')
-    @patch(Node_patch_path + '.check_chip_ids')
-    def test_setup(self, check_mock, load_dacs_mock, load_config_mock,
-                   copy_mock):
-
-        self.e.setup()
-
-        check_mock.assert_called_once_with()
-        load_dacs_mock.assert_called_once_with(
-            range(8), '/dls/detectors/support/silicon_pixels/excaliburRX/'
-                      'TestApplication_15012015/config/Default_SPM.dacs')
-        load_config_mock.assert_called_once_with(range(8))
-        copy_mock.assert_called_once_with()
 
 
 class SetVoltageTest(unittest.TestCase):
@@ -233,12 +229,24 @@ class SimpleFunctionsTest(unittest.TestCase):
                                for gain in ["shgm", "hgm", "lgm", "slgm"]]
         makedirs_mock.assert_has_calls(expected_calls)
 
+    @patch(Node_patch_path + '.copy_slgm_into_other_gain_modes')
+    @patch(Node_patch_path + '.load_config')
+    @patch(Node_patch_path + '.check_chip_ids')
+    def test_setup(self, check_mock, load_config_mock, copy_mock):
+
+        self.e.setup()
+
+        check_mock.assert_called_once_with()
+        self.app_mock.load_dacs.assert_called_once_with(
+            range(8), '/dls/detectors/support/silicon_pixels/excaliburRX/'
+                      'TestApplication_15012015/config/Default_SPM.dacs')
+        load_config_mock.assert_called_once_with(range(8))
+        copy_mock.assert_called_once_with()
+
 
 @patch(DAWN_patch_path + '.plot_image')
-@patch(util_patch_path + '.generate_plot_name',
-       return_value="20161121~105720_TPImage.hdf5")
-@patch(util_patch_path + '.generate_file_name',
-       return_value="20161121~105725_TPImage.hdf5")
+@patch(util_patch_path + '.generate_plot_name')
+@patch(util_patch_path + '.generate_file_name')
 @patch(DAWN_patch_path + '.load_image_data')
 @patch(util_patch_path + '.wait_for_file')
 @patch(ETAI_patch_path + '.grab_remote_file')
@@ -254,8 +262,8 @@ class CaptureTPImageTest(unittest.TestCase):
     @patch('os.path.isfile', return_value=True)
     def test_file_exist_then_capture_image(self, isfile_mock, acquire_mock,
                                            configure_mock, grab_mock,
-                                           wait_mock, load_mock, _, _2,
-                                           plot_mock):
+                                           wait_mock, load_mock, gen_file_mock,
+                                           gen_plot_mock, plot_mock):
         expected_mask = "/dls/detectors/support/silicon_pixels/excaliburRX/" \
                         "TestApplication_15012015/config/triangles.mask"
         expected_dacs = "/dls/detectors/support/silicon_pixels/excaliburRX/" \
@@ -263,26 +271,26 @@ class CaptureTPImageTest(unittest.TestCase):
         expected_config = dict(discL=self.e.discL_bits[0],
                                discH=self.e.discH_bits[0],
                                pixel_mask=self.e.pixel_mask[0])
-        expected_output = "/tmp/20161121~105725_TPImage.hdf5"
 
         self.e.acquire_tp_image("triangles.mask", 100, 1000)
 
         isfile_mock.assert_called_once_with(expected_mask)
         configure_mock.assert_called_once_with(0, expected_mask,
                                                expected_dacs, expected_config)
-        acquire_mock.assert_called_once_with([0], 100, 1000,
-                                             hdf_file="20161121~105725_TPImage.hdf5")
-        grab_mock.assert_called_once_with(expected_output)
-        wait_mock.assert_called_once_with(grab_mock.return_value, 10)
-        load_mock.assert_called_once_with(grab_mock.return_value)
+        acquire_mock.assert_called_once_with(
+            [0], 100, 1000, hdf_file=gen_file_mock.return_value)
+        grab_mock.assert_called_once_with(gen_file_mock.return_value)
+        wait_mock.assert_called_once_with(gen_file_mock.return_value, 10)
+        load_mock.assert_called_once_with(gen_file_mock.return_value)
         plot_mock.assert_called_once_with(load_mock.return_value,
-                                          "20161121~105720_TPImage.hdf5")
+                                          gen_plot_mock.return_value)
 
     @patch('os.path.isfile', return_value=False)
     def test_file_doesnt_exist_then_capture_image(self, isfile_mock,
                                                   acquire_mock, configure_mock,
                                                   grab_mock, wait_mock,
-                                                  load_mock, _, _2, plot_mock):
+                                                  load_mock, gen_file_mock,
+                                                  gen_plot_mock, plot_mock):
 
         with self.assertRaises(IOError):
             self.e.acquire_tp_image("none.mask")
@@ -572,7 +580,7 @@ class TestAppCallsTest(unittest.TestCase):
 
         self.e._acquire(10, 100, burst=True)
 
-        gen_mock.assert_called_once_with("Image")
+        gen_mock.assert_called_once_with("Image", 1)
         acquire_mock.assert_called_once_with(
             [0, 1, 2, 3, 4, 5, 6, 7], 10, 100, trig_mode=0, gain_mode='slgm',
             burst=True, pixel_mode='spm', counter=0, equalization=0,
@@ -593,15 +601,15 @@ class TestAppCallsTest(unittest.TestCase):
 
         self.e._acquire(10, 100, burst=True)
 
-        gen_mock.assert_called_once_with("Image")
+        gen_mock.assert_called_once_with("Image", 1)
         acquire_mock.assert_called_once_with(
             [0, 1, 2, 3, 4, 5, 6, 7], 10, 100, trig_mode=0, gain_mode='slgm',
             burst=True, pixel_mode='spm', counter=0, equalization=0,
             disc_mode='discL', hdf_file=gen_mock.return_value, path='/tmp',
             depth=12, read_mode='sequential')
         grab_mock.assert_called_once_with(gen_mock.return_value)
-        wait_mock.assert_called_once_with(grab_mock.return_value, 10)
-        load_mock.assert_called_once_with(grab_mock.return_value)
+        wait_mock.assert_called_once_with(gen_mock.return_value, 10)
+        load_mock.assert_called_once_with(gen_mock.return_value)
 
     @patch(util_patch_path + '.get_time_stamp', return_value="20161028~151003")
     @patch(DAWN_patch_path + '.plot_image')
@@ -845,7 +853,7 @@ class ScanDacTest(unittest.TestCase):
                                          gen_mock, load_mock, display_mock):
         self.e.scan_dac(self.chips, 'Threshold0', self.dac_range)
 
-        gen_mock.assert_called_once_with("DACScan")
+        gen_mock.assert_called_once_with("DACScan", 1)
         scan_mock.assert_called_once_with(self.chips, 'Threshold0',
                                           self.dac_range, 5, self.dac_file,
                                           '/tmp', gen_mock.return_value)
@@ -862,15 +870,17 @@ class ScanDacTest(unittest.TestCase):
                                               scan_mock, gen_mock,
                                               load_mock, display_mock):
         self.e.remote_node = True
+        expected_output = "/tmp/20161020~154548_TestImage.hdf5"
+
         self.e.scan_dac(self.chips, 'Threshold0', self.dac_range)
 
-        gen_mock.assert_called_once_with("DACScan")
+        gen_mock.assert_called_once_with("DACScan", 1)
         scan_mock.assert_called_once_with(self.chips, 'Threshold0',
                                           self.dac_range, 5, self.dac_file,
                                           '/tmp', gen_mock.return_value,)
-        grab_mock.assert_called_once_with("/tmp/20161020~154548_TestImage.hdf5")
-        wait_mock.assert_called_once_with(grab_mock.return_value, 10)
-        load_mock.assert_called_once_with(grab_mock.return_value)
+        grab_mock.assert_called_once_with(expected_output)
+        wait_mock.assert_called_once_with(expected_output, 10)
+        load_mock.assert_called_once_with(expected_output)
         display_mock.assert_called_once_with(self.chips,
                                              load_mock.return_value,
                                              self.dac_range)
@@ -952,7 +962,7 @@ class ApplyFFCorrectionTest(unittest.TestCase):
 
         e.apply_ff_correction(1, 0.1)
 
-        gen_mock.assert_called_once_with("FFImage")
+        gen_mock.assert_called_once_with("FFImage", 1)
         load_mock.assert_called_once_with(gen_mock.return_value)
         plot_mock.assert_called_once_with(load_mock.return_value.__getitem__().__mul__().__getitem__(), name='Image data Cor')
 

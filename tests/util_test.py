@@ -99,9 +99,9 @@ class FunctionsTest(unittest.TestCase):
 
     @patch(util_patch_path + '.get_time_stamp', return_value="20161020~154548")
     def test_generate_file_name(self, _):
-        file_name = util.generate_file_name("TestImage")
+        file_name = util.generate_file_name("TestImage", 1)
 
-        self.assertEqual("20161020~154548_TestImage.hdf5", file_name)
+        self.assertEqual("20161020~154548_TestImage_1.hdf5", file_name)
 
     @patch(util_patch_path + '.get_time_stamp', return_value="20161020~154548")
     def test_generate_plot_name(self, _):
@@ -151,3 +151,63 @@ class FunctionsTest(unittest.TestCase):
 
         cmp_mock.assert_called_once_with("/path/to/file", "/path/to/file2")
         self.assertEqual(cmp_mock.return_value, response)
+
+    @patch(util_patch_path + '._ReturnThread')
+    def test_spawn_thread(self, thread_init_mock):
+        thread_mock = MagicMock()
+        thread_init_mock.return_value = thread_mock
+        function_mock = MagicMock()
+
+        response = util.spawn_thread(function_mock, "arg1", arg2="arg2")
+
+        thread_init_mock.assert_called_once_with(target=function_mock,
+                                                 args=("arg1",),
+                                                 kwargs=dict(arg2="arg2"))
+        thread_mock.start.assert_called_once_with()
+        self.assertEqual(thread_mock, response)
+
+    def test_wait_for_threads(self):
+        mocks = [MagicMock(), MagicMock(), MagicMock(), MagicMock()]
+
+        response = util.wait_for_threads(mocks)
+
+        for idx, mock in enumerate(mocks):
+            mock.join.assert_called_once_with()
+            self.assertEqual(mock.join.return_value, response[idx])
+
+
+class ReturnThreadTest(unittest.TestCase):
+
+    @patch('threading.Thread.__init__')
+    def test_init(self, thread_mock):
+        thread = util._ReturnThread(group="group", target="target",
+                                    name="name", args="args", kwargs="kwargs",
+                                    verbose="verbose")
+
+        thread_mock.assert_called_once_with("group", "target", "name", "args",
+                                            "kwargs", "verbose")
+        self.assertIsNone(thread._return)
+
+    def test_run(self):
+        function_mock = MagicMock()
+        thread = util._ReturnThread(target=function_mock,
+                                    args="args", kwargs=dict(arg2="arg2"))
+        thread._Thread__target = function_mock
+        thread._Thread__args = ["args"]
+        thread._Thread__kwargs = dict(arg2="arg2")
+
+        thread.run()
+
+        function_mock.assert_called_once_with("args", arg2="arg2")
+        self.assertEqual(thread._return, function_mock.return_value)
+
+    @patch('threading.Thread.join')
+    def test_join(self, join_mock):
+        thread = util._ReturnThread()
+        return_mock = MagicMock()
+        thread._return = return_mock
+
+        response = thread.join("timeout")
+
+        join_mock.assert_called_once_with("timeout")
+        self.assertEqual(response, return_mock)

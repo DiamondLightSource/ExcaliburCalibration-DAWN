@@ -1,15 +1,12 @@
 """An Excalibur RX detector."""
 import shutil
+import logging
 
 import numpy as np
 
 from excaliburcalibrationdawn.excaliburnode import ExcaliburNode
 from excaliburcalibrationdawn.excaliburdawn import ExcaliburDAWN
 from excaliburcalibrationdawn import util
-
-import logging
-logging.basicConfig(level=logging.DEBUG)
-# logging.basicConfig(level=logging.INFO)
 
 
 class ExcaliburDetector(object):
@@ -57,6 +54,7 @@ class ExcaliburDetector(object):
                 self.MasterNode = node
 
         self.dawn = ExcaliburDAWN("Detector")
+        self.logger = logging.getLogger("ExcaliburDetector")
 
     @property
     def calib_root(self):
@@ -70,8 +68,10 @@ class ExcaliburDetector(object):
 
     def read_chip_ids(self):
         """Read chip IDs for all chips in all nodes."""
+        node_threads = []
         for node in self.Nodes:
-            node.read_chip_ids()
+            node_threads.append(util.spawn_thread(node.read_chip_ids))
+        util.wait_for_threads(node_threads)
 
     def initialise_lv(self):
         """Initialise LV."""
@@ -123,8 +123,11 @@ class ExcaliburDetector(object):
         self.MasterNode.initialise_lv()
         self.MasterNode.set_hv_bias(120)
         # self.MasterNode.enable_hv()
+
+        node_threads = []
         for node in self.Nodes:
-            node.setup()
+            node_threads.append(util.spawn_thread(node.setup))
+        util.wait_for_threads(node_threads)
 
     def disable(self):
         """Set HV bias to 0 and disable LV and HV."""
@@ -137,8 +140,10 @@ class ExcaliburDetector(object):
 
     def load_config(self):
         """Load detector configuration files and default thresholds."""
+        node_threads = []
         for node in self.Nodes:
-            node.load_config()
+            node_threads.append(util.spawn_thread(node.load_config))
+        util.wait_for_threads(node_threads)
 
     def set_gnd_fbk_cas(self, chips=None):
         """Set GND, FBK and CAS values from the config python script.
@@ -153,10 +158,13 @@ class ExcaliburDetector(object):
             raise ValueError("Argument chips must be a list of lists of chips "
                              "for each node, got {}".format(chips))
 
+        node_threads = []
         for node_idx, node in enumerate(self.Nodes):
-            logging.info("Setting GND, FBK and Cas values from config script "
-                         "for node %s", node_idx)
-            node.set_gnd_fbk_cas(chips[node_idx])
+            self.logger.info("Setting GND, FBK and Cas values from config "
+                             "script for node %s", node_idx)
+            node_threads.append(util.spawn_thread(node.set_gnd_fbk_cas,
+                                                  chips[node_idx]))
+        util.wait_for_threads(node_threads)
 
     def threshold_equalization(self, chips=None):
         """Calibrate discriminator equalization for given chips in detector.
@@ -171,9 +179,12 @@ class ExcaliburDetector(object):
             raise ValueError("Argument chips must be a list of lists of chips "
                              "for each node, got {}".format(chips))
 
+        node_threads = []
         for node_idx, node in enumerate(self.Nodes):
-            logging.info("Equalizing node %s", node_idx)
-            node.threshold_equalization(chips[node_idx])
+            self.logger.info("Equalizing node %s", node_idx)
+            node_threads.append(util.spawn_thread(node.threshold_equalization,
+                                                  chips[node_idx]))
+        util.wait_for_threads(node_threads)
 
     def acquire_tp_image(self, tp_mask):
         """Load the given test pulse mask and capture a tp image.
@@ -182,9 +193,12 @@ class ExcaliburDetector(object):
             tp_mask(str): Mask file in config directory
 
         """
-        images = []
+        node_threads = []
         for node in self.Nodes:
-            images.append(node.acquire_tp_image(tp_mask))
+            node_threads.append(
+                util.spawn_thread(node.acquire_tp_image, tp_mask))
+
+        images = util.wait_for_threads(node_threads)
 
         detector_image = self._combine_images(images)
 
@@ -202,9 +216,11 @@ class ExcaliburDetector(object):
             numpy.array: Image data
 
         """
-        images = []
+        node_threads = []
         for node in self.Nodes:
-            images.append(node.expose(exposure_time))
+            node_threads.append(util.spawn_thread(node.expose, exposure_time))
+
+        images = util.wait_for_threads(node_threads)
 
         detector_image = self._combine_images(images)
 
@@ -225,7 +241,7 @@ class ExcaliburDetector(object):
             numpy.array: DAC scan data
 
         """
-        logging.info("Performing DAC Scan on node %s", node_idx)
+        self.logger.info("Performing DAC Scan on node %s", node_idx)
         scan_data = self.Nodes[node_idx].scan_dac(chips, threshold, dac_range)
         return scan_data
 
@@ -257,7 +273,7 @@ class ExcaliburDetector(object):
         """
         epics_calib_path = self.calib_root + '_epics'
         shutil.copytree(self.calib_root, epics_calib_path)
-        logging.debug("EPICS calibration directory: %s", epics_calib_path)
+        self.logger.debug("EPICS calibration directory: %s", epics_calib_path)
 
         for node_idx in [1, 3, 5]:
             self.Nodes[node_idx].rotate_config()
