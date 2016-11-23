@@ -260,8 +260,7 @@ class FunctionsTest(unittest.TestCase):
 
         combine_mock.assert_called_once_with([mock_image] * 6)
         plot_mock.assert_called_once_with(combine_mock.return_value,
-                                          "Excalibur Detector TP Image - "
-                                          "2016-10-21_16:42:50")
+                                          "TPImage - 2016-10-21_16:42:50")
 
     @patch(util_patch_path + '.get_time_stamp',
            return_value="2016-10-21_16:42:50")
@@ -281,8 +280,7 @@ class FunctionsTest(unittest.TestCase):
 
         combine_mock.assert_called_once_with([mock_image] * 6)
         plot_mock.assert_called_once_with(combine_mock.return_value,
-                                          "Excalibur Detector Image - "
-                                          "2016-10-21_16:42:50")
+                                          "Image - 2016-10-21_16:42:50")
 
     def test_scan_dac(self):
 

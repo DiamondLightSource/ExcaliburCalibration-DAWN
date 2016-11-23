@@ -56,7 +56,7 @@ class ExcaliburDetector(object):
             if node_idx == master_node:
                 self.MasterNode = node
 
-        self.dawn = ExcaliburDAWN()
+        self.dawn = ExcaliburDAWN("Detector")
 
     @property
     def calib_dir(self):
@@ -188,7 +188,7 @@ class ExcaliburDetector(object):
 
         detector_image = self._combine_images(images)
 
-        plot_name = "Excalibur Detector TP Image - {time_stamp}".format(
+        plot_name = "TPImage - {time_stamp}".format(
             time_stamp=util.get_time_stamp())
         self.dawn.plot_image(detector_image, plot_name)
 
@@ -208,7 +208,7 @@ class ExcaliburDetector(object):
 
         detector_image = self._combine_images(images)
 
-        plot_name = "Excalibur Detector Image - {time_stamp}".format(
+        plot_name = "Image - {time_stamp}".format(
             time_stamp=util.get_time_stamp())
         self.dawn.plot_image(detector_image, plot_name)
 

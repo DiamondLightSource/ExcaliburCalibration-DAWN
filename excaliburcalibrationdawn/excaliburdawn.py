@@ -15,11 +15,17 @@ class ExcaliburDAWN(object):
 
     """An interface to DAWN Scisoftpy utilities."""
 
-    def __init__(self):
-        """Set up plot and io APIs."""
+    def __init__(self, parent_name):
+        """Set up plot and io APIs.
+
+        Args:
+            parent_name(str): Name to prefix plots with
+
+        """
         self.plot = scisoftpy.plot
         self.io = scisoftpy.io
 
+        self.name_template = parent_name + " - {}"
         self.current_plots = []
 
     def plot_image(self, data_set, name):
@@ -30,7 +36,7 @@ class ExcaliburDAWN(object):
             name(str): Name for plot
 
         """
-        self.plot.image(data_set, name=name)
+        self.plot.image(data_set, name=self.name_template.format(name))
         logging.info("Image plotted in DAWN as '%s'", name)
 
     def load_image(self, path):
@@ -112,17 +118,18 @@ class ExcaliburDAWN(object):
             y(list/np.array): Y axis data
             x_name(str): Label for x-axis
             y_name(str): Label for y-axis
-            plot_name(str): Name of plot to add to
+            plot_name(str): Suffix of plot to add to
             label(str): Label for plot line
 
         """
-        if plot_name not in self.current_plots:
+        full_name = self.name_template.format(plot_name)
+        if full_name not in self.current_plots:
             self.plot.line({x_name: x}, {y_name: (y, label)},
-                           name=plot_name, title=plot_name)
+                           name=full_name, title=full_name)
             self.current_plots.append(plot_name)
         else:
             self.plot.addline({x_name: x}, {y_name: (y, label)},
-                              name=plot_name, title=plot_name)
+                              name=full_name, title=full_name)
 
     def plot_gaussian_fit(self, scan_data, plot_name, p0, bins):
         """Calculate the Gaussian least squares fit and plot the result.

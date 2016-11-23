@@ -11,6 +11,18 @@ import numpy as np
 from excaliburcalibrationdawn import ExcaliburDAWN
 
 
+class InitTest(unittest.TestCase):
+
+    @patch('scisoftpy.io')
+    @patch('scisoftpy.plot')
+    def test_init(self, plot_mock, io_mock):
+        e = ExcaliburDAWN("Node 1")
+
+        self.assertEqual(plot_mock, e.plot)
+        self.assertEqual(io_mock, e.io)
+        self.assertEqual("Node 1 - {}", e.name_template)
+
+
 class FunctionsTest(unittest.TestCase):
 
     def setUp(self):
@@ -32,7 +44,7 @@ class FunctionsTest(unittest.TestCase):
 class SimpleMethodsTest(unittest.TestCase):
 
     def setUp(self):
-        self.e = ExcaliburDAWN()
+        self.e = ExcaliburDAWN("Node 1")
         self.chips = [0]
 
     @patch('scisoftpy.plot.image')
@@ -43,7 +55,7 @@ class SimpleMethodsTest(unittest.TestCase):
         self.e.plot_image(mock_data, name="Test Plot")
 
         plot_mock.assert_called_once_with(mock_data,
-                                          name="Test Plot")
+                                          name="Node 1 - Test Plot")
 
     @patch(DAWN_patch_path + '._add_histogram')
     @patch(DAWN_patch_path + '.clear_plot')
@@ -108,7 +120,8 @@ class SimpleMethodsTest(unittest.TestCase):
 
         line_mock.assert_called_once_with({"X-Axis": x},
                                           {"Y-Axis": (y, "Chip 0")},
-                                          name="Test", title="Test")
+                                          name="Node 1 - Test",
+                                          title="Node 1 - Test")
         add_mock.assert_not_called()
 
     @patch('scisoftpy.plot.addline')
@@ -117,13 +130,14 @@ class SimpleMethodsTest(unittest.TestCase):
         x = MagicMock()
         y = MagicMock()
         name = "Test"
-        self.e.current_plots.append("Test")
+        self.e.current_plots.append("Node 1 - Test")
 
         self.e.add_plot_line(x, y, "X-Axis", "Y-Axis", name, "Chip 0")
 
         add_mock.assert_called_once_with({"X-Axis": x},
                                          {"Y-Axis": (y, "Chip 0")},
-                                         name="Test", title="Test")
+                                         name="Node 1 - Test",
+                                         title="Node 1 - Test")
         line_mock.assert_not_called()
 
     @patch(DAWN_patch_path + '.add_plot_line')
@@ -147,7 +161,7 @@ class SimpleMethodsTest(unittest.TestCase):
 class ShowPixelTest(unittest.TestCase):
 
     def test_correct_calls_made(self, diff_mock, squeeze_mock, addline_mock):
-        e = ExcaliburDAWN()
+        e = ExcaliburDAWN("Node 1")
         dac_scan_data = np.random.randint(10, size=(10, 256, 8*256))
         dac_range = [1, 10, 1]
         pixel = [20, 30]
@@ -175,7 +189,7 @@ class FitDacScanTest(unittest.TestCase):
     mock_dac_axis = MagicMock()
 
     def test_correct_calls_made(self, plot_mock, fit_mock, myerf_mock):
-        e = ExcaliburDAWN()
+        e = ExcaliburDAWN("Node 1")
 
         values = e.fit_dac_scan(self.mock_dac_scan, self.mock_dac_axis)
 
@@ -194,7 +208,7 @@ class PlotLinearFitTest(unittest.TestCase):
 
     def test_correct_calls_made(self, clear_mock, add_mock, fit_mock,
                                 lin_mock):
-        e = ExcaliburDAWN()
+        e = ExcaliburDAWN("Node 1")
         x = MagicMock()
         y = MagicMock()
 
@@ -221,7 +235,7 @@ class PlotGaussianFitTest(unittest.TestCase):
 
     def test_correct_calls_made(self, clear_mock, add_mock, curve_fit,
                                 gauss_mock, histo_mock):
-        e = ExcaliburDAWN()
+        e = ExcaliburDAWN("Node 1")
         x1 = MagicMock()
         scan_data_mock = [x1]
         bins = MagicMock()
@@ -254,7 +268,7 @@ class PlotGaussianFitTest(unittest.TestCase):
 class PlotDacScanTest(unittest.TestCase):
 
     def test_correct_calls_made(self, clear_mock, addline_mock, diff_mock):
-        e = ExcaliburDAWN()
+        e = ExcaliburDAWN("Node 1")
         dac_axis = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
         dac_scan_data = [np.random.randint(10, size=(256, 8*256))]
 

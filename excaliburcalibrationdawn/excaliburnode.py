@@ -120,7 +120,7 @@ class ExcaliburNode(object):
         # Helper classes
         self.app = ExcaliburTestAppInterface(self.fem, self.ip_address, 6969,
                                              self.server_name)
-        self.dawn = ExcaliburDAWN()
+        self.dawn = ExcaliburDAWN("Node {}".format(self.fem))
 
     @property
     def template_path(self):
@@ -831,8 +831,7 @@ class ExcaliburNode(object):
         logging.info("Capturing image with %sms exposure", exposure)
         image = self._acquire(1, exposure)
 
-        plot_name = util.generate_plot_name("Node Image")
-        self.dawn.plot_image(image, plot_name)
+        self.dawn.plot_image(image, util.generate_plot_name("Image"))
 
         return image
 

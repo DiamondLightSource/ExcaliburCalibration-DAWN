@@ -612,7 +612,7 @@ class TestAppCallsTest(unittest.TestCase):
 
         acquire_mock.assert_called_once_with(1, 100)
         plot_mock.assert_called_once_with(acquire_mock.return_value,
-                                          "Node Image - 20161028~151003")
+                                          "Image - 20161028~151003")
 
     @patch(util_patch_path + '.get_time_stamp', return_value="20161028~151003")
     @patch(DAWN_patch_path + '.plot_image')
@@ -623,7 +623,7 @@ class TestAppCallsTest(unittest.TestCase):
 
         acquire_mock.assert_called_once_with(1, 200)
         plot_mock.assert_called_once_with(acquire_mock.return_value,
-                                          "Node Image - 20161028~151003")
+                                          "Image - 20161028~151003")
 
     @patch(Node_patch_path + '._acquire')
     def test_burst(self, acquire_mock):
