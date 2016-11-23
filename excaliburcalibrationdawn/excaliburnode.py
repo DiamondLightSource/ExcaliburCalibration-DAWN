@@ -99,9 +99,9 @@ class ExcaliburNode(object):
                      self.server_name, self.ip_address)
 
         self.config = detector_config
-        self.calib_dir = posixpath.join(self.root_path,
-                                        "3M-RX001/{}/calib".format(
-                                            detector_config.detector.name))
+        self.calib_root = posixpath.join(self.root_path,
+                                         "3M-RX001/{}/calib".format(
+                                             detector_config.detector.name))
 
         # Detector default settings - See excaliburtestappinterface for details
         self.settings = dict(mode="spm",  # spm or csm
@@ -123,9 +123,9 @@ class ExcaliburNode(object):
         self.dawn = ExcaliburDAWN("Node {}".format(self.fem))
 
     @property
-    def template_path(self):
-        """Generate template path for current mode and gain."""
-        return posixpath.join(self.calib_dir,
+    def current_calib(self):
+        """Generate calibration directory for current mode and gain."""
+        return posixpath.join(self.calib_root,
                               'fem{fem}'.format(fem=self.fem),
                               self.settings['mode'],
                               self.settings['gain'])
@@ -133,33 +133,33 @@ class ExcaliburNode(object):
     @property
     def discL_bits(self):
         """Generate discL_bits file paths for current template path."""
-        template = posixpath.join(self.template_path, '{disc}.chip{chip}')
+        template = posixpath.join(self.current_calib, '{disc}.chip{chip}')
         return [template.format(disc="discLbits",
                                 chip=chip) for chip in self.chip_range]
 
     @property
     def discH_bits(self):
         """Generate discH_bits file paths for current template path."""
-        template = posixpath.join(self.template_path, '{disc}.chip{chip}')
+        template = posixpath.join(self.current_calib, '{disc}.chip{chip}')
         return [template.format(disc="discHbits",
                                 chip=chip) for chip in self.chip_range]
 
     @property
     def pixel_mask(self):
         """Generate pixelmask file paths for current template path."""
-        template = posixpath.join(self.template_path, '{disc}.chip{chip}')
+        template = posixpath.join(self.current_calib, '{disc}.chip{chip}')
         return [template.format(disc="pixelmask",
                                 chip=chip) for chip in self.chip_range]
 
     @property
     def dacs_file(self):
         """Generate DACs file path for current template path."""
-        return posixpath.join(self.template_path, "dacs")
+        return posixpath.join(self.current_calib, "dacs")
 
     def setup_new_detector(self):
         """Set up the folder structure for the given detector config."""
-        if os.path.isdir(self.calib_dir):
-            raise IOError("Calib directory %s already exists", self.calib_dir)
+        if os.path.isdir(self.calib_root):
+            raise IOError("Calib directory %s already exists", self.calib_root)
 
         self.create_calib_structure()
         self.log_chip_ids()
@@ -176,7 +176,7 @@ class ExcaliburNode(object):
     def create_calib_structure(self):
         """Create the calibration directory for a new detector."""
         logging.info("Creating calibration directory folder structure.")
-        template = posixpath.join(self.calib_dir, "fem{}".format(self.fem),
+        template = posixpath.join(self.calib_root, "fem{}".format(self.fem),
                                   "spm/{gain}")
         paths = [template.format(gain=gain)
                  for gain in ["shgm", "hgm", "lgm", "slgm"]]
@@ -258,7 +258,7 @@ class ExcaliburNode(object):
         with open(temp_file, "w") as output_file:
             self.app.read_chip_ids(stdout=output_file)
 
-        node_id = posixpath.join(self.calib_dir, "fem{}".format(self.fem),
+        node_id = posixpath.join(self.calib_root, "fem{}".format(self.fem),
                                  "efuseIDs")
 
         if util.files_match(temp_file, node_id):
@@ -396,7 +396,7 @@ class ExcaliburNode(object):
         """
         thresh_coeff = np.array([gain, offset])
 
-        thresh_filename = posixpath.join(self.calib_dir,
+        thresh_filename = posixpath.join(self.calib_root,
                                          'fem{fem}',
                                          self.settings['mode'],
                                          self.settings['gain'],
@@ -583,7 +583,7 @@ class ExcaliburNode(object):
             thresh_energy(float): Energy to set
 
         """
-        fname = posixpath.join(self.calib_dir,
+        fname = posixpath.join(self.calib_root,
                                'fem{fem}',
                                self.settings['mode'],
                                self.settings['gain'],
@@ -617,7 +617,7 @@ class ExcaliburNode(object):
 
     def log_chip_ids(self):
         """Read chip IDs and logs chipIDs in calibration directory."""
-        log_filename = posixpath.join(self.calib_dir,
+        log_filename = posixpath.join(self.calib_root,
                                       'fem{fem}',
                                       'efuseIDs'
                                       ).format(fem=self.fem)
@@ -785,7 +785,7 @@ class ExcaliburNode(object):
         """
         logging.info("Loading numpy arrays as temporary config.")
 
-        template_path = posixpath.join(self.template_path, "{disc}.tmp")
+        template_path = posixpath.join(self.current_calib, "{disc}.tmp")
         discH_bits_file = template_path.format(disc="discHbits")
         discL_bits_file = template_path.format(disc="discLbits")
         pixel_bits_file = template_path.format(disc="pixelmask")
@@ -979,7 +979,7 @@ class ExcaliburNode(object):
         """
         for chip_idx in chips:
             discbits_file = posixpath.join(
-                self.template_path, '{disc}.chip{chip}'.format(
+                self.current_calib, '{disc}.chip{chip}'.format(
                     disc=disc, chip=chip_idx))
 
             logging.info("Saving discbits to %s", discbits_file)
@@ -1086,7 +1086,7 @@ class ExcaliburNode(object):
 
         """
         zeros = np.zeros(self.chip_shape)
-        pixel_bits_file = posixpath.join(self.template_path, "pixelmask.tmp")
+        pixel_bits_file = posixpath.join(self.current_calib, "pixelmask.tmp")
         np.savetxt(pixel_bits_file, zeros, fmt="%.18g", delimiter=" ")
 
         for chip_idx in chips:
@@ -1102,7 +1102,7 @@ class ExcaliburNode(object):
 
         """
         zeros = np.zeros(self.chip_shape)
-        template_path = posixpath.join(self.template_path, "{disc}.tmp")
+        template_path = posixpath.join(self.current_calib, "{disc}.tmp")
         discL_bits_file = template_path.format(disc="discLbits")
         np.savetxt(discL_bits_file, zeros, fmt="%.18g", delimiter=" ")
         discH_bits_file = template_path.format(disc="discHbits")
@@ -1116,8 +1116,8 @@ class ExcaliburNode(object):
         """Back up calibration directory with time stamp."""
         logging.info("Backing up calib directory.")
         backup_dir = "{calib}_{time_stamp}".format(
-            calib=self.calib_dir, time_stamp=util.get_time_stamp())
-        shutil.copytree(self.calib_dir, backup_dir)
+            calib=self.calib_root, time_stamp=util.get_time_stamp())
+        shutil.copytree(self.calib_root, backup_dir)
         logging.debug("Backup directory: %s", backup_dir)
 
     def copy_slgm_into_other_gain_modes(self):
@@ -1129,7 +1129,7 @@ class ExcaliburNode(object):
 
         """
         logging.info("Copying SLGM calib to other gain modes")
-        template_path = posixpath.join(self.calib_dir,
+        template_path = posixpath.join(self.calib_root,
                                        'fem{fem}'.format(fem=self.fem),
                                        self.settings['mode'],
                                        '{gain_mode}')
@@ -1165,7 +1165,7 @@ class ExcaliburNode(object):
         discbits = np.zeros(self.full_array_shape)
         for chip_idx in chips:
             discbits_file = posixpath.join(
-                self.template_path, '{disc}.chip{chip}'.format(
+                self.current_calib, '{disc}.chip{chip}'.format(
                     disc=discbits_filename, chip=chip_idx))
 
             util.set_chip_slice(discbits, chip_idx, np.loadtxt(discbits_file))
@@ -1762,7 +1762,7 @@ class ExcaliburNode(object):
 
     def rotate_config(self):
         """Rotate discbits files in EPICS calibration directory."""
-        template_path = posixpath.join(self.calib_dir + '_epics',
+        template_path = posixpath.join(self.calib_root + '_epics',
                                        'fem{fem}',
                                        'spm',
                                        'slgm',

@@ -30,7 +30,7 @@ class InitTest(unittest.TestCase):
         self.assertEqual(self.e.dac_target, 10)
         self.assertEqual(self.e.num_sigma, 3.2)
         self.assertEqual(self.e.allowed_delta, 4)
-        self.assertEqual(self.e.calib_dir, "/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib")
+        self.assertEqual(self.e.calib_root, "/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib")
         self.assertEqual(self.e.config_dir, "/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/config")
         self.assertEqual(self.e.settings, {'mode': 'spm',
                                            'gain': 'slgm',

@@ -35,7 +35,7 @@ class InitTest(unittest.TestCase):
             self.assertEqual(node + 1, self.e.Nodes[node].fem)
 
         self.assertEqual(self.e.MasterNode, self.e.Nodes[0])
-        self.assertEqual(self.e.calib_dir, self.e.MasterNode.calib_dir)
+        self.assertEqual(self.e.calib_root, self.e.MasterNode.calib_root)
 
     def test_given_invalid_node_then_error(self):
         detector_ = MagicMock(name="test-detector", nodes=[10],
@@ -315,8 +315,8 @@ class FunctionsTest(unittest.TestCase):
 
         self.e.rotate_configs()
 
-        copy_mock.assert_called_once_with(self.e.calib_dir,
-                                          self.e.calib_dir + "_epics")
+        copy_mock.assert_called_once_with(self.e.calib_root,
+                                          self.e.calib_root + "_epics")
         for node in self.e.Nodes[1:2:6]:
             node.rotate_config.assert_called_once_with()
         for node in self.e.Nodes[0:2:6]:

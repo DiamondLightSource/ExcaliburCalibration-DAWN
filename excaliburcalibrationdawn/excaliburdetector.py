@@ -59,9 +59,9 @@ class ExcaliburDetector(object):
         self.dawn = ExcaliburDAWN("Detector")
 
     @property
-    def calib_dir(self):
+    def calib_root(self):
         """Get calibration directory from MasterNode."""
-        return self.MasterNode.calib_dir
+        return self.MasterNode.calib_root
 
     @property
     def detector_range(self):
@@ -255,8 +255,8 @@ class ExcaliburDetector(object):
         nodes 1, 3, and 5
 
         """
-        epics_calib_path = self.calib_dir + '_epics'
-        shutil.copytree(self.calib_dir, epics_calib_path)
+        epics_calib_path = self.calib_root + '_epics'
+        shutil.copytree(self.calib_root, epics_calib_path)
         logging.debug("EPICS calibration directory: %s", epics_calib_path)
 
         for node_idx in [1, 3, 5]:
