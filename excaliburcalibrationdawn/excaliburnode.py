@@ -133,23 +133,23 @@ class ExcaliburNode(object):
     @property
     def discL_bits(self):
         """Generate discL_bits file paths for current template path."""
-        template = posixpath.join(self.current_calib, '{disc}.chip{chip}')
+        template = posixpath.join(self.current_calib, '{disc}.chip{chip_idx}')
         return [template.format(disc="discLbits",
-                                chip=chip) for chip in self.chip_range]
+                                chip_idx=idx) for idx in self.chip_range]
 
     @property
     def discH_bits(self):
         """Generate discH_bits file paths for current template path."""
-        template = posixpath.join(self.current_calib, '{disc}.chip{chip}')
+        template = posixpath.join(self.current_calib, '{disc}.chip{chip_idx}')
         return [template.format(disc="discHbits",
-                                chip=chip) for chip in self.chip_range]
+                                chip_idx=idx) for idx in self.chip_range]
 
     @property
     def pixel_mask(self):
         """Generate pixelmask file paths for current template path."""
-        template = posixpath.join(self.current_calib, '{disc}.chip{chip}')
+        template = posixpath.join(self.current_calib, '{disc}.chip{chip_idx}')
         return [template.format(disc="pixelmask",
-                                chip=chip) for chip in self.chip_range]
+                                chip_idx=idx) for idx in self.chip_range]
 
     @property
     def dacs_file(self):
@@ -305,7 +305,7 @@ class ExcaliburNode(object):
 
         You need to edit this function to define which mode (SPM or CSM) and
         which gains you want to calibrate during the threshold_equalization
-        sequence
+        sequence.
 
         Args:
             chips(list(int)): Chip or list of chips to calibrate
@@ -558,17 +558,17 @@ class ExcaliburNode(object):
         offset = np.zeros(8)
         gain = np.zeros(8)
 
-        for chip in chips:
+        for chip_idx in chips:
             x = np.array([E1_E, E2_E, E3_E])
-            y = np.array([E1_Dac[self.fem - 1, chip],
-                          E2_Dac[self.fem - 1, chip],
-                          E3_Dac[self.fem - 1, chip]])
+            y = np.array([E1_Dac[self.fem - 1, chip_idx],
+                          E2_Dac[self.fem - 1, chip_idx],
+                          E3_Dac[self.fem - 1, chip_idx]])
 
             p1, p2 = self.dawn.plot_linear_fit(x, y, [0, 1], "DAC Value",
                                                "Energy", "DAC vs Energy",
-                                               "Chip {}".format(chip))
-            offset[chip] = p1
-            gain[chip] = p2
+                                               "Chip {}".format(chip_idx))
+            offset[chip_idx] = p1
+            gain[chip_idx] = p2
 
         self.save_kev2dac_calib(threshold, gain, offset)
 
@@ -596,9 +596,9 @@ class ExcaliburNode(object):
 
         thresh_DACs = (thresh_energy * thresh_coeff[0, :] +
                        thresh_coeff[1, :]).astype(np.int)
-        for chip in range(8):
-            self.set_dac([chip],
-                         "Threshold" + str(threshold), thresh_DACs[chip])
+        for chip_idx in range(8):
+            self.set_dac([chip_idx],
+                         "Threshold" + str(threshold), thresh_DACs[chip_idx])
 
         time.sleep(0.2)
         self.settings['exposure'] = 100
@@ -683,11 +683,11 @@ class ExcaliburNode(object):
                 self._write_dac(chip_idx, dac, value)
         self.app.load_dacs(chips, self.dacs_file)
 
-    def _write_dac(self, chip, name, value):
+    def _write_dac(self, chip_idx, name, value):
         """Write a new DAC value to the dacs file in the calibration directory.
 
         Args:
-            chip(int): Chip to write DAC for
+            chip_idx(int): Chip to write DAC for
             name(str): Name of DAC
             value(str/int): Value to set DAC to
 
@@ -697,7 +697,7 @@ class ExcaliburNode(object):
         with open(self.dacs_file, "r") as dac_file:
             f_content = dac_file.readlines()
 
-        line_nb = chip * 29 + np.int(self.dac_number[name])
+        line_nb = chip_idx * 29 + np.int(self.dac_number[name])
         f_content[line_nb] = new_line
         with open(self.dacs_file, "w") as dac_file:
             dac_file.writelines(f_content)
@@ -772,12 +772,12 @@ class ExcaliburNode(object):
         self.dawn.plot_dac_scan(plot_data, dac_axis)
         return plot_data, dac_axis
 
-    def load_temp_config(self, chip, discLbits=None, discHbits=None,
+    def load_temp_config(self, chip_idx, discLbits=None, discHbits=None,
                          mask_bits=None):
         """Save the given disc configs to temporary files and load them.
 
         Args:
-            chip(list(int)): Chip to load config for
+            chip_idx(list(int)): Chip to load config for
             discLbits(numpy.array): DiscL pixel config (256 x 256 : 0 to 31)
             discHbits(numpy.array): DiscH pixel config (256 x 256 : 0 to 31)
             mask_bits(numpy.array): Pixel mask (256 x 256 : 0 or 1)
@@ -794,7 +794,7 @@ class ExcaliburNode(object):
         np.savetxt(discH_bits_file, discHbits, fmt="%.18g", delimiter=" ")
         np.savetxt(pixel_bits_file, mask_bits, fmt="%.18g", delimiter=" ")
 
-        self.app.load_config(chip,
+        self.app.load_config(chip_idx,
                              discL_bits_file, discH_bits_file, pixel_bits_file)
 
     def load_config(self, chips=range(8)):
@@ -808,9 +808,10 @@ class ExcaliburNode(object):
         """
         logging.info("Loading discriminator bits from config directory.")
 
-        for chip in chips:
-            self.app.load_config(chip, self.discL_bits[chip],
-                                 self.discH_bits[chip], self.pixel_mask[chip])
+        for chip_idx in chips:
+            self.app.load_config(chip_idx, self.discL_bits[chip_idx],
+                                 self.discH_bits[chip_idx],
+                                 self.pixel_mask[chip_idx])
 
         self.set_dac(range(8), "Threshold1", 100)
         self.set_dac(range(8), "Threshold0", 40)
@@ -1400,20 +1401,20 @@ class ExcaliburNode(object):
         """Print out optimization results."""
         print("Edge shift (in Threshold DAC units) produced by 1 DACdisc DAC"
               "unit for discbits=15:")
-        for chip in chips:
-            print("Chip {chip}: {shift}".format(
-                chip=chip, shift=str(round(gain[chip], 2))))
+        for chip_idx in chips:
+            print("Chip {idx}: {shift}".format(
+                idx=chip_idx, shift=str(round(gain[chip_idx], 2))))
 
         print("Mean noise edge (DAC Units) for discbits=15:")
-        for chip in chips:
-            print("Chip {chip}: {noise}".format(
-                chip=chip, noise=round(x0[chip])))
+        for chip_idx in chips:
+            print("Chip {idx}: {noise}".format(
+                idx=chip_idx, noise=round(x0[chip_idx])))
 
         print("Sigma of noise edge (DAC units rms) distribution for "
               "discbits=15:")
-        for chip in chips:
-            print("Chip {chip}: {sigma}".format(
-                chip=chip, sigma=round(sigma[chip])))
+        for chip_idx in chips:
+            print("Chip {idx}: {sigma}".format(
+                idx=chip_idx, sigma=round(sigma[chip_idx])))
 
         ######################################################################
         # STEP 3
@@ -1423,9 +1424,9 @@ class ExcaliburNode(object):
         ######################################################################
 
         print("Optimum equalization target (DAC units):")
-        for chip in chips:
-            print("Chip {chip}: {target}".format(
-                chip=chip, target=round(x0[chip])))
+        for chip_idx in chips:
+            print("Chip {idx}: {target}".format(
+                idx=chip_idx, target=round(x0[chip_idx])))
 
         if abs(x0 - self.dac_target).any() > self.allowed_delta:  # To be checked
             print("########################### ONE OR MORE CHIPS NEED A"
@@ -1438,15 +1439,15 @@ class ExcaliburNode(object):
               "within +/- {num_sigma} sigma of the target, at the target "
               "of {target}:".format(num_sigma=self.num_sigma,
                                     target=self.dac_target))
-        for chip in chips:
-            print("Chip {chip}: {shift}".format(
-                chip=chip, shift=int(self.num_sigma * sigma[chip])))
+        for chip_idx in chips:
+            print("Chip {idx}: {shift}".format(
+                idx=chip_idx, shift=int(self.num_sigma * sigma[chip_idx])))
 
         print("Edge shift (Threshold DAC units) produced by 1 DACdisc DAC"
               " unit for discbits=0 (maximum shift):")
-        for chip in chips:
-            print("Chip {chip}: {shift}".format(
-                chip=chip, shift=round(gain[chip], 2)))
+        for chip_idx in chips:
+            print("Chip {idx}: {shift}".format(
+                idx=chip_idx, shift=round(gain[chip_idx], 2)))
 
         print("###############################################################"
               "########################")
@@ -1454,17 +1455,17 @@ class ExcaliburNode(object):
               "with an edge within +/- {num_sigma} sigma of the target, at "
               "the target of {target}".format(num_sigma=self.num_sigma,
                                               target=self.dac_target))
-        for chip in chips:
-            print("Chip {chip}: {opt_value}".format(
-                chip=chip, opt_value=opt_dac_disc[chip]))
+        for chip_idx in chips:
+            print("Chip {idx}: {opt_value}".format(
+                idx=chip_idx, opt_value=opt_dac_disc[chip_idx]))
 
         print("###############################################################"
               "########################")
         print("Edge shift (Threshold DAC Units) produced by 1 step of the"
               "32 discbit correction steps:")
-        for chip in chips:
-            print("Chip {chip}: {shift}".format(
-                chip=chip, shift=opt_dac_disc[chip] / 16))
+        for chip_idx in chips:
+            print("Chip {idx}: {shift}".format(
+                idx=chip_idx, shift=opt_dac_disc[chip_idx] / 16))
 
     def _equalise_discbits(self, chips, disc_name, threshold, roi_full_mask,
                            method):
@@ -1520,10 +1521,10 @@ class ExcaliburNode(object):
                 # TODO: Check if this can be done after for loop
                 scan_nb = np.argmin(np.abs(edge_dacs_stack - self.dac_target),
                                     axis=0)
-                for chip in chips:
+                for chip_idx in chips:
                     for x in range(self.chip_size):
-                        for y in range(chip * self.chip_size,
-                                       (chip + 1) * self.chip_size):
+                        for y in range(chip_idx * self.chip_size,
+                                       (chip_idx + 1) * self.chip_size):
                             discbits[x, y] = \
                                 discbits_stack[scan_nb[x, y], x, y]
 
@@ -1556,7 +1557,7 @@ class ExcaliburNode(object):
             mask(numpy.array): Pixel mask to load
 
         """
-        for chip in chips:
+        for chip_idx in chips:
             if disc_name == "discH":
                 discLbits = self._load_discbits(chips, "discLbits")
                 discHbits = temp_bits
@@ -1567,10 +1568,10 @@ class ExcaliburNode(object):
                 raise ValueError("Discriminator must be L or H, got {bad_disc}"
                                  .format(bad_disc=disc_name))
 
-            self.load_temp_config(chip,
-                                  util.grab_chip_slice(discLbits, chip),
-                                  util.grab_chip_slice(discHbits, chip),
-                                  util.grab_chip_slice(mask, chip))
+            self.load_temp_config(chip_idx,
+                                  util.grab_chip_slice(discLbits, chip_idx),
+                                  util.grab_chip_slice(discHbits, chip_idx),
+                                  util.grab_chip_slice(mask, chip_idx))
 
     def check_calib(self, chips, dac_range):
         """Check if dac scan looks OK after threshold calibration.
@@ -1628,20 +1629,20 @@ class ExcaliburNode(object):
         """
         if roi_type == "rect":
             roi_full_mask = np.zeros(self.full_array_shape)
-            for chip in chips:
+            for chip_idx in chips:
                 roi_full_mask[step*256/steps:step*256/steps + 256/steps,
-                              chip*256:chip*256 + 256] = 1
+                              chip_idx*256:chip_idx*256 + 256] = 1
         elif roi_type == "spacing":
             spacing = steps**0.5
             roi_full_mask = np.zeros(self.full_array_shape)
-            bin_repr = np.binary_repr(step, 2)
-            for chip in chips:
-                roi_full_mask[0 + int(bin_repr[0]):256 -
-                                  int(bin_repr[0]):spacing,
-                              chip*256 +
-                                  int(bin_repr[1]):chip*256 +
-                                  256 - int(bin_repr[1]):spacing] \
-                    = 1
+            offset = np.binary_repr(step, 2)
+            for chip_idx in chips:
+                roi_full_mask[int(offset[0]):
+                              self.chip_size - int(offset[0]):
+                              spacing,
+                              chip_idx * self.chip_size + int(offset[1]):
+                              (chip_idx + 1) * self.chip_size - int(offset[1]):
+                              spacing] = 1
         else:
             raise NotImplementedError("Available methods are 'rect' and "
                                       "'spacing', got {}".format(roi_type))
