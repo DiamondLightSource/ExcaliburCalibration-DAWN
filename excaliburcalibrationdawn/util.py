@@ -106,34 +106,20 @@ def get_time_stamp():
     return time_stamp
 
 
-def generate_file_name(base_name, node):
-    """Generate file name with a time stamp from a given base_name and node.
-
-    Args:
-        base_name(str): Base file name - e.g. Image, DAC Scan
-        node(int): Specifier for node
-
-    Returns:
-        str: New file name
-
-    """
-    return "{tag}_{base_name}_{node}.hdf5".format(tag=get_time_stamp(),
-                                                  base_name=base_name,
-                                                  node=node)
-
-
-def generate_plot_name(base_name):
-    """Generate plot name with a time stamp from a given base_name.
+def tag_plot_name(base_name, parent):
+    """Generate plot name with a time stamp from a given base name.
 
     Args:
         base_name(str): Base plot name - e.g. Image, DAC Scan
+        parent(str): Prefix for plot name
 
     Returns:
         str: New plot name
 
     """
-    return "{base_name} - {tag}".format(base_name=base_name,
-                                        tag=get_time_stamp())
+    return "{suffix} - {base_name} - {tag}".format(suffix=parent,
+                                                   base_name=base_name,
+                                                   tag=get_time_stamp())
 
 
 def to_list(value):

@@ -96,6 +96,7 @@ class ExcaliburNode(object):
         self.calib_root = posixpath.join(self.root_path,
                                          "3M-RX001/{}/calib".format(
                                              detector_config.detector.name))
+        self.node_tag = "Node {}".format(node)
 
         # Detector default settings - See excaliburtestappinterface for details
         self.settings = dict(mode="spm",  # spm or csm
@@ -114,7 +115,7 @@ class ExcaliburNode(object):
         # Helper classes
         self.app = ExcaliburTestAppInterface(self.fem, self.ip_address, 6969,
                                              self.server_name)
-        self.dawn = ExcaliburDAWN("Node {}".format(self.fem))
+        self.dawn = ExcaliburDAWN()
 
         self.logger = logging.getLogger("Node{}".format(self.fem))
         self.logger.info("Creating ExcaliburNode with server %s and ip %s",
@@ -278,7 +279,7 @@ class ExcaliburNode(object):
         if not os.path.isfile(mask_path):
             raise IOError("Mask file '%s' does not exist", mask_path)
 
-        output_file = util.generate_file_name("TPImage", self.fem)
+        output_file = self.generate_file_name("TPImage")
         output_path = posixpath.join(self.output_folder, output_file)
 
         for chip_idx in self.chip_range:
@@ -295,7 +296,8 @@ class ExcaliburNode(object):
             self.app.grab_remote_file(output_path)
         util.wait_for_file(output_path, 10)
         image = self.dawn.load_image_data(output_path)
-        self.dawn.plot_image(image, util.generate_plot_name("TPImage"))
+        self.dawn.plot_image(image, util.tag_plot_name("TPImage",
+                                                       self.node_tag))
         return image
 
     def threshold_equalization(self, chips=range(8)):
@@ -468,7 +470,7 @@ class ExcaliburNode(object):
                            [stop, (chip_idx + 1) * self.chip_size - 1], 1)
 
         self._apply_mask(chips, mask)
-        self.dawn.plot_image(mask, "Mask")
+        self.dawn.plot_image(mask, util.tag_plot_name("Mask", self.node_tag))
 
     def one_energy_thresh_calib(self, threshold=0):
         """Plot single energy threshold calibration spectra.
@@ -556,6 +558,7 @@ class ExcaliburNode(object):
         offset = np.zeros(8)
         gain = np.zeros(8)
 
+        plot_name = util.tag_plot_name("DAC vs Energy", self.node_tag)
         for chip_idx in chips:
             x = np.array([E1_E, E2_E, E3_E])
             y = np.array([E1_Dac[self.fem - 1, chip_idx],
@@ -563,7 +566,7 @@ class ExcaliburNode(object):
                           E3_Dac[self.fem - 1, chip_idx]])
 
             p1, p2 = self.dawn.plot_linear_fit(x, y, [0, 1], "DAC Value",
-                                               "Energy", "DAC vs Energy",
+                                               "Energy", plot_name,
                                                "Chip {}".format(chip_idx))
             offset[chip_idx] = p1
             gain[chip_idx] = p2
@@ -726,7 +729,7 @@ class ExcaliburNode(object):
         self.logger.info("Performing DAC Scan of %s; Start: %s, Stop: %s, "
                          "Step: %s", threshold, *dac_range.__dict__.values())
 
-        dac_scan_file = util.generate_file_name("DACScan", self.fem)
+        dac_scan_file = self.generate_file_name("DACScan")
 
         dac_file = self.dacs_file
         self.app.perform_dac_scan(chips, threshold, dac_range, exposure,
@@ -768,7 +771,8 @@ class ExcaliburNode(object):
             chip = scan_data[:, 0:256, chip_idx * 256:(chip_idx + 1) * 256]
             plot_data[chip_idx, :] = chip.mean(2).mean(1)
 
-        self.dawn.plot_dac_scan(plot_data, dac_axis)
+        plot_name = self.node_tag + " - DAC Scan"
+        self.dawn.plot_dac_scan(plot_data, dac_axis, plot_name)
         return plot_data, dac_axis
 
     def load_temp_config(self, chip_idx, discLbits=None, discHbits=None,
@@ -831,8 +835,7 @@ class ExcaliburNode(object):
         self.logger.info("Capturing image with %sms exposure", exposure)
         image = self._acquire(1, exposure)
 
-        self.dawn.plot_image(image, util.generate_plot_name("Image"))
-
+        self.dawn.plot_image(image, util.tag_plot_name("Image", self.node_tag))
         return image
 
     def burst(self, frames, exposure):
@@ -857,12 +860,11 @@ class ExcaliburNode(object):
 
         image = self._acquire(frames, exposure)
 
+        base_name = util.tag_plot_name("Image", self.node_tag)
         plots = min(frames, 5)  # Limit to 5 frames
-        plot_tag = time.asctime()
         for plot in range(plots):
-            self.dawn.plot_image(image[plot, :, :],
-                                 name="Image_{tag}_{plot}".format(
-                                 tag=plot_tag, plot=plot))
+            name = "{base_name} - {idx}".format(base_name=base_name, idx=plot)
+            self.dawn.plot_image(image[plot, :, :], name)
 
     def cont_burst(self, frames, exposure):
         """Acquire images in continuous burst mode.
@@ -884,7 +886,7 @@ class ExcaliburNode(object):
             burst(bool): Set burst mode for acquisition
 
         """
-        file_name = util.generate_file_name("Image", self.fem)
+        file_name = self.generate_file_name("Image")
 
         self.app.acquire(self.chip_range, frames, exposure,
                          burst=burst,
@@ -906,6 +908,19 @@ class ExcaliburNode(object):
         util.wait_for_file(file_path, 10)
         image = self.dawn.load_image_data(file_path)
         return image
+
+    def generate_file_name(self, base_name):
+        """Generate file name with a time stamp from base_name and node.
+
+        Args:
+            base_name(str): Base file name - e.g. Image, DAC Scan
+
+        Returns:
+            str: New file name
+
+        """
+        return "{tag}_{base_name}_{node}.hdf5".format(
+            tag=util.get_time_stamp(), base_name=base_name, node=self.fem)
 
     def acquire_ff(self, num, exposure):
         """Acquire and sum flat-field images.
@@ -956,7 +971,7 @@ class ExcaliburNode(object):
 
         """
         # TODO: This just plots, but doesn't apply it
-        file_name = util.generate_file_name("FFImage", self.fem)
+        file_name = self.generate_file_name("FFImage")
 
         image_path = posixpath.join(self.output_folder, file_name)
         images = self.dawn.load_image_data(image_path)
@@ -1646,7 +1661,8 @@ class ExcaliburNode(object):
             raise NotImplementedError("Available methods are 'rect' and "
                                       "'spacing', got {}".format(roi_type))
 
-        self.dawn.plot_image(roi_full_mask, name="Roi Mask")
+        self.dawn.plot_image(roi_full_mask,
+                             util.tag_plot_name("Roi Mask", self.node_tag))
 
         return roi_full_mask
 
@@ -1711,10 +1727,11 @@ class ExcaliburNode(object):
             num(int): Number of images to acquire
 
         """
+        plot_name = util.tag_plot_name("Sum", self.node_tag)
         tmp = 0
         for _ in range(num):
             tmp = self.expose() + tmp
-            self.dawn.plot_image(tmp, name="Sum")
+            self.dawn.plot_image(tmp, plot_name)
 
             return  # TODO: This will always stop after first loop
 

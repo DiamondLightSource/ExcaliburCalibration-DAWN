@@ -30,7 +30,7 @@ class InitTest(unittest.TestCase):
         e = ExcaliburNode(node, mock_config)
 
         ETAI_mock.assert_called_once_with(3, "192.168.0.104", 6969, None)
-        DAWN_mock.assert_called_once_with("Node 3")
+        DAWN_mock.assert_called_once_with()
         self.assertEqual(ETAI_mock.return_value, e.app)
         self.assertEqual(DAWN_mock.return_value, e.dawn)
 
@@ -243,10 +243,16 @@ class SimpleFunctionsTest(unittest.TestCase):
         load_config_mock.assert_called_once_with(range(8))
         copy_mock.assert_called_once_with()
 
+    @patch(util_patch_path + '.get_time_stamp', return_value="20161020~154548")
+    def test_generate_file_name(self, _):
+        file_name = self.e.generate_file_name("TestImage")
+
+        self.assertEqual("20161020~154548_TestImage_1.hdf5", file_name)
+
 
 @patch(DAWN_patch_path + '.plot_image')
-@patch(util_patch_path + '.generate_plot_name')
-@patch(util_patch_path + '.generate_file_name')
+@patch(util_patch_path + '.tag_plot_name')
+@patch(Node_patch_path + '.generate_file_name')
 @patch(DAWN_patch_path + '.load_image_data')
 @patch(util_patch_path + '.wait_for_file')
 @patch(ETAI_patch_path + '.grab_remote_file')
@@ -393,8 +399,10 @@ class ThresholdCalibrationTest(unittest.TestCase):
         np.testing.assert_array_almost_equal(expected_slope, save_mock.call_args[0][1][0])
         self.assertTrue((save_mock.call_args[0][2] == expected_offset).all())
 
+    @patch(util_patch_path + '.tag_plot_name')
     @patch(DAWN_patch_path + '.plot_linear_fit', return_value=(10, 2))
-    def test_multiple_energy_thresh_calib(self, plot_mock, save_mock, _):
+    def test_multiple_energy_thresh_calib(self, plot_mock, tag_mock, save_mock,
+                                          _):
         self.e.config.E1_DAC = dict(slgm=np.array([[62]]))
         self.e.config.E2_DAC = dict(slgm=np.array([[62]]))
         self.e.config.E3_DAC = dict(slgm=np.array([[62]]))
@@ -406,8 +414,10 @@ class ThresholdCalibrationTest(unittest.TestCase):
         self.e.settings['gain'] = 'slgm'
         self.e.multiple_energy_thresh_calib([0])
 
+        tag_mock.assert_called_once_with("DAC vs Energy", "Node 1")
         plot_mock.assert_called_once_with(ANY, ANY, [0, 1], "DAC Value",
-                                          "Energy", "DAC vs Energy", "Chip 0")
+                                          "Energy", tag_mock.return_value,
+                                          "Chip 0")
         np.testing.assert_array_equal(expected_array_1, plot_mock.call_args[0][0])
         np.testing.assert_array_equal(expected_array_2, plot_mock.call_args[0][1])
 
@@ -573,14 +583,14 @@ class TestAppCallsTest(unittest.TestCase):
     @patch(DAWN_patch_path + '.load_image_data')
     @patch(ETAI_patch_path + '.acquire')
     @patch(util_patch_path + '.wait_for_file')
-    @patch(util_patch_path + '.generate_file_name')
+    @patch(Node_patch_path + '.generate_file_name')
     @patch(ETAI_patch_path + '.grab_remote_file')
     def test_acquire(self, grab_mock, gen_mock, wait_mock, acquire_mock,
                      load_mock):
 
         self.e._acquire(10, 100, burst=True)
 
-        gen_mock.assert_called_once_with("Image", 1)
+        gen_mock.assert_called_once_with("Image")
         acquire_mock.assert_called_once_with(
             [0, 1, 2, 3, 4, 5, 6, 7], 10, 100, trig_mode=0, gain_mode='slgm',
             burst=True, pixel_mode='spm', counter=0, equalization=0,
@@ -593,7 +603,7 @@ class TestAppCallsTest(unittest.TestCase):
     @patch(DAWN_patch_path + '.load_image_data')
     @patch(ETAI_patch_path + '.acquire')
     @patch(util_patch_path + '.wait_for_file')
-    @patch(util_patch_path + '.generate_file_name')
+    @patch(Node_patch_path + '.generate_file_name')
     @patch(ETAI_patch_path + '.grab_remote_file')
     def test_acquire_with_remote_node(self, grab_mock, gen_mock,
                                       wait_mock, acquire_mock, load_mock):
@@ -601,7 +611,7 @@ class TestAppCallsTest(unittest.TestCase):
 
         self.e._acquire(10, 100, burst=True)
 
-        gen_mock.assert_called_once_with("Image", 1)
+        gen_mock.assert_called_once_with("Image")
         acquire_mock.assert_called_once_with(
             [0, 1, 2, 3, 4, 5, 6, 7], 10, 100, trig_mode=0, gain_mode='slgm',
             burst=True, pixel_mode='spm', counter=0, equalization=0,
@@ -611,27 +621,29 @@ class TestAppCallsTest(unittest.TestCase):
         wait_mock.assert_called_once_with(gen_mock.return_value, 10)
         load_mock.assert_called_once_with(gen_mock.return_value)
 
-    @patch(util_patch_path + '.get_time_stamp', return_value="20161028~151003")
+    @patch(util_patch_path + '.tag_plot_name')
     @patch(DAWN_patch_path + '.plot_image')
     @patch(Node_patch_path + '._acquire')
-    def test_expose(self, acquire_mock, plot_mock, _):
+    def test_expose(self, acquire_mock, plot_mock, tag_mock):
 
         self.e.expose()
 
         acquire_mock.assert_called_once_with(1, 100)
+        tag_mock.assert_called_once_with("Image", "Node 1")
         plot_mock.assert_called_once_with(acquire_mock.return_value,
-                                          "Image - 20161028~151003")
+                                          tag_mock.return_value)
 
-    @patch(util_patch_path + '.get_time_stamp', return_value="20161028~151003")
+    @patch(util_patch_path + '.tag_plot_name')
     @patch(DAWN_patch_path + '.plot_image')
     @patch(Node_patch_path + '._acquire')
-    def test_expose_with_exposure(self, acquire_mock, plot_mock, _):
+    def test_expose_with_exposure(self, acquire_mock, plot_mock, tag_mock):
 
         self.e.expose(200)
 
         acquire_mock.assert_called_once_with(1, 200)
+        tag_mock.assert_called_once_with("Image", "Node 1")
         plot_mock.assert_called_once_with(acquire_mock.return_value,
-                                          "Image - 20161028~151003")
+                                          tag_mock.return_value)
 
     @patch(Node_patch_path + '._acquire')
     def test_burst(self, acquire_mock):
@@ -640,16 +652,21 @@ class TestAppCallsTest(unittest.TestCase):
 
         acquire_mock.assert_called_once_with(10, 100, burst=True)
 
-    @patch('time.asctime', return_value='Tue Sep 27 10:12:27 2016')
+    @patch(util_patch_path + '.tag_plot_name',
+           return_value="Node 1 - Image - 20161124~113442")
     @patch(DAWN_patch_path + '.plot_image')
     @patch(Node_patch_path + '._acquire')
-    def test_cont(self, acquire_mock, plot_mock, _):
+    def test_cont(self, acquire_mock, plot_mock, tag_mock):
 
         self.e.cont(100, 10)
 
         self.assertEqual("continuous", self.e.settings['readmode'])
         acquire_mock.assert_called_once_with(100, 10)
-        plot_mock.assert_called_with(acquire_mock.return_value.__getitem__(), name=ANY)
+        tag_mock.assert_called_once_with("Image", "Node 1")
+        plot_mock.assert_has_calls(
+            [call(acquire_mock.return_value.__getitem__(),
+                  "Node 1 - Image - 20161124~113442 - {}".format(idx))
+             for idx in range(5)])
         self.assertEqual(5, plot_mock.call_count)
 
     @patch(Node_patch_path + '._acquire')
@@ -659,6 +676,18 @@ class TestAppCallsTest(unittest.TestCase):
 
         self.assertEqual("continuous", self.e.settings['readmode'])
         acquire_mock.assert_called_once_with(100, 10, burst=True)
+
+    @patch(util_patch_path + '.tag_plot_name')
+    @patch(DAWN_patch_path + '.plot_image')
+    @patch(Node_patch_path + '.expose')
+    def test_correct_calls_made(self, expose_mock, plot_mock, tag_mock):
+        e = ExcaliburNode(1, mock_config)
+
+        e.loop(1)
+
+        expose_mock.assert_called_once_with()
+        plot_mock.assert_called_once_with(expose_mock.return_value.__add__(),
+                                          tag_mock.return_value)
 
     @patch(ETAI_patch_path + '.load_dacs')
     @patch(Node_patch_path + '._write_dac')
@@ -835,7 +864,7 @@ class Fe55ImageRX001Test(unittest.TestCase):
 
 @patch(Node_patch_path + '.display_dac_scan')
 @patch(DAWN_patch_path + '.load_image_data')
-@patch(util_patch_path + '.generate_file_name',
+@patch(Node_patch_path + '.generate_file_name',
        return_value="20161020~154548_TestImage.hdf5")
 @patch(ETAI_patch_path + '.perform_dac_scan')
 @patch(util_patch_path + '.wait_for_file')
@@ -853,7 +882,7 @@ class ScanDacTest(unittest.TestCase):
                                          gen_mock, load_mock, display_mock):
         self.e.scan_dac(self.chips, 'Threshold0', self.dac_range)
 
-        gen_mock.assert_called_once_with("DACScan", 1)
+        gen_mock.assert_called_once_with("DACScan")
         scan_mock.assert_called_once_with(self.chips, 'Threshold0',
                                           self.dac_range, 5, self.dac_file,
                                           '/tmp', gen_mock.return_value)
@@ -874,7 +903,7 @@ class ScanDacTest(unittest.TestCase):
 
         self.e.scan_dac(self.chips, 'Threshold0', self.dac_range)
 
-        gen_mock.assert_called_once_with("DACScan", 1)
+        gen_mock.assert_called_once_with("DACScan")
         scan_mock.assert_called_once_with(self.chips, 'Threshold0',
                                           self.dac_range, 5, self.dac_file,
                                           '/tmp', gen_mock.return_value,)
@@ -954,7 +983,7 @@ class ApplyFFCorrectionTest(unittest.TestCase):
     @patch(DAWN_patch_path + '.plot_image')
     @patch(DAWN_patch_path + '.load_image_data')
     @patch('time.sleep')
-    @patch(util_patch_path + '.generate_file_name')
+    @patch(Node_patch_path + '.generate_file_name')
     def test_apply_ff_correction(self, gen_mock, sleep_mock, load_mock,
                                  plot_mock):
         e = ExcaliburNode(1, mock_config)
@@ -962,7 +991,7 @@ class ApplyFFCorrectionTest(unittest.TestCase):
 
         e.apply_ff_correction(1, 0.1)
 
-        gen_mock.assert_called_once_with("FFImage", 1)
+        gen_mock.assert_called_once_with("FFImage")
         load_mock.assert_called_once_with(gen_mock.return_value)
         plot_mock.assert_called_once_with(load_mock.return_value.__getitem__().__mul__().__getitem__(), name='Image data Cor')
 
@@ -1017,9 +1046,10 @@ class MaskUnmaskTest(unittest.TestCase):
         np.testing.assert_array_equal(expected_array,
                                       plot_mock.call_args[0][0])
 
+    @patch(util_patch_path + '.tag_plot_name')
     @patch(DAWN_patch_path + '.plot_image')
     @patch(Node_patch_path + '._apply_mask')
-    def test_mask_rows(self, apply_mock, plot_mock):
+    def test_mask_rows(self, apply_mock, plot_mock, tag_mock):
 
         self.e.full_array_shape = [4, 16]  # Make testing easier
         self.e.chip_size = 4  # Make testing easier
@@ -1038,7 +1068,8 @@ class MaskUnmaskTest(unittest.TestCase):
 
         apply_mock.assert_called_once_with(chips, ANY)
         np.testing.assert_array_equal(expected_array, apply_mock.call_args[0][1])
-        plot_mock.assert_called_once_with(ANY, "Mask")
+        tag_mock.assert_called_once_with("Mask", "Node 1")
+        plot_mock.assert_called_once_with(ANY, tag_mock.return_value)
         np.testing.assert_array_equal(expected_array, plot_mock.call_args[0][0])
 
     @patch(Node_patch_path + '._mask_noisy_pixels')
@@ -1532,19 +1563,6 @@ class CalibrateDiscTest(unittest.TestCase):
         self.assertEqual(save_mock.call_args_list[1][0], (chips, combine_rois.return_value, 'discLbits'))
         load_mock.assert_called_once_with(chips)
         copy_mock.assert_called_once_with()
-
-
-class LoopTest(unittest.TestCase):
-
-    @patch(DAWN_patch_path + '.plot_image')
-    @patch(Node_patch_path + '.expose')
-    def test_correct_calls_made(self, expose_mock, plot_mock):
-        e = ExcaliburNode(1, mock_config)
-
-        e.loop(1)
-
-        expose_mock.assert_called_once_with()
-        plot_mock.assert_called_once_with(expose_mock.return_value.__add__(), name='Sum')
 
 
 class CSMTest(unittest.TestCase):

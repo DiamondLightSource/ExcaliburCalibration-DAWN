@@ -98,16 +98,11 @@ class FunctionsTest(unittest.TestCase):
         self.assertEqual(expected_time_stamp, time_stamp)
 
     @patch(util_patch_path + '.get_time_stamp', return_value="20161020~154548")
-    def test_generate_file_name(self, _):
-        file_name = util.generate_file_name("TestImage", 1)
+    def test_tag_plot_name(self, get_mock):
+        plot_name = util.tag_plot_name("TestImage", "Node 1")
 
-        self.assertEqual("20161020~154548_TestImage_1.hdf5", file_name)
-
-    @patch(util_patch_path + '.get_time_stamp', return_value="20161020~154548")
-    def test_generate_plot_name(self, _):
-        plot_name = util.generate_plot_name("TestImage")
-
-        self.assertEqual("TestImage - 20161020~154548", plot_name)
+        get_mock.assert_called_once_with()
+        self.assertEqual("Node 1 - TestImage - 20161020~154548", plot_name)
 
     def test_to_list_given_value_then_return_list(self):
         response = util.to_list(1)

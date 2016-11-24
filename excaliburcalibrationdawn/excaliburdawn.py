@@ -13,17 +13,11 @@ class ExcaliburDAWN(object):
 
     """An interface to DAWN Scisoftpy utilities."""
 
-    def __init__(self, parent_name):
-        """Set up plot and io APIs.
-
-        Args:
-            parent_name(str): Name to prefix plots with
-
-        """
+    def __init__(self):
+        """Set up plot and io APIs."""
         self.plot = scisoftpy.plot
         self.io = scisoftpy.io
 
-        self.name_template = parent_name + " - {}"
         self.current_plots = []
 
         self.logger = logging.getLogger("DAWN")
@@ -36,7 +30,7 @@ class ExcaliburDAWN(object):
             name(str): Name for plot
 
         """
-        self.plot.image(data_set, name=self.name_template.format(name))
+        self.plot.image(data_set, name=name)
         self.logger.info("Image plotted in DAWN as '%s'", name)
 
     def load_image(self, path):
@@ -74,6 +68,9 @@ class ExcaliburDAWN(object):
         self.plot.clear(plot_name)
         if plot_name in self.current_plots:
             self.current_plots.remove(plot_name)
+        else:
+            self.logger.info("Cleared plot %s that wasn't in list of current "
+                             "plots...", plot_name)
 
     def plot_linear_fit(self, x_data, y_data, estimate, x_name, y_name, label,
                         name=None, fit_name=None):
@@ -122,14 +119,13 @@ class ExcaliburDAWN(object):
             label(str): Label for plot line
 
         """
-        full_name = self.name_template.format(plot_name)
-        if full_name not in self.current_plots:
+        if plot_name not in self.current_plots:
             self.plot.line({x_name: x}, {y_name: (y, label)},
-                           name=full_name, title=full_name)
+                           name=plot_name, title=plot_name)
             self.current_plots.append(plot_name)
         else:
             self.plot.addline({x_name: x}, {y_name: (y, label)},
-                              name=full_name, title=full_name)
+                              name=plot_name, title=plot_name)
 
     def plot_gaussian_fit(self, scan_data, plot_name, p0, bins):
         """Calculate the Gaussian least squares fit and plot the result.
@@ -234,7 +230,7 @@ class ExcaliburDAWN(object):
 
         return dac_axis
 
-    def plot_dac_scan(self, scan_data, dac_axis):
+    def plot_dac_scan(self, scan_data, dac_axis, plot_name):
         """Plot the results of threshold dac scan.
 
         Displays an integral plot (DAC Scan) and a differential plot
@@ -243,13 +239,13 @@ class ExcaliburDAWN(object):
         Args:
             scan_data(list(numpy.array)): Data from dac scan to plot
             dac_axis(list(int)): X-axis data for plots
+            plot_name(str): Name for plots
 
         Returns:
             numpy.array: Averaged scan data
 
         """
-        plot_name = "DAC Scan"
-        diff_plot_name = "DAC Scan Differential"
+        diff_plot_name = plot_name + " Differential"
 
         self.clear_plot(plot_name)
         self.clear_plot(diff_plot_name)

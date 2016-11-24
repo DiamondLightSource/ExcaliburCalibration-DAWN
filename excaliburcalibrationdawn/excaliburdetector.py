@@ -53,7 +53,7 @@ class ExcaliburDetector(object):
             if node_idx == master_node:
                 self.MasterNode = node
 
-        self.dawn = ExcaliburDAWN("Detector")
+        self.dawn = ExcaliburDAWN()
         self.logger = logging.getLogger("ExcaliburDetector")
 
     @property
