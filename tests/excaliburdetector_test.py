@@ -313,10 +313,16 @@ class FunctionsTest(unittest.TestCase):
 
     def test_scan_dac(self):
 
-        self.e.scan_dac(0, [0], "Threshold0", Range(0, 10, 1))
+        self.e.Nodes[3].fem = 6
 
-        self.e.Nodes[0].scan_dac.assert_called_once_with([0], "Threshold0",
+        self.e.scan_dac(6, [0], "Threshold0", Range(0, 10, 1))
+
+        self.e.Nodes[3].scan_dac.assert_called_once_with([0], "Threshold0",
                                                          Range(0, 10, 1))
+        other_nodes = list(self.e.Nodes)
+        other_nodes.remove(self.e.Nodes[3])
+        for node in other_nodes:
+            node.scan_dac.assert_not_called()
 
     def test_combine_images(self):
         images = [np.array([[0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
@@ -375,3 +381,14 @@ class UtilTest(unittest.TestCase):
 
         self.assertEqual(expected_start, start)
         self.assertEqual(expected_stop, stop)
+
+    def test_find_node(self):
+
+        idx = self.e._find_node(1)
+
+        self.assertEqual(0, idx)
+
+    def test_find_node_not_found_then_error(self):
+
+        with self.assertRaises(ValueError):
+            self.e._find_node(7)

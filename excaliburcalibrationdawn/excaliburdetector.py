@@ -242,7 +242,10 @@ class ExcaliburDetector(object):
 
         """
         self.logger.info("Performing DAC Scan on node %s", node_idx)
-        scan_data = self.Nodes[node_idx].scan_dac(chips, threshold, dac_range)
+
+        idx = self._find_node(node_idx)
+
+        scan_data = self.Nodes[idx].scan_dac(chips, threshold, dac_range)
         return scan_data
 
     @staticmethod
@@ -305,3 +308,19 @@ class ExcaliburDetector(object):
         start = [node_idx * height, 0]
         stop = [start[0] + height - 1, width - 1]
         return start, stop
+
+    def _find_node(self, node_idx):
+        """Find the Node object corresponding to node_idx in self.Nodes list.
+
+        Args:
+            node_idx(int): Node to find
+
+        Returns:
+            int: Index of node
+
+        """
+        for idx, node in enumerate(self.Nodes):
+            if node.fem == node_idx:
+                return idx
+
+        raise ValueError("Node %s not find in detector nodes.", node_idx)
