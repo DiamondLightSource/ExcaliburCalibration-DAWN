@@ -179,19 +179,18 @@ class SimpleFunctionsTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.e.set_quiet("True")
 
-    @patch('os.path.isdir', return_value=False)
-    @patch(Node_patch_path + '.create_calib_structure')
-    @patch(Node_patch_path + '.log_chip_ids')
+    @patch(Node_patch_path + '._create_calib_structure')
+    @patch(Node_patch_path + '._save_chip_ids')
     @patch('shutil.copy')
     @patch(Node_patch_path + '.save_discbits')
     @patch(Node_patch_path + '.copy_slgm_into_other_gain_modes')
-    def test_setup_new_detector(self, copy_gain, save_mock, copy_mock,
-                                log_mock, create_mock, _):
+    def test_create_calib(self, copy_gain, save_mock, copy_mock,
+                                log_mock, create_mock):
         expected_source = "/dls/detectors/support/silicon_pixels/excaliburRX" \
                           "/TestApplication_15012015/config/Default_SPM.dacs"
         expected_target = "/dls/detectors/support/silicon_pixels/excaliburRX" \
                           "/3M-RX001/testdetector/calib/fem1/spm/slgm/dacs"
-        self.e.setup_new_detector()
+        self.e.create_calib()
 
         create_mock.assert_called_once_with()
         log_mock.assert_called_once_with()
@@ -201,29 +200,11 @@ class SimpleFunctionsTest(unittest.TestCase):
                                       save_mock.call_args[0][1])
         copy_gain.assert_called_once_with()
 
-    @patch('os.path.isdir', return_value=True)
-    @patch(Node_patch_path + '.create_calib_structure')
-    @patch(Node_patch_path + '.log_chip_ids')
-    @patch('shutil.copy')
-    @patch(Node_patch_path + '.save_discbits')
-    @patch(Node_patch_path + '.copy_slgm_into_other_gain_modes')
-    def test_setup_new_detector_exists_then_error(self, copy_gain, save_mock,
-                                                  copy_mock, log_mock,
-                                                  create_mock, _):
-        with self.assertRaises(IOError):
-            self.e.setup_new_detector()
-
-        create_mock.assert_not_called()
-        log_mock.assert_not_called()
-        copy_mock.assert_not_called()
-        save_mock.assert_not_called()
-        copy_gain.assert_not_called()
-
     @patch('os.makedirs')
     def test_create_calib_structure(self, makedirs_mock):
         expected_path = "/dls/detectors/support/silicon_pixels/excaliburRX" \
                         "/3M-RX001/testdetector/calib/fem1/spm/"
-        self.e.create_calib_structure()
+        self.e._create_calib_structure()
 
         expected_calls = [call(expected_path + gain)
                                for gain in ["shgm", "hgm", "lgm", "slgm"]]
@@ -303,14 +284,14 @@ class CaptureTPImageTest(unittest.TestCase):
 
 
 @patch(Node_patch_path + '.backup_calib_dir')
-@patch(Node_patch_path + '.log_chip_ids')
+@patch(Node_patch_path + '.check_chip_ids')
 @patch(Node_patch_path + '.set_dacs')
 @patch(Node_patch_path + '.set_gnd_fbk_cas')
 @patch(Node_patch_path + '.calibrate_disc_l')
 class ThresholdEqualizationTest(unittest.TestCase):
 
     def test_correct_calls_made(self, calibrate_mock, set_gnd_mock,
-                                set_dacs_mock, log_mock, check_mock):
+                                set_dacs_mock, check_mock, backup_mock):
         e = ExcaliburNode(1, mock_config)
         chips = [1, 4, 6, 7]
 
@@ -320,7 +301,7 @@ class ThresholdEqualizationTest(unittest.TestCase):
         self.assertEqual('spm', e.settings['mode'])
 
         check_mock.assert_called_once_with()
-        log_mock.assert_called_once_with()
+        backup_mock.assert_called_once_with()
         set_dacs_mock.assert_called_once_with(chips)
         set_gnd_mock.assert_called_once_with(chips)
         calibrate_mock.assert_called_once_with(chips)
@@ -542,7 +523,7 @@ class TestAppCallsTest(unittest.TestCase):
     @patch('__builtin__.open', return_value=file_mock)
     def test_log_chip_ids(self, open_mock, read_mock):
 
-        self.e.log_chip_ids()
+        self.e._save_chip_ids()
 
         open_mock.assert_called_once_with(
             "/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001"

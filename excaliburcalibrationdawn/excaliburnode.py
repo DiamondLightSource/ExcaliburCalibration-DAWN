@@ -155,13 +155,10 @@ class ExcaliburNode(object):
         """Generate DACs file path for current template path."""
         return posixpath.join(self.current_calib, "dacs")
 
-    def setup_new_detector(self):
-        """Set up the folder structure for the given detector config."""
-        if os.path.isdir(self.calib_root):
-            raise IOError("Calib directory %s already exists", self.calib_root)
-
-        self.create_calib_structure()
-        self.log_chip_ids()
+    def create_calib(self):
+        """Set up the folder structure and files."""
+        self._create_calib_structure()
+        self._save_chip_ids()
         # Reset to default mode and gain
         self.settings['gain'] = "slgm"
         self.settings['mode'] = "spm"
@@ -172,8 +169,8 @@ class ExcaliburNode(object):
         self.save_discbits(self.chip_range, zeros, "discLbits")
         self.copy_slgm_into_other_gain_modes()
 
-    def create_calib_structure(self):
-        """Create the calibration directory for a new detector."""
+    def _create_calib_structure(self):
+        """Create the calibration directory structure."""
         self.logger.info("Creating calibration directory folder structure.")
         template = posixpath.join(self.calib_root, "fem{}".format(self.fem),
                                   "spm/{gain}")
@@ -315,8 +312,8 @@ class ExcaliburNode(object):
         self.settings['mode'] = 'spm'
         self.settings['gain'] = 'slgm'
 
+        self.check_chip_ids()
         self.backup_calib_dir()
-        self.log_chip_ids()
         self.set_dacs(chips)
         self.set_gnd_fbk_cas(chips)
 
@@ -616,8 +613,8 @@ class ExcaliburNode(object):
         """Read chip IDs."""
         self.app.read_chip_ids()
 
-    def log_chip_ids(self):
-        """Read chip IDs and logs chipIDs in calibration directory."""
+    def _save_chip_ids(self):
+        """Read chip IDs and save to eFuseIDs file in calibration directory."""
         log_filename = posixpath.join(self.calib_root,
                                       'fem{fem}',
                                       'efuseIDs'
@@ -657,7 +654,7 @@ class ExcaliburNode(object):
         self.file_name = 'image'
         self.settings['exposure'] = 100
 
-    def set_dac(self, chips, name="Threshold0", value=40):
+    def set_dac(self, chips, name, value):
         """Set any chip DAC at a given value in config file and then load.
 
         Args:
@@ -1594,7 +1591,7 @@ class ExcaliburNode(object):
 
         Args:
             chips(list(int)): Chips to check
-            dac_range(Range): Range to scan DAC over (?)
+            dac_range(Range): Range to scan DAC over
 
         """
         self.load_config(chips)

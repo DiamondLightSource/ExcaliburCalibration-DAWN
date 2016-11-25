@@ -1,4 +1,5 @@
 """An Excalibur RX detector."""
+import os
 import shutil
 import logging
 
@@ -14,6 +15,7 @@ class ExcaliburDetector(object):
     """A abstract class representing an Excalibur RX detector."""
 
     node_shape = [256, 8 * 256]
+    node_range = range(8)
     valid_nodes = [1, 2, 3, 4, 5, 6]
 
     def __init__(self, detector_config):
@@ -45,6 +47,8 @@ class ExcaliburDetector(object):
             raise ValueError("Nodes, servers and ip_addresses are different "
                              "lengths")
 
+        self.num_nodes = len(nodes)
+
         self.Nodes = []
         for node_idx, server, ip_address in zip(nodes, servers, ip_addresses):
             node = ExcaliburNode(node_idx, detector_config, server, ip_address)
@@ -61,17 +65,14 @@ class ExcaliburDetector(object):
         """Get calibration directory from MasterNode."""
         return self.MasterNode.calib_root
 
-    @property
-    def detector_range(self):
-        """Generate detector range from range and number of nodes."""
-        return [range(8)] * len(self.Nodes)
+    def setup_new_detector(self):
+        """Set up the calibration directories for the given detector config."""
+        if os.path.isdir(self.calib_root):
+            raise IOError("Calib directory {} already exists".format(
+                self.calib_root))
 
-    def read_chip_ids(self):
-        """Read chip IDs for all chips in all nodes."""
-        node_threads = []
         for node in self.Nodes:
-            node_threads.append(util.spawn_thread(node.read_chip_ids))
-        util.wait_for_threads(node_threads)
+            node.create_calib()
 
     def initialise_lv(self):
         """Initialise LV."""
@@ -102,6 +103,10 @@ class ExcaliburDetector(object):
         """
         self.MasterNode.set_hv_bias(hv_bias)
 
+    def disable(self):
+        """Set HV bias to 0 and disable LV and HV."""
+        self.MasterNode.disable()
+
     def set_quiet(self, state):
         """Set the quiet state for each node to given state.
 
@@ -129,14 +134,38 @@ class ExcaliburDetector(object):
             node_threads.append(util.spawn_thread(node.setup))
         util.wait_for_threads(node_threads)
 
-    def disable(self):
-        """Set HV bias to 0 and disable LV and HV."""
-        self.MasterNode.disable()
-
     def monitor(self):
         """Monitor temperature, humidity, FEM voltage status and DAC out."""
         for node in self.Nodes:
             node.monitor()
+
+    def read_chip_ids(self):
+        """Read chip IDs for all chips in all nodes."""
+        for node in self.Nodes:
+            node.read_chip_ids()
+
+    def set_dac(self, node_idx, name, value):
+        """Set DAC for given node.
+
+        Args:
+            node_idx(int): Node to set DACs for
+            name(str): DAC to set (Any from self.dac_number keys)
+            value(int): Value to set DAC to
+
+        """
+        node = self._find_node(node_idx)
+        node.set_dac(self.node_range, name, value)
+
+    def read_dac(self, dac_name, node_idx):
+        """Read back DAC analogue voltage for given node.
+
+        Args:
+            dac_name(str): DAC value to read
+            node_idx(int): Node to read for
+
+        """
+        node = self._find_node(node_idx)
+        node.read_dac(dac_name)
 
     def load_config(self):
         """Load detector configuration files and default thresholds."""
@@ -145,46 +174,97 @@ class ExcaliburDetector(object):
             node_threads.append(util.spawn_thread(node.load_config))
         util.wait_for_threads(node_threads)
 
-    def set_gnd_fbk_cas(self, chips=None):
+    def unequalise_pixels(self, node=None, chips=None):
+        """Reset discriminator bits for the given node chips.
+
+        Args:
+            node(int): Node to unequalise - If None, all nodes included
+            chips(list(int)): List of chips to include in equalisation - If
+                None, all chips included
+
+        """
+        nodes, chips = self._validate(node, chips)
+
+        node_threads = []
+        for node in self.Nodes:
+            node_threads.append(
+                util.spawn_thread(node.unequalize_pixels, chips))
+        util.wait_for_threads(node_threads)
+
+    def unmask_pixels(self, node=None, chips=None):
+        """Reset pixelmask for the given chips.
+
+        Args:
+            node(int): Node to unmask - If None, all nodes included
+            chips(list(int)): List of chips to include in equalisation - If
+                None, all chips included
+
+        """
+        nodes, chips = self._validate(node, chips)
+
+        node_threads = []
+        for node in self.Nodes:
+            node_threads.append(util.spawn_thread(node.unmask_pixels, chips))
+        util.wait_for_threads(node_threads)
+
+    def set_gnd_fbk_cas(self, node_idx=None, chips=None):
         """Set GND, FBK and CAS values from the config python script.
 
         Args:
-            chips(list(list(int))): Chips to set
+            node_idx(int): Node to equalise - If None, all nodes included
+            chips(list(int)): List of chips to include in equalisation - If
+                None, all chips included
 
         """
-        if chips is None:
-            chips = self.detector_range
-        elif not isinstance(chips[0], list):
-            raise ValueError("Argument chips must be a list of lists of chips "
-                             "for each node, got {}".format(chips))
+        nodes, chips = self._validate(node_idx, chips)
 
         node_threads = []
-        for node_idx, node in enumerate(self.Nodes):
-            self.logger.info("Setting GND, FBK and Cas values from config "
-                             "script for node %s", node_idx)
-            node_threads.append(util.spawn_thread(node.set_gnd_fbk_cas,
-                                                  chips[node_idx]))
+        for node in nodes:
+            node_threads.append(util.spawn_thread(node.set_gnd_fbk_cas, chips))
         util.wait_for_threads(node_threads)
 
-    def threshold_equalization(self, chips=None):
+    def threshold_equalization(self, node=None, chips=None):
         """Calibrate discriminator equalization for given chips in detector.
 
         Args:
-            chips(list(list(int))): List of lists of chips for each node
+            node(int): Node to equalise - If None, all nodes included
+            chips(list(int)): List of chips to include in equalisation - If
+                None, all chips included
 
         """
-        if chips is None:
-            chips = self.detector_range
-        elif not isinstance(chips[0], list):
-            raise ValueError("Argument chips must be a list of lists of chips "
-                             "for each node, got {}".format(chips))
+        nodes, chips = self._validate(node, chips)
 
         node_threads = []
-        for node_idx, node in enumerate(self.Nodes):
-            self.logger.info("Equalizing node %s", node_idx)
-            node_threads.append(util.spawn_thread(node.threshold_equalization,
-                                                  chips[node_idx]))
+        for node_ in nodes:
+            node_threads.append(
+                util.spawn_thread(node_.threshold_equalization, chips))
         util.wait_for_threads(node_threads)
+
+    def _validate(self, node, chips):
+        """Check node and chips are valid and generate defaults if None.
+
+        Args:
+            node(int): Node to check
+            chips(list(int)): Chips to check
+
+        Returns:
+            list(ExcaliburNode), list(int): Validated nodes and chips
+
+        """
+        if node is None:
+            nodes = self.Nodes
+        else:
+            nodes = [self._find_node(node)]
+
+        if chips is None:
+            chips = self.node_range
+        else:
+            if not set(chips).issubset(self.node_range):
+                raise ValueError("Chips should be in {valid}, got "
+                                 "{actual}".format(valid=self.node_range,
+                                                   actual=chips))
+
+        return nodes, chips
 
     def acquire_tp_image(self, tp_mask):
         """Load the given test pulse mask and capture a tp image.
@@ -243,9 +323,9 @@ class ExcaliburDetector(object):
         """
         self.logger.info("Performing DAC Scan on node %s", node_idx)
 
-        idx = self._find_node(node_idx)
+        node = self._find_node(node_idx)
 
-        scan_data = self.Nodes[idx].scan_dac(chips, threshold, dac_range)
+        scan_data = node.scan_dac(chips, threshold, dac_range)
         return scan_data
 
     @staticmethod
@@ -316,11 +396,12 @@ class ExcaliburDetector(object):
             node_idx(int): Node to find
 
         Returns:
-            int: Index of node
+            ExcaliburNode: Node in self.Nodes with given node index
 
         """
-        for idx, node in enumerate(self.Nodes):
+        for node in self.Nodes:
             if node.fem == node_idx:
-                return idx
+                return node
 
-        raise ValueError("Node %s not find in detector nodes.", node_idx)
+        raise ValueError("Node {} not found in detector nodes.".format(
+            node_idx))

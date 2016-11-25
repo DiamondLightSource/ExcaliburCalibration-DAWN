@@ -170,14 +170,23 @@ class FunctionsTest(unittest.TestCase):
         for node in self.e.Nodes:
             node.reset_mock()
 
-    @patch(util_patch_path + '.wait_for_threads')
-    @patch(util_patch_path + '.spawn_thread')
-    def test_read_chip_ids(self, spawn_mock, wait_mock):
+    @patch('os.path.isdir', return_value=True)
+    def test_setup_new_detector(self, _):
+        with self.assertRaises(IOError):
+            self.e.setup_new_detector()
+
+    @patch('os.path.isdir', return_value=False)
+    def test_setup_new_detector_exists_then_error(self, _):
+        self.e.setup_new_detector()
+
+        for node in self.e.Nodes:
+            node.create_calib.assert_called_once_with()
+
+    def test_read_chip_ids(self):
         self.e.read_chip_ids()
 
-        spawn_mock.assert_has_calls([call(node.read_chip_ids)
-                                     for node in self.e.Nodes])
-        wait_mock.assert_called_once_with([spawn_mock.return_value] * 6)
+        for node in self.e.Nodes:
+            node.read_chip_ids.assert_called_once_with()
 
     def test_set_quiet(self):
         self.e.set_quiet(True)
@@ -221,11 +230,13 @@ class FunctionsTest(unittest.TestCase):
     @patch(util_patch_path + '.wait_for_threads')
     @patch(util_patch_path + '.spawn_thread')
     def test_set_gnd_fbk_cas(self, spawn_mock, wait_mock):
-        self.e.set_gnd_fbk_cas([[0], [0], [0], [0], [0], [0]])
+        self.e.Nodes[0].fem = 1
 
-        spawn_mock.assert_has_calls([call(node.set_gnd_fbk_cas, [0])
-                                     for node in self.e.Nodes])
-        wait_mock.assert_called_once_with([spawn_mock.return_value] * 6)
+        self.e.set_gnd_fbk_cas(node_idx=1, chips=[0])
+
+        spawn_mock.assert_called_once_with(self.e.Nodes[0].set_gnd_fbk_cas,
+                                           [0])
+        wait_mock.assert_called_once_with([spawn_mock.return_value])
 
     @patch(util_patch_path + '.wait_for_threads')
     @patch(util_patch_path + '.spawn_thread')
@@ -237,19 +248,16 @@ class FunctionsTest(unittest.TestCase):
                                      for node in self.e.Nodes])
         wait_mock.assert_called_once_with([spawn_mock.return_value] * 6)
 
-    def test_set_gnd_fbk_cas_given_invalid_chips(self):
-
-        with self.assertRaises(ValueError):
-            self.e.set_gnd_fbk_cas([0, 1, 2, 3, 4, 5, 6, 7])
-
     @patch(util_patch_path + '.wait_for_threads')
     @patch(util_patch_path + '.spawn_thread')
     def test_threshold_equalization(self, spawn_mock, wait_mock):
-        self.e.threshold_equalization([[0], [0], [0], [0], [0], [0]])
+        self.e.Nodes[0].fem = 1
 
-        spawn_mock.assert_has_calls([call(node.threshold_equalization, [0])
-                                     for node in self.e.Nodes])
-        wait_mock.assert_called_once_with([spawn_mock.return_value] * 6)
+        self.e.set_gnd_fbk_cas(node_idx=1, chips=[0])
+
+        spawn_mock.assert_called_once_with(self.e.Nodes[0].set_gnd_fbk_cas,
+                                           [0])
+        wait_mock.assert_called_once_with([spawn_mock.return_value])
 
     @patch(util_patch_path + '.wait_for_threads')
     @patch(util_patch_path + '.spawn_thread')
@@ -384,9 +392,9 @@ class UtilTest(unittest.TestCase):
 
     def test_find_node(self):
 
-        idx = self.e._find_node(1)
+        node = self.e._find_node(1)
 
-        self.assertEqual(0, idx)
+        self.assertEqual(self.e.Nodes[0], node)
 
     def test_find_node_not_found_then_error(self):
 
