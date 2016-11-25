@@ -188,8 +188,8 @@ class ExcaliburTestAppInterface(object):
         mask_hex = 0
         for chip_index in chips:
             if chip_index not in valid_index_range:
-                raise ValueError("Invalid index given, must be in " +
-                                 str(valid_index_range))
+                raise ValueError("Invalid index given, must be in {}".format(
+                    valid_index_range))
             else:
                 mask_hex += 2**(max_chip_index - chip_index)
 
@@ -351,7 +351,7 @@ class ExcaliburTestAppInterface(object):
                 path = "/tmp"  # Default path used by excaliburTestApp
             full_path = posixpath.join(path, hdf_file)
             if os.path.isfile(full_path):
-                raise IOError("File already exists")
+                raise IOError("File '{}' already exists".format(full_path))
             else:
                 extra_params.extend([self.HDF_FILE + str(hdf_file)])
 

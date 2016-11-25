@@ -274,7 +274,7 @@ class ExcaliburNode(object):
         """
         mask_path = posixpath.join(self.config_dir, tp_mask)
         if not os.path.isfile(mask_path):
-            raise IOError("Mask file '%s' does not exist", mask_path)
+            raise IOError("Mask file {} does not exist".format(mask_path))
 
         output_file = self.generate_file_name("TPImage")
         output_path = posixpath.join(self.output_folder, output_file)
