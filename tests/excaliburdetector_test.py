@@ -274,12 +274,11 @@ class FunctionsTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.e.threshold_equalization([0, 1, 2, 3, 4, 5, 6, 7])
 
-    @patch(util_patch_path + '.get_time_stamp',
-           return_value="20161021~164250")
+    @patch(util_patch_path + '.tag_plot_name')
     @patch(Detector_patch_path + '._combine_images')
     @patch(DAWN_patch_path + '.plot_image')
     @patch(util_patch_path + '.spawn_thread')
-    def test_acquire_tp_image(self, spawn_mock, plot_mock, combine_mock, _):
+    def test_acquire_tp_image(self, spawn_mock, plot_mock, combine_mock, tag_mock):
 
         mock_image = MagicMock()
 
@@ -295,14 +294,13 @@ class FunctionsTest(unittest.TestCase):
         combine_mock.assert_called_once_with(
             [spawn_mock.return_value.join.return_value] * 6)
         plot_mock.assert_called_once_with(combine_mock.return_value,
-                                          "TPImage - 20161021~164250")
+                                          tag_mock.return_value)
 
-    @patch(util_patch_path + '.get_time_stamp',
-           return_value="20161021~164250")
+    @patch(util_patch_path + '.tag_plot_name')
     @patch(Detector_patch_path + '._combine_images')
     @patch(DAWN_patch_path + '.plot_image')
     @patch(util_patch_path + '.spawn_thread')
-    def test_expose(self, spawn_mock, plot_mock, combine_mock, _):
+    def test_expose(self, spawn_mock, plot_mock, combine_mock, tag_mock):
 
         mock_image = MagicMock()
 
@@ -317,7 +315,7 @@ class FunctionsTest(unittest.TestCase):
         combine_mock.assert_called_once_with(
             [spawn_mock.return_value.join.return_value] * 6)
         plot_mock.assert_called_once_with(combine_mock.return_value,
-                                          "Image - 20161021~164250")
+                                          tag_mock.return_value)
 
     def test_scan_dac(self):
 

@@ -123,6 +123,7 @@ class ExcaliburDAWN(object):
             self.plot.line({x_name: x}, {y_name: (y, label)},
                            name=plot_name, title=plot_name)
             self.current_plots.append(plot_name)
+            self.logger.info("Plot '%s' added to DAWN", plot_name)
         else:
             self.plot.addline({x_name: x}, {y_name: (y, label)},
                               name=plot_name, title=plot_name)

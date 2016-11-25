@@ -282,8 +282,7 @@ class ExcaliburDetector(object):
 
         detector_image = self._combine_images(images)
 
-        plot_name = "TPImage - {time_stamp}".format(
-            time_stamp=util.get_time_stamp())
+        plot_name = util.tag_plot_name("TPImage", "Detector")
         self.dawn.plot_image(detector_image, plot_name)
 
     def expose(self, exposure_time):
@@ -304,8 +303,7 @@ class ExcaliburDetector(object):
 
         detector_image = self._combine_images(images)
 
-        plot_name = "Image - {time_stamp}".format(
-            time_stamp=util.get_time_stamp())
+        plot_name = util.tag_plot_name("Image", "Detector")
         self.dawn.plot_image(detector_image, plot_name)
 
     def scan_dac(self, node_idx, chips, threshold, dac_range):
