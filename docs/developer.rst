@@ -27,9 +27,11 @@ Contributing
 
 This python package is hosted on GitHub at `ExcaliburCalibration-DAWN <https://github.com/dls-controls/ExcaliburCalibration-DAWN>`_ under continuous integration controls (`Travis <https://en.wikipedia.org/wiki/Travis_CI>`_, `Coverage <https://coverage.readthedocs.io/en/coverage-4.2/>`_ and `Landscape <https://docs.landscape.io/faq.html>`_).
 
-Changes should be made on a branch, tested, and then merged into master via a pull request. New code should have tests to ensure it does as expected and to make it clear when you or someone else breaks what has been added.
+Changes should be made on a branch, tested, and then merged into master via a pull request.
 
-`PEP8 <http://docs.python-guide.org/en/latest/writing/style/>`_ standards should be followed unless it is detrimental to the quality of the code in some other way. For example variables should be lowercase_with_underscores, however "discL" and "discH" are used as variables frequently, because that is the definition in the excaliburTestApp. Make the code as nice to read and easy to understand as possible.
+Travis will show if the build fails, i.e. if the package couldn't be installed or some tests fail. Coverage will show if added code is not tested. Landscape will show if the code follows `PEP8 <http://docs.python-guide.org/en/latest/writing/style/>`_ standards. Some style errors exist in this module, for example variables should usually be lowercase_with_underscores, however "discL" and "discH" are used as variables frequently, because that is the definition in the excaliburTestApp.
+
+The important thing is to make the code as nice to read, easy to understand and simple to refactor. These tools generally help that goal but should be ignored if they do not.
 
 Documentation
 ~~~~~~~~~~~~~
