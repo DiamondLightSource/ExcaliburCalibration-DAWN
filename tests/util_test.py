@@ -73,7 +73,7 @@ class FunctionsTest(unittest.TestCase):
         np.testing.assert_array_equal(expected_stop, stop)
 
     @patch('numpy.rot90')
-    @patch('numpy.savetxt')
+    @patch(util_patch_path + '.save_array')
     @patch('numpy.loadtxt')
     def test_rotate_config(self, load_mock, save_mock, rotate_mock):
         test_path = 'path/to/config'
@@ -82,8 +82,17 @@ class FunctionsTest(unittest.TestCase):
 
         load_mock.assert_called_once_with(test_path)
         rotate_mock.assert_called_once_with(load_mock.return_value, 2)
-        save_mock.assert_called_once_with(test_path, rotate_mock.return_value,
-                                          fmt='%.18g', delimiter=' ')
+        save_mock.assert_called_once_with(test_path, rotate_mock.return_value)
+
+    @patch('numpy.savetxt')
+    def test_save_array(self, save_mock):
+        test_path = "path/to/config"
+        mock_array = MagicMock()
+
+        util.save_array(test_path, mock_array)
+
+        save_mock.assert_called_once_with(test_path, mock_array,
+                                          fmt="%.18g", delimiter=" ")
 
     datetime_mock = MagicMock()
     datetime_mock.now.return_value.isoformat.return_value = "20161020~154548.834130"

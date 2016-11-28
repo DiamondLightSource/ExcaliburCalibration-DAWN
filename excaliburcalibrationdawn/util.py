@@ -93,8 +93,18 @@ def rotate_array(config_file):
     """
     # shutil.copy(config_file, config_file + ".backup")
     config_bits = np.loadtxt(config_file)
-    np.savetxt(config_file, np.rot90(config_bits, 2), fmt='%.18g',
-               delimiter=' ')
+    save_array(config_file, np.rot90(config_bits, 2))
+
+
+def save_array(file_path, array):
+    """Save a numpy array to file.
+
+    Args:
+        file_path(str): File to save to
+        array(numpy.array): Array to save
+
+    """
+    np.savetxt(file_path, array, fmt="%.18g", delimiter=" ")
 
 
 def get_time_stamp():

@@ -700,13 +700,19 @@ class TestAppCallsTest(unittest.TestCase):
         sense_mock.assert_called_once_with(chips, 'Threshold0', expected_file)
 
     @patch(ETAI_patch_path + '.load_config')
-    @patch('numpy.savetxt')
+    @patch(util_patch_path + '.save_array')
     def test_load_temp_config(self, save_mock, load_mock):
-        filepath = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib/fem1/spm/slgm/'
-        expected_kwargs = dict(fmt='%.18g', delimiter=' ')
-        expected_file_1 = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib/fem1/spm/slgm/discLbits.tmp'
-        expected_file_2 = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib/fem1/spm/slgm/discHbits.tmp'
-        expected_file_3 = '/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib/fem1/spm/slgm/pixelmask.tmp'
+        filepath = '/dls/detectors/support/silicon_pixels/excaliburRX' \
+                   '/3M-RX001/testdetector/calib/fem1/spm/slgm/'
+        expected_file_1 = '/dls/detectors/support/silicon_pixels/excaliburRX' \
+                          '/3M-RX001/testdetector/calib/fem1/spm/slgm' \
+                          '/discLbits.tmp'
+        expected_file_2 = '/dls/detectors/support/silicon_pixels/excaliburRX' \
+                          '/3M-RX001/testdetector/calib/fem1/spm/slgm' \
+                          '/discHbits.tmp'
+        expected_file_3 = '/dls/detectors/support/silicon_pixels/excaliburRX' \
+                          '/3M-RX001/testdetector/calib/fem1/spm/slgm' \
+                          '/pixelmask.tmp'
         chips = [0]
         discLbits = MagicMock()
         discHbits = MagicMock()
@@ -714,20 +720,13 @@ class TestAppCallsTest(unittest.TestCase):
 
         self.e.load_temp_config(chips, discLbits, discHbits, maskbits)
 
-        # Check first save call
-        call_args = save_mock.call_args_list[0]
-        self.assertEqual((filepath + 'discLbits.tmp', discLbits), call_args[0])
-        self.assertEqual(expected_kwargs, call_args[1])
-        # Check second save call
-        call_args = save_mock.call_args_list[1]
-        self.assertEqual((filepath + 'discHbits.tmp', discHbits), call_args[0])
-        self.assertEqual(expected_kwargs, call_args[1])
-        # Check third save call
-        call_args = save_mock.call_args_list[2]
-        self.assertEqual((filepath + 'pixelmask.tmp', maskbits), call_args[0])
-        self.assertEqual(expected_kwargs, call_args[1])
+        save_mock.assert_has_calls(
+            [call(filepath + 'discLbits.tmp', discLbits),
+             call(filepath + 'discHbits.tmp', discHbits),
+             call(filepath + 'pixelmask.tmp', maskbits)])
 
-        load_mock.assert_called_once_with([0], expected_file_1, expected_file_2, expected_file_3)
+        load_mock.assert_called_once_with([0], expected_file_1,
+                                          expected_file_2, expected_file_3)
 
     # Make sure we always get the same random numbers
     rand = np.random.RandomState(123)
@@ -973,20 +972,19 @@ class ApplyFFCorrectionTest(unittest.TestCase):
 
 class SaveDiscbitsTest(unittest.TestCase):
 
-    @patch('numpy.savetxt')
+    @patch(util_patch_path + '.save_array')
     def test_correct_call_made(self, save_mock):
+        expected_file = "/dls/detectors/support/silicon_pixels/excaliburRX/" \
+                        "3M-RX001/testdetector/calib/fem1/spm/slgm/test.chip0"
         discbits = np.random.randint(10, size=(256, 8*256))
         expected_subarray = discbits[0:256, 0:256]
         e = ExcaliburNode(1, mock_config)
 
         e.save_discbits([0], discbits, 'test')
 
-        call_args = save_mock.call_args[0]
-        call_kwargs = save_mock.call_args[1]
-        self.assertEqual('/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/testdetector/calib/fem1/spm/slgm/test.chip0',
-                         call_args[0])
-        self.assertTrue((expected_subarray == call_args[1]).all())
-        self.assertEqual(dict(fmt='%.18g', delimiter=' '), call_kwargs)
+        save_mock.assert_called_once_with(expected_file, ANY)
+        np.testing.assert_array_equal(expected_subarray,
+                                      save_mock.call_args[0][1])
 
 
 class MaskUnmaskTest(unittest.TestCase):
@@ -1082,57 +1080,57 @@ class MaskUnmaskTest(unittest.TestCase):
         np.testing.assert_array_equal(image_data, apply_mock.call_args[0][1])
 
     @patch(Node_patch_path + '.load_config')
-    @patch('numpy.savetxt')
+    @patch(util_patch_path + '.save_array')
     def test_apply_mask(self, save_mock, load_mock):
         mask = np.random.randint(10, size=(256, 8*256))
         expected_mask = mask[:, 0:256]
         expected_file = "/dls/detectors/support/silicon_pixels/excaliburRX/" \
-                        "3M-RX001/testdetector/calib/fem1/spm/slgm/pixelmask.chip0"
+                        "3M-RX001/testdetector/calib/fem1/spm/slgm/" \
+                        "pixelmask.chip0"
 
         self.e._apply_mask([0], mask)
 
-        save_mock.assert_called_once_with(expected_file, ANY,
-                                          fmt="%.18g", delimiter=" ")
+        save_mock.assert_called_once_with(expected_file, ANY)
         np.testing.assert_array_equal(expected_mask, save_mock.call_args[0][1])
 
         load_mock.assert_called_once_with([0])
 
     @patch(ETAI_patch_path + '.load_config')
-    @patch('numpy.savetxt')
+    @patch(util_patch_path + '.save_array')
     def test_unmask_all_pixels(self, save_mock, load_mock):
         expected_file_1 = "/dls/detectors/support/silicon_pixels/excaliburRX" \
-                          "/3M-RX001/testdetector/calib/fem1/spm/slgm/discLbits.chip0"
+                          "/3M-RX001/testdetector/calib/fem1/spm/slgm" \
+                          "/discLbits.chip0"
         expected_file_2 = "/dls/detectors/support/silicon_pixels/excaliburRX" \
-                          "/3M-RX001/testdetector/calib/fem1/spm/slgm/discHbits.chip0"
+                          "/3M-RX001/testdetector/calib/fem1/spm/slgm" \
+                          "/discHbits.chip0"
         expected_file_3 = "/dls/detectors/support/silicon_pixels/excaliburRX" \
-                          "/3M-RX001/testdetector/calib/fem1/spm/slgm/pixelmask.tmp"
+                          "/3M-RX001/testdetector/calib/fem1/spm/slgm" \
+                          "/pixelmask.chip0"
         zeros = np.zeros([256, 256])
 
         self.e.unmask_pixels([0])
 
-        save_mock.assert_called_once_with(expected_file_3, ANY, fmt="%.18g",
-                                          delimiter=" ")
+        save_mock.assert_called_once_with(expected_file_3, ANY)
         np.testing.assert_array_equal(zeros, save_mock.call_args[0][1])
         load_mock.assert_called_once_with(0, expected_file_1, expected_file_2,
                                           expected_file_3)
 
     @patch(ETAI_patch_path + '.load_config')
-    @patch('numpy.savetxt')
+    @patch(util_patch_path + '.save_array')
     def test_unequalize_pixels(self, save_mock, load_mock):
         expected_file_1 = "/dls/detectors/support/silicon_pixels/excaliburRX" \
-                          "/3M-RX001/testdetector/calib/fem1/spm/slgm/discLbits.tmp"
+                          "/3M-RX001/testdetector/calib/fem1/spm/slgm/discLbits.chip0"
         expected_file_2 = "/dls/detectors/support/silicon_pixels/excaliburRX" \
-                          "/3M-RX001/testdetector/calib/fem1/spm/slgm/discHbits.tmp"
+                          "/3M-RX001/testdetector/calib/fem1/spm/slgm/discHbits.chip0"
         expected_file_3 = "/dls/detectors/support/silicon_pixels/excaliburRX" \
                           "/3M-RX001/testdetector/calib/fem1/spm/slgm/pixelmask.chip0"
         zeros = np.zeros([256, 256])
 
         self.e.unequalize_pixels([0])
 
-        save_mock.assert_has_calls([call(expected_file_1, ANY, fmt="%.18g",
-                                         delimiter=" "),
-                                    call(expected_file_2, ANY, fmt="%.18g",
-                                         delimiter=" ")])
+        save_mock.assert_has_calls([call(expected_file_1, ANY),
+                                    call(expected_file_2, ANY)])
         np.testing.assert_array_equal(zeros, save_mock.call_args_list[0][0][1])
         np.testing.assert_array_equal(zeros, save_mock.call_args_list[1][0][1])
         load_mock.assert_called_once_with(0, expected_file_1,

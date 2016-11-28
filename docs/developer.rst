@@ -36,33 +36,4 @@ The important thing is to make the code as nice to read, easy to understand and 
 Documentation
 ~~~~~~~~~~~~~
 
-The docs are hosted on GitHub using GitHubPages. To update them simply add to the .rst files in the docs folder, or create new ones and add them to the index.rst. Before running make, you should set up a folder level with ExcaliburCalibration-DAWN called ECD-docs and within it create a html folder. So it will look like this::
-
-    ├── ECD-docs
-    │   ├── doctrees
-    │   │   └── arch
-    │   └── html
-    │       ├── arch
-    │       ├── _images
-    │       ├── _modules
-    │       ├── _sources
-    │       └── _static
-    └── ExcaliburCalibration-DAWN
-        ├── config
-        ├── docs
-        │   └── arch
-        ├── excaliburcalibrationdawn
-        └── tests
-
-In html folder we will set up a git repo and point it to the gh-pages branch of the repo.::
-
-    $ git init
-    $ git remote add origin git@github.com:dls-controls/ExcaliburCalibration-DAWN.git
-    $ git fetch --all
-    $ git checkout gh-pages
-
-Then run 'make html' in the docs folder. This will write to the new git repo and overwrite the old built docs with the new ones. You can then cd to html folder and run the following git commands to push the built docs to the repo::
-
-    $ git add .
-    $ git commit -m "Rebuilt docs"
-    $ git push origin gh-pages
+The docs are built automatically by ReadTheDocs from the docs folder on the master branch.

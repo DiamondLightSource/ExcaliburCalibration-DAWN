@@ -790,9 +790,9 @@ class ExcaliburNode(object):
         discL_bits_file = template_path.format(disc="discLbits")
         pixel_bits_file = template_path.format(disc="pixelmask")
 
-        np.savetxt(discL_bits_file, discLbits, fmt="%.18g", delimiter=" ")
-        np.savetxt(discH_bits_file, discHbits, fmt="%.18g", delimiter=" ")
-        np.savetxt(pixel_bits_file, mask_bits, fmt="%.18g", delimiter=" ")
+        util.save_array(discL_bits_file, discLbits)
+        util.save_array(discH_bits_file, discHbits)
+        util.save_array(pixel_bits_file, mask_bits)
 
         self.app.load_config(chip_idx,
                              discL_bits_file, discH_bits_file, pixel_bits_file)
@@ -995,9 +995,8 @@ class ExcaliburNode(object):
                     disc=disc, chip=chip_idx))
 
             self.logger.info("Saving discbits to %s", discbits_file)
-            np.savetxt(discbits_file,
-                       util.grab_chip_slice(discbits, chip_idx),
-                       fmt='%.18g', delimiter=' ')
+            util.save_array(discbits_file,
+                            util.grab_chip_slice(discbits, chip_idx))
 
     def mask_columns(self, chips, start, stop):
         """Mask a block of column of pixels on the given chip(s).
@@ -1085,8 +1084,8 @@ class ExcaliburNode(object):
         """
         for chip_idx in chips:
             pixel_mask_file = self.pixel_mask[chip_idx]
-            np.savetxt(pixel_mask_file, util.grab_chip_slice(mask, chip_idx),
-                       fmt='%.18g', delimiter=' ')
+            util.save_array(pixel_mask_file,
+                            util.grab_chip_slice(mask, chip_idx))
 
         self.load_config(chips)
 
@@ -1098,13 +1097,12 @@ class ExcaliburNode(object):
 
         """
         zeros = np.zeros(self.chip_shape)
-        pixel_bits_file = posixpath.join(self.current_calib, "pixelmask.tmp")
-        np.savetxt(pixel_bits_file, zeros, fmt="%.18g", delimiter=" ")
 
         for chip_idx in chips:
+            util.save_array(self.pixel_mask[chip_idx], zeros)
             self.app.load_config(chip_idx, self.discL_bits[chip_idx],
                                  self.discH_bits[chip_idx],
-                                 pixel_bits_file)
+                                 self.pixel_mask[chip_idx])
 
     def unequalize_pixels(self, chips):
         """Reset discL_bits to zero.
@@ -1114,14 +1112,12 @@ class ExcaliburNode(object):
 
         """
         zeros = np.zeros(self.chip_shape)
-        template_path = posixpath.join(self.current_calib, "{disc}.tmp")
-        discL_bits_file = template_path.format(disc="discLbits")
-        np.savetxt(discL_bits_file, zeros, fmt="%.18g", delimiter=" ")
-        discH_bits_file = template_path.format(disc="discHbits")
-        np.savetxt(discH_bits_file, zeros, fmt="%.18g", delimiter=" ")
 
         for chip_idx in chips:
-            self.app.load_config(chip_idx, discL_bits_file, discH_bits_file,
+            util.save_array(self.discL_bits[chip_idx], zeros)
+            util.save_array(self.discH_bits[chip_idx], zeros)
+            self.app.load_config(chip_idx, self.discL_bits[chip_idx],
+                                 self.discH_bits[chip_idx],
                                  self.pixel_mask[chip_idx])
 
     def backup_calib_dir(self):
@@ -1472,7 +1468,7 @@ class ExcaliburNode(object):
 
         print("###############################################################"
               "########################")
-        print("Edge shift (Threshold DAC Units) produced by 1 step of the"
+        print("Edge shift (Threshold DAC Units) produced by 1 step of the "
               "32 discbit correction steps:")
         for chip_idx in chips:
             print("Chip {idx}: {shift}".format(
