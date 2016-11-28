@@ -57,6 +57,8 @@ class ExcaliburDetector(object):
             if node_idx == master_node:
                 self.MasterNode = node
 
+        self.errors = []
+
         self.dawn = ExcaliburDAWN()
         self.logger = logging.getLogger("ExcaliburDetector")
 
@@ -236,9 +238,29 @@ class ExcaliburDetector(object):
 
         node_threads = []
         for node_ in nodes:
-            node_threads.append(
-                util.spawn_thread(node_.threshold_equalization, chips))
+            node_threads.append(util.spawn_thread(
+                self._try_node_threshold_equalization, node_, chips))
         util.wait_for_threads(node_threads)
+
+        while self.errors:
+            error = self.errors.pop()
+            logging.debug(error[0], *error[1])
+
+    def _try_node_threshold_equalization(self, node, chips):
+        """Run node.threshold_equalization in a try block, storing any errors.
+
+        Args:
+            node(ExcaliburNode): Node to call on
+            chips(list(int)): Chips to call on
+
+        """
+        try:
+            node.threshold_equalization(chips)
+        except Exception as error:
+            self.errors.append(("Threshold equalization failed for node %s.\n"
+                                "Error:\n%s",
+                                [node.fem, error]))
+            raise
 
     def _validate(self, node, chips):
         """Check node and chips are valid and generate defaults if None.

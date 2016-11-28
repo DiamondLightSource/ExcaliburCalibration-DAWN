@@ -301,10 +301,32 @@ class FunctionsTest(unittest.TestCase):
     def test_threshold_equalization_default(self, spawn_mock, wait_mock):
         self.e.threshold_equalization()
 
-        spawn_mock.assert_has_calls([call(node.threshold_equalization,
-                                          [0, 1, 2, 3, 4, 5, 6, 7])
-                                     for node in self.e.Nodes])
+        spawn_mock.assert_has_calls(
+            [call(self.e._try_node_threshold_equalization, node,
+                  [0, 1, 2, 3, 4, 5, 6, 7])
+             for node in self.e.Nodes])
         wait_mock.assert_called_once_with([spawn_mock.return_value] * 6)
+
+    def test_try_node_threshold_equalization(self):
+        node_mock = MagicMock()
+        self.e._try_node_threshold_equalization(node_mock,
+                                                [0, 1, 2, 3, 4, 5, 6, 7])
+
+        node_mock.threshold_equalization.assert_called_once_with(
+            [0, 1, 2, 3, 4, 5, 6, 7])
+
+    def test_try_node_threshold_equalization_error_raised_then_log(self):
+        node_mock = MagicMock()
+        error = IOError("Bad things happened.")
+        node_mock.threshold_equalization.side_effect = error
+
+        with self.assertRaises(IOError):
+            self.e._try_node_threshold_equalization(node_mock,
+                                                    [0, 1, 2, 3, 4, 5, 6, 7])
+
+        self.assertEqual([("Threshold equalization failed for node %s.\n"
+                           "Error:\n%s", [node_mock.fem, error])],
+                         self.e.errors)
 
     def test_threshold_equalization_given_invalid_chips(self):
 
