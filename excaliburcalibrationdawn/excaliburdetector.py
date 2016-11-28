@@ -146,27 +146,27 @@ class ExcaliburDetector(object):
         for node in self.Nodes:
             node.read_chip_ids()
 
-    def set_dac(self, node_idx, name, value):
+    def set_dac(self, node_id, name, value):
         """Set DAC for given node.
 
         Args:
-            node_idx(int): Node to set DACs for
+            node_id(int): Node to set DACs for
             name(str): DAC to set (Any from self.dac_number keys)
             value(int): Value to set DAC to
 
         """
-        node = self._find_node(node_idx)
+        node = self._find_node(node_id)
         node.set_dac(self.node_range, name, value)
 
-    def read_dac(self, node_idx, dac_name):
+    def read_dac(self, node_id, dac_name):
         """Read back DAC analogue voltage for given node.
 
         Args:
-            node_idx(int): Node to read for
+            node_id(int): Node to read for
             dac_name(str): DAC value to read
 
         """
-        node = self._find_node(node_idx)
+        node = self._find_node(node_id)
         node.read_dac(dac_name)
 
     def load_config(self):
@@ -209,16 +209,16 @@ class ExcaliburDetector(object):
             node_threads.append(util.spawn_thread(node.unmask_pixels, chips))
         util.wait_for_threads(node_threads)
 
-    def set_gnd_fbk_cas(self, node_idx=None, chips=None):
+    def set_gnd_fbk_cas(self, node_id=None, chips=None):
         """Set GND, FBK and CAS values from the config python script.
 
         Args:
-            node_idx(int): Node to equalise - If None, all nodes included
+            node_id(int): Node to equalise - If None, all nodes included
             chips(list(int)): List of chips to include in equalisation - If
                 None, all chips included
 
         """
-        nodes, chips = self._validate(node_idx, chips)
+        nodes, chips = self._validate(node_id, chips)
 
         node_threads = []
         for node in nodes:
@@ -258,8 +258,7 @@ class ExcaliburDetector(object):
             node.threshold_equalization(chips)
         except Exception as error:
             self.errors.append(("Threshold equalization failed for node %s.\n"
-                                "Error:\n%s",
-                                [node.fem, error]))
+                                "Error:\n%s", [node.id, error]))
             raise
 
     def _validate(self, node, chips):
@@ -328,11 +327,11 @@ class ExcaliburDetector(object):
         plot_name = util.tag_plot_name("Image", "Detector")
         self.dawn.plot_image(detector_image, plot_name)
 
-    def scan_dac(self, node_idx, chips, threshold, dac_range):
+    def scan_dac(self, node_id, chips, threshold, dac_range):
         """Perform a dac scan and plot the result (mean counts vs DAC values).
 
         Args:
-            node_idx(int) Node to perform scan on
+            node_id(int) Node to perform scan on
             chips(Any from self.dac_number keys): Chips to scan
             threshold(str): Threshold to scan (ThresholdX DACs - X: 0-7)
             dac_range(Range): Range of DAC values to scan over
@@ -341,9 +340,9 @@ class ExcaliburDetector(object):
             numpy.array: DAC scan data
 
         """
-        self.logger.info("Performing DAC Scan on node %s", node_idx)
+        self.logger.info("Performing DAC Scan on node %s", node_id)
 
-        node = self._find_node(node_idx)
+        node = self._find_node(node_id)
 
         scan_data = node.scan_dac(chips, threshold, dac_range)
         return scan_data
@@ -409,19 +408,19 @@ class ExcaliburDetector(object):
         stop = [start[0] + height - 1, width - 1]
         return start, stop
 
-    def _find_node(self, node_idx):
-        """Find the Node object corresponding to node_idx in self.Nodes list.
+    def _find_node(self, node_id):
+        """Find the Node object corresponding to node_id in self.Nodes list.
 
         Args:
-            node_idx(int): Node to find
+            node_id(int): Node to find
 
         Returns:
             ExcaliburNode: Node in self.Nodes with given node index
 
         """
         for node in self.Nodes:
-            if node.fem == node_idx:
+            if node.id == node_id:
                 return node
 
         raise ValueError("Node {} not found in detector nodes.".format(
-            node_idx))
+            node_id))

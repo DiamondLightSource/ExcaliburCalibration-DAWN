@@ -34,7 +34,7 @@ class InitTest(unittest.TestCase):
         self.assertEqual(ETAI_mock.return_value, e.app)
         self.assertEqual(DAWN_mock.return_value, e.dawn)
 
-        self.assertEqual(e.fem, node)
+        self.assertEqual(e.id, node)
         self.assertEqual(e.ip_address, "192.168.0.104")
 
         self.assertEqual(e.dac_target, 10)

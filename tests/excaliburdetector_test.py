@@ -33,7 +33,7 @@ class InitTest(unittest.TestCase):
 
         for node in range(6):
             self.assertIsInstance(e.Nodes[node], ExcaliburNode)
-            self.assertEqual(node + 1, e.Nodes[node].fem)
+            self.assertEqual(node + 1, e.Nodes[node].id)
 
         self.assertEqual(e.MasterNode, e.Nodes[0])
         self.assertEqual(e.calib_root, e.MasterNode.calib_root)
@@ -189,7 +189,7 @@ class FunctionsTest(unittest.TestCase):
             node.read_chip_ids.assert_called_once_with()
 
     def test_set_dac(self):
-        self.e.Nodes[0].fem = 1
+        self.e.Nodes[0].id = 1
 
         self.e.set_dac(1, "Threshold0", 5)
 
@@ -197,7 +197,7 @@ class FunctionsTest(unittest.TestCase):
                                                         "Threshold0", 5)
 
     def test_read_dac(self):
-        self.e.Nodes[0].fem = 1
+        self.e.Nodes[0].id = 1
 
         self.e.read_dac(1, "Threshold0")
 
@@ -227,7 +227,7 @@ class FunctionsTest(unittest.TestCase):
     @patch(util_patch_path + '.wait_for_threads')
     @patch(util_patch_path + '.spawn_thread')
     def test_unequalise_pixels(self, spawn_mock, wait_mock):
-        self.e.Nodes[0].fem = 1
+        self.e.Nodes[0].id = 1
 
         self.e.unequalise_pixels(1, [0])
 
@@ -238,7 +238,7 @@ class FunctionsTest(unittest.TestCase):
     @patch(util_patch_path + '.wait_for_threads')
     @patch(util_patch_path + '.spawn_thread')
     def test_unmask_pixels(self, spawn_mock, wait_mock):
-        self.e.Nodes[0].fem = 1
+        self.e.Nodes[0].id = 1
 
         self.e.unmask_pixels(1, [0])
 
@@ -267,9 +267,9 @@ class FunctionsTest(unittest.TestCase):
     @patch(util_patch_path + '.wait_for_threads')
     @patch(util_patch_path + '.spawn_thread')
     def test_set_gnd_fbk_cas(self, spawn_mock, wait_mock):
-        self.e.Nodes[0].fem = 1
+        self.e.Nodes[0].id = 1
 
-        self.e.set_gnd_fbk_cas(node_idx=1, chips=[0])
+        self.e.set_gnd_fbk_cas(node_id=1, chips=[0])
 
         spawn_mock.assert_called_once_with(self.e.Nodes[0].set_gnd_fbk_cas,
                                            [0])
@@ -288,9 +288,9 @@ class FunctionsTest(unittest.TestCase):
     @patch(util_patch_path + '.wait_for_threads')
     @patch(util_patch_path + '.spawn_thread')
     def test_threshold_equalization(self, spawn_mock, wait_mock):
-        self.e.Nodes[0].fem = 1
+        self.e.Nodes[0].id = 1
 
-        self.e.set_gnd_fbk_cas(node_idx=1, chips=[0])
+        self.e.set_gnd_fbk_cas(node_id=1, chips=[0])
 
         spawn_mock.assert_called_once_with(self.e.Nodes[0].set_gnd_fbk_cas,
                                            [0])
@@ -325,7 +325,7 @@ class FunctionsTest(unittest.TestCase):
                                                     [0, 1, 2, 3, 4, 5, 6, 7])
 
         self.assertEqual([("Threshold equalization failed for node %s.\n"
-                           "Error:\n%s", [node_mock.fem, error])],
+                           "Error:\n%s", [node_mock.id, error])],
                          self.e.errors)
 
     def test_threshold_equalization_given_invalid_chips(self):
@@ -378,7 +378,7 @@ class FunctionsTest(unittest.TestCase):
 
     def test_scan_dac(self):
 
-        self.e.Nodes[3].fem = 6
+        self.e.Nodes[3].id = 6
 
         self.e.scan_dac(6, [0], "Threshold0", Range(0, 10, 1))
 
@@ -429,7 +429,7 @@ class UtilTest(unittest.TestCase):
         self.e = ExcaliburDetector(mock_config)
 
     def test_validate_return(self):
-        self.e.Nodes[0].fem = 1
+        self.e.Nodes[0].id = 1
 
         nodes, chips = self.e._validate(1, [0, 1, 2, 3, 4, 5, 6, 7])
 

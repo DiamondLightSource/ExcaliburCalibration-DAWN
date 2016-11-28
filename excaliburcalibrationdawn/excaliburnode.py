@@ -79,7 +79,7 @@ class ExcaliburNode(object):
             raise ValueError("Node {node} is invalid. Should be 1-6.".format(
                 node=node))
 
-        self.fem = node
+        self.id = node
         if ip_address is not None:
             self.ip_address = ip_address
         else:
@@ -113,11 +113,11 @@ class ExcaliburNode(object):
                              frames=1)
 
         # Helper classes
-        self.app = ExcaliburTestAppInterface(self.fem, self.ip_address, 6969,
+        self.app = ExcaliburTestAppInterface(self.id, self.ip_address, 6969,
                                              self.server_name)
         self.dawn = ExcaliburDAWN()
 
-        self.logger = logging.getLogger("Node{}".format(self.fem))
+        self.logger = logging.getLogger("Node{}".format(self.id))
         self.logger.info("Creating ExcaliburNode with server %s and ip %s",
                          self.server_name, self.ip_address)
 
@@ -125,7 +125,7 @@ class ExcaliburNode(object):
     def current_calib(self):
         """Generate calibration directory for current mode and gain."""
         return posixpath.join(self.calib_root,
-                              'fem{fem}'.format(fem=self.fem),
+                              'fem{id}'.format(id=self.id),
                               self.settings['mode'],
                               self.settings['gain'])
 
@@ -172,7 +172,7 @@ class ExcaliburNode(object):
     def _create_calib_structure(self):
         """Create the calibration directory structure."""
         self.logger.info("Creating calibration directory folder structure.")
-        template = posixpath.join(self.calib_root, "fem{}".format(self.fem),
+        template = posixpath.join(self.calib_root, "fem{}".format(self.id),
                                   "spm/{gain}")
         paths = [template.format(gain=gain)
                  for gain in ["shgm", "hgm", "lgm", "slgm"]]
@@ -236,7 +236,7 @@ class ExcaliburNode(object):
 
     def display_status(self):
         """Display status of node."""
-        print("Status for Node {}".format(self.fem))
+        print("Status for Node {}".format(self.id))
         print("LV: {}".format(self.app.lv))
         print("HV: {}".format(self.app.hv))
         print("HV Bias: {}".format(self.app.hv_bias))
@@ -254,7 +254,7 @@ class ExcaliburNode(object):
         with open(temp_file, "w") as output_file:
             self.app.read_chip_ids(stdout=output_file)
 
-        node_id = posixpath.join(self.calib_root, "fem{}".format(self.fem),
+        node_id = posixpath.join(self.calib_root, "fem{}".format(self.id),
                                  "efuseIDs")
 
         if util.files_match(temp_file, node_id):
@@ -377,8 +377,8 @@ class ExcaliburNode(object):
         self.logger.debug("E1: %s", E1)
         self.logger.debug("DAC1 Array: %s", dac1)
 
-        slope = (dac1[self.fem - 1, :] - dac0[self.fem - 1, :]) / (E1 - E0)
-        offset = dac0[self.fem - 1, :]
+        slope = (dac1[self.id - 1, :] - dac0[self.id - 1, :]) / (E1 - E0)
+        offset = dac0[self.id - 1, :]
         self.save_kev2dac_calib(threshold, slope, offset)
         self.logger.debug("Slope: %s, Offset: %s", slope, offset)
 
@@ -394,11 +394,11 @@ class ExcaliburNode(object):
         thresh_coeff = np.array([gain, offset])
 
         thresh_filename = posixpath.join(self.calib_root,
-                                         'fem{fem}',
+                                         'fem{id}',
                                          self.settings['mode'],
                                          self.settings['gain'],
                                          'threshold{threshold}'
-                                         ).format(fem=self.fem,
+                                         ).format(id=self.id,
                                                   threshold=threshold)
 
         self.logger.info("Saving calibration to: %s", thresh_filename)
@@ -507,7 +507,7 @@ class ExcaliburNode(object):
         OneE_E = 6
         OneE_Dac = self.config.E1_DAC[self.settings['gain']]
 
-        slope = (OneE_Dac[self.fem - 1, :] - self.dac_target) / OneE_E
+        slope = (OneE_Dac[self.id - 1, :] - self.dac_target) / OneE_E
         offset = [self.dac_target] * 8
         self.save_kev2dac_calib(threshold, slope, offset)
         self.logger.debug("Slope: %s, Offset: %s", slope, offset)
@@ -558,9 +558,9 @@ class ExcaliburNode(object):
         plot_name = util.tag_plot_name("DAC vs Energy", self.node_tag)
         for chip_idx in chips:
             x = np.array([E1_E, E2_E, E3_E])
-            y = np.array([E1_Dac[self.fem - 1, chip_idx],
-                          E2_Dac[self.fem - 1, chip_idx],
-                          E3_Dac[self.fem - 1, chip_idx]])
+            y = np.array([E1_Dac[self.id - 1, chip_idx],
+                          E2_Dac[self.id - 1, chip_idx],
+                          E3_Dac[self.id - 1, chip_idx]])
 
             p1, p2 = self.dawn.plot_linear_fit(x, y, [0, 1], "DAC Value",
                                                "Energy", plot_name,
@@ -582,11 +582,11 @@ class ExcaliburNode(object):
 
         """
         fname = posixpath.join(self.calib_root,
-                               'fem{fem}',
+                               'fem{id}',
                                self.settings['mode'],
                                self.settings['gain'],
                                'threshold{threshold}'
-                               ).format(fem=self.fem, threshold=threshold)
+                               ).format(id=self.id, threshold=threshold)
 
         thresh_coeff = np.genfromtxt(fname)
         self.logger.debug("Thresh coefficients 0: %s",
@@ -616,9 +616,9 @@ class ExcaliburNode(object):
     def _save_chip_ids(self):
         """Read chip IDs and save to eFuseIDs file in calibration directory."""
         log_filename = posixpath.join(self.calib_root,
-                                      'fem{fem}',
+                                      'fem{id}',
                                       'efuseIDs'
-                                      ).format(fem=self.fem)
+                                      ).format(id=self.id)
 
         with open(log_filename, "w") as outfile:
             self.app.read_chip_ids(stdout=outfile)
@@ -643,8 +643,8 @@ class ExcaliburNode(object):
         self.settings['gain'] = 'shgm'
         self.load_config(chips)
         self.set_dac(chips, "Threshold0", 40)
-        self.file_name = 'Fe55_image_node_{fem}_{exposure}s'.format(
-            fem=self.fem, exposure=self.settings['exposure'])
+        self.file_name = 'Fe55_image_node_{id}_{exposure}s'.format(
+            id=self.id, exposure=self.settings['exposure'])
         self.output_folder = posixpath.join(self.root_path, "Fe55_images")
         time.sleep(0.5)
 
@@ -917,7 +917,7 @@ class ExcaliburNode(object):
 
         """
         return "{tag}_{base_name}_{node}.hdf5".format(
-            tag=util.get_time_stamp(), base_name=base_name, node=self.fem)
+            tag=util.get_time_stamp(), base_name=base_name, node=self.id)
 
     def acquire_ff(self, num, exposure):
         """Acquire and sum flat-field images.
@@ -1138,7 +1138,7 @@ class ExcaliburNode(object):
         """
         self.logger.info("Copying SLGM calib to other gain modes")
         template_path = posixpath.join(self.calib_root,
-                                       'fem{fem}'.format(fem=self.fem),
+                                       'fem{id}'.format(id=self.id),
                                        self.settings['mode'],
                                        '{gain_mode}')
 
@@ -1510,10 +1510,11 @@ class ExcaliburNode(object):
         if method.lower() == "stripes":
             dac_range = Range(0, 20, 2)
             discbits_tmp = np.zeros(self.full_array_shape) * inv_mask
-            for idx in range(self.chip_size):
-                discbits_tmp[idx, :] = idx % 32
-            for idx in range(self.chip_size * self.num_chips):
-                discbits_tmp[:, idx] = (idx % 32 + discbits_tmp[:, idx]) % 32
+            for row in range(self.chip_size):
+                discbits_tmp[row, :] = row % 32
+            for column in range(self.chip_size * self.num_chips):
+                discbits_tmp[:, column] = \
+                    (column % 32 + discbits_tmp[:, column]) % 32
             discbits_tmp *= inv_mask
 
             discbits = -10 * np.ones(self.full_array_shape) * inv_mask
@@ -1554,7 +1555,7 @@ class ExcaliburNode(object):
         self.settings['equalization'] = 0
 
         print("Pixel threshold equalization complete for node {}".format(
-            self.fem))
+            self.id))
 
         self.load_config(chips)
         self.scan_dac(chips, threshold, Range(40, 10, 2))
@@ -1768,13 +1769,13 @@ class ExcaliburNode(object):
         """
         self.logger.info("Setting GND, FBK and Cas values from config script "
                          "for chips %s", chips)
-        fem_idx = self.fem - 1
+        node_idx = self.id - 1
         for chip_idx in chips:
-            self._write_dac(chip_idx, "GND", self.config.GND_DAC[fem_idx,
+            self._write_dac(chip_idx, "GND", self.config.GND_DAC[node_idx,
                                                                  chip_idx])
-            self._write_dac(chip_idx, "FBK", self.config.FBK_DAC[fem_idx,
+            self._write_dac(chip_idx, "FBK", self.config.FBK_DAC[node_idx,
                                                                  chip_idx])
-            self._write_dac(chip_idx, "Cas", self.config.CAS_DAC[fem_idx,
+            self._write_dac(chip_idx, "Cas", self.config.CAS_DAC[node_idx,
                                                                  chip_idx])
         self.app.load_dacs(chips, self.dacs_file)
 
@@ -1787,13 +1788,13 @@ class ExcaliburNode(object):
                                        '{disc}.chip{chip}')
 
         for chip_idx in self.chip_range:
-            discLbits_file = template_path.format(fem=self.fem,
+            discLbits_file = template_path.format(fem=self.id,
                                                   disc='discLbits',
                                                   chip=chip_idx)
-            discHbits_file = template_path.format(fem=self.fem,
+            discHbits_file = template_path.format(fem=self.id,
                                                   disc='discHbits',
                                                   chip=chip_idx)
-            pixel_mask_file = template_path.format(fem=self.fem,
+            pixel_mask_file = template_path.format(fem=self.id,
                                                    disc='pixelmask',
                                                    chip=chip_idx)
             if os.path.isfile(discLbits_file):
