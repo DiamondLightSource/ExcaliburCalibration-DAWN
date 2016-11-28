@@ -484,23 +484,15 @@ class SetDacsTest(unittest.TestCase):
 
     @patch(ETAI_patch_path + '.load_dacs')
     @patch(Node_patch_path + '._write_dac')
-    def test_correct_calls_made(self, set_dac_mock, load_mock):
+    def test_correct_calls_made(self, write_mock, load_mock):
+        mock_config.DACS = dict(Threshold1=0, Threshold2=0)
         e = ExcaliburNode(1, mock_config)
         chips = [0]
-        expected_calls = [('Threshold1', 0), ('Threshold2', 0),
-                          ('Threshold3', 0), ('Threshold4', 0),
-                          ('Threshold5', 0), ('Threshold6', 0),
-                          ('Threshold7', 0), ('Preamp', 175), ('Ikrum', 10),
-                          ('Shaper', 150), ('Disc', 125), ('DiscLS', 100),
-                          ('ShaperTest', 0), ('DACDiscL', 90), ('DACTest', 0),
-                          ('DACDiscH', 90), ('Delay', 30), ('TPBuffIn', 128),
-                          ('TPBuffOut', 4), ('RPZ', 255), ('TPREF', 128),
-                          ('TPREFA', 500), ('TPREFB', 500)]
 
         e.set_dacs(chips)
 
-        for index, call_args in enumerate(set_dac_mock.call_args_list):
-            self.assertEqual((0,) + expected_calls[index], call_args[0])
+        write_mock.assert_has_calls([call(0, "Threshold1", 0),
+                                     call(0, "Threshold2", 0)])
         load_mock.assert_called_once_with(chips, e.dacs_file)
 
 
