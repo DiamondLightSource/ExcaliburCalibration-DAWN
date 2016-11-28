@@ -12,5 +12,5 @@ A script used from DAWN to calibrate and test Excalibur-RX detectors.
     :target: https://coveralls.io/github/dls-controls/ExcaliburCalibration-DAWN?branch=master
 .. |Code Health| image:: https://landscape.io/github/dls-controls/ExcaliburCalibration-DAWN/master/landscape.svg?style=flat
     :target: https://landscape.io/github/dls-controls/ExcaliburCalibration-DAWN/master
-.. |Docs| image:: https://dls-controls.github.io/ExcaliburCalibration-DAWN/_images/docs.svg
-    :target: https://dls-controls.github.io/ExcaliburCalibration-DAWN/
+.. |Docs| image:: https://readthedocs.org/projects/excaliburcalibration-dawn/badge/?version=latest
+    :target: http://excaliburcalibration-dawn.readthedocs.io/en/latest/
