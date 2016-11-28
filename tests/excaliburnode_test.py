@@ -900,8 +900,9 @@ class DisplayDacScanTest(unittest.TestCase):
         plot_data, dac_axis = e.display_dac_scan(chips, mock_array,
                                                  Range(1, 10, 1))
 
+        plot_mock.assert_called_once_with(ANY, chips, ANY, "Node 1 - DAC Scan")
         np.testing.assert_array_equal(expected_plot_data, plot_mock.call_args[0][0])
-        np.testing.assert_array_equal(dac_axis, plot_mock.call_args[0][1])
+        np.testing.assert_array_equal(dac_axis, plot_mock.call_args[0][2])
         np.testing.assert_array_equal(expected_dac_axis, dac_axis)
         np.testing.assert_array_equal(expected_plot_data, plot_data)
 
@@ -916,8 +917,9 @@ class DisplayDacScanTest(unittest.TestCase):
         plot_data, dac_axis = e.display_dac_scan(chips, mock_array,
                                                  Range(10, 1, 1))
 
+        plot_mock.assert_called_once_with(ANY, chips, ANY, "Node 1 - DAC Scan")
         np.testing.assert_array_equal(expected_plot_data, plot_mock.call_args[0][0])
-        np.testing.assert_array_equal(dac_axis, plot_mock.call_args[0][1])
+        np.testing.assert_array_equal(dac_axis, plot_mock.call_args[0][2])
         np.testing.assert_array_equal(expected_dac_axis, dac_axis)
         np.testing.assert_array_equal(expected_plot_data, plot_data)
 

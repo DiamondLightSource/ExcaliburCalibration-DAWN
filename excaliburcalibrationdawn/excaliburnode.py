@@ -764,12 +764,12 @@ class ExcaliburNode(object):
                                       dac_range.step))
 
         plot_data = np.zeros([len(chips), dac_axis.size])
-        for chip_idx in chips:
+        for list_idx, chip_idx in enumerate(chips):
             chip = scan_data[:, 0:256, chip_idx * 256:(chip_idx + 1) * 256]
-            plot_data[chip_idx, :] = chip.mean(2).mean(1)
+            plot_data[list_idx, :] = chip.mean(2).mean(1)
 
         plot_name = self.node_tag + " - DAC Scan"
-        self.dawn.plot_dac_scan(plot_data, dac_axis, plot_name)
+        self.dawn.plot_dac_scan(plot_data, chips, dac_axis, plot_name)
         return plot_data, dac_axis
 
     def load_temp_config(self, chip_idx, discLbits=None, discHbits=None,
@@ -1553,7 +1553,8 @@ class ExcaliburNode(object):
         self.settings['disccsmspm'] = 'discL'
         self.settings['equalization'] = 0
 
-        print("Pixel threshold equalization complete")
+        print("Pixel threshold equalization complete for node {}".format(
+            self.fem))
 
         self.load_config(chips)
         self.scan_dac(chips, threshold, Range(40, 10, 2))

@@ -231,7 +231,7 @@ class ExcaliburDAWN(object):
 
         return dac_axis
 
-    def plot_dac_scan(self, scan_data, dac_axis, plot_name):
+    def plot_dac_scan(self, scan_data, chips, dac_axis, plot_name):
         """Plot the results of threshold dac scan.
 
         Displays an integral plot (DAC Scan) and a differential plot
@@ -239,6 +239,7 @@ class ExcaliburDAWN(object):
 
         Args:
             scan_data(list(numpy.array)): Data from dac scan to plot
+            chips(list(int)): Chips used for scan
             dac_axis(list(int)): X-axis data for plots
             plot_name(str): Name for plots
 
@@ -252,7 +253,7 @@ class ExcaliburDAWN(object):
         self.clear_plot(diff_plot_name)
 
         x_axis = np.array(dac_axis)
-        for chip_idx, chip_data in enumerate(scan_data):
+        for chip_idx, chip_data in zip(chips, scan_data):
             self.add_plot_line(x_axis, chip_data,
                                "DAC Value", "Mean Counts", plot_name,
                                label="Chip {}".format(chip_idx))

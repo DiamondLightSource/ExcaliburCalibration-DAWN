@@ -274,7 +274,7 @@ class PlotDacScanTest(unittest.TestCase):
         dac_axis = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
         dac_scan_data = np.random.randint(10, size=(256, 8*256))
 
-        e.plot_dac_scan([dac_scan_data], dac_axis, "Node 1 - DAC Scan")
+        e.plot_dac_scan([dac_scan_data], [0], dac_axis, "Node 1 - DAC Scan")
 
         clear_mock.assert_has_calls([call("Node 1 - DAC Scan"),
                                      call("Node 1 - DAC Scan Differential")])
