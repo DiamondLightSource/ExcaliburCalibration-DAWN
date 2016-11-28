@@ -1260,9 +1260,10 @@ class FindTest(unittest.TestCase):  # TODO: Improve
 
         value = self.e.find_edge([0], dac_scan_data, dac_range, 7)
 
-        plot_mock.assert_called_once_with(ANY, name="Noise Edges")
+        plot_mock.assert_called_once_with(ANY, name="Node 1 - Noise Edges")
         np.testing.assert_array_equal(expected_array, plot_mock.call_args[0][0])
-        display_mock.assert_called_once_with([0], ANY, "Histogram of NEdge",
+        display_mock.assert_called_once_with([0], ANY,
+                                             "Node 1 - Histogram of NEdge",
                                              "Edge Location")
         np.testing.assert_array_equal(expected_array, display_mock.call_args[0][1])
         np.testing.assert_array_equal(expected_array, value)
@@ -1275,7 +1276,8 @@ class FindTest(unittest.TestCase):  # TODO: Improve
 
         value = self.e.find_edge([0], dac_scan_data, dac_range, 7)
 
-        display_mock.assert_called_once_with([0], ANY, "Histogram of NEdge",
+        display_mock.assert_called_once_with([0], ANY,
+                                             "Node 1 - Histogram of NEdge",
                                              "Edge Location")
         np.testing.assert_array_equal(expected_array, display_mock.call_args[0][1])
         np.testing.assert_array_equal(expected_array, value)
@@ -1288,7 +1290,8 @@ class FindTest(unittest.TestCase):  # TODO: Improve
 
         value = self.e.find_max([0], dac_scan_data, dac_range)
 
-        display_mock.assert_called_once_with([0], ANY, "Histogram of NMax",
+        display_mock.assert_called_once_with([0], ANY,
+                                             "Node 1 - Histogram of NMax",
                                              "Max Location")
         np.testing.assert_array_equal(expected_array, display_mock.call_args[0][1])
         np.testing.assert_array_equal(expected_array, value)
@@ -1341,8 +1344,8 @@ class OptimizeDacDiscTest(unittest.TestCase):
                                     call(chips, "Threshold0", 80, r, 15,
                                          [5000, 0, 30])])
 
-        name = "Mean edge shift in Threshold DACs as a function of DAC_disc " \
-               "for discbit = 0"
+        name = "Node 1 - Mean edge shift in Threshold DACs as a function of" \
+               " DAC_disc for discbit = 0"
         clear_mock.assert_called_once_with(name)
 
         add_mock.assert_called_once_with(ANY, ANY, "Disc Value", "Edges",
@@ -1367,7 +1370,8 @@ class OptimizeDacDiscTest(unittest.TestCase):
     @patch(Node_patch_path + '.find_max')
     def test_chip_dac_scan(self, find_mock, scan_mock, set_mock, plot_mock):
         chips = [0]
-        expected_message = "Histogram of edges when scanning DAC_disc for discbit = 0"
+        expected_message = "Node 1 - Histogram of edges when scanning " \
+                           "DAC_disc for discbit = 0"
         range = MagicMock(start=0, stop=150, step=50)
 
         self.e._dac_scan_fit(chips, "discL", 1, range, 0, [5000, 0, 30])
@@ -1421,10 +1425,10 @@ class EqualizeDiscbitsTest(unittest.TestCase):
         self.assertEqual(([0], scan_mock.return_value, Range(0, 20, 2)),
                          find_mock.call_args_list[0][0])
         self.assertEqual((ANY,), plot_mock.call_args_list[0][0])
-        self.assertEqual(dict(name="Discriminator Bits"),
+        self.assertEqual(dict(name="Node 1 - Discriminator Bits"),
                          plot_mock.call_args_list[0][1])
         self.assertEqual((chips, ANY, ANY,
-                          "Histogram of Final Discbits", "Bit Value"),
+                          "Node 1 - Histogram of Final Discbits", "Bit Value"),
                          histo_mock.call_args_list[0][0])
         load_config_mock.assert_called_once_with(chips)
 

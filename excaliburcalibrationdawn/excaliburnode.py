@@ -1203,10 +1203,12 @@ class ExcaliburNode(object):
             discbits[roi_full_mask.astype(bool)] = \
                 discbits_roi[roi_full_mask.astype(bool)]
             # TODO: Should this be +=? Currently just uses final ROI
-            self.dawn.plot_image(discbits_roi, name="Disc bits")
+            plot_name = self.node_tag + " - Disc Bits"
+            self.dawn.plot_image(discbits_roi, name=plot_name)
 
         self.save_discbits(chips, discbits, disc_name + "bits")
-        self.dawn.plot_image(discbits, name="Disc bits total")
+        plot_name = self.node_tag + " - Disc Bits Total"
+        self.dawn.plot_image(discbits, name=plot_name)
 
         return discbits
 
@@ -1238,9 +1240,10 @@ class ExcaliburNode(object):
         else:
             edge_dacs = dac_range.start - dac_range.step * threshold_edge
 
-        self.dawn.plot_image(edge_dacs, name="Noise Edges")
-        self._display_histogram(chips, edge_dacs, "Histogram of NEdge",
-                                "Edge Location")
+        plot_name = self.node_tag + " - Noise Edges"
+        self.dawn.plot_image(edge_dacs, name=plot_name)
+        plot_name = self.node_tag + " - Histogram of NEdge"
+        self._display_histogram(chips, edge_dacs, plot_name, "Edge Location")
         return edge_dacs
 
     def find_max(self, chips, dac_scan_data, dac_range):
@@ -1255,9 +1258,10 @@ class ExcaliburNode(object):
             (dac_scan_data[::-1, :, :]), 0)
         # TODO: Assumes low to high scan? Does it matter?
 
-        self.dawn.plot_image(max_dacs, name="Noise Max")
-        self._display_histogram(chips, max_dacs, "Histogram of NMax",
-                                "Max Location")
+        plot_name = self.node_tag + " - Noise Max"
+        self.dawn.plot_image(max_dacs, name=plot_name)
+        plot_name = self.node_tag + " - Histogram of NMax"
+        self._display_histogram(chips, max_dacs, plot_name, "Max Location")
         return max_dacs
 
     def _display_histogram(self, chips, data, name, x_name):
@@ -1311,6 +1315,7 @@ class ExcaliburNode(object):
         discbit = 0
         calib_plot_name = "Mean edge shift in Threshold DACs as a function " \
                           "of DAC_disc for discbit = {}".format(discbit)
+        calib_plot_name = self.node_tag + " - " + calib_plot_name
 
         # Set discbits at 0
         discbits = discbit * np.ones(self.full_array_shape)
@@ -1388,6 +1393,7 @@ class ExcaliburNode(object):
         bins = (dac_range.stop - dac_range.start) / dac_range.step
         plot_name = "Histogram of edges when scanning DAC_disc for " \
                     "discbit = {discbit}".format(discbit=discbit)
+        plot_name = self.node_tag + " - " + plot_name
 
         self.set_dac(chips, threshold, dac_value)
         # Scan threshold
@@ -1535,9 +1541,10 @@ class ExcaliburNode(object):
                             discbits[x, y] = \
                                 discbits_stack[scan_nb[x, y], x, y]
 
-                self.dawn.plot_image(discbits, name="Discriminator Bits")
+                plot_name = self.node_tag + " - Discriminator Bits"
+                self.dawn.plot_image(discbits, name=plot_name)
 
-                plot_name = "Histogram of Final Discbits"
+                plot_name = self.node_tag + " - Histogram of Final Discbits"
                 self.dawn.plot_histogram_with_mask(chips, discbits, inv_mask,
                                                    plot_name, "Bit Value")
         else:
