@@ -225,16 +225,16 @@ class ExcaliburDetector(object):
             node_threads.append(util.spawn_thread(node.set_gnd_fbk_cas, chips))
         util.wait_for_threads(node_threads)
 
-    def threshold_equalization(self, node=None, chips=None):
+    def threshold_equalization(self, node_id=None, chips=None):
         """Calibrate discriminator equalization for given chips in detector.
 
         Args:
-            node(int): Node to equalise - If None, all nodes included
+            node_id(int): Node to equalise - If None, all nodes included
             chips(list(int)): List of chips to include in equalisation - If
                 None, all chips included
 
         """
-        nodes, chips = self._validate(node, chips)
+        nodes, chips = self._validate(node_id, chips)
 
         node_threads = []
         for node_ in nodes:
@@ -244,7 +244,7 @@ class ExcaliburDetector(object):
 
         while self.errors:
             error = self.errors.pop()
-            logging.debug(error[0], *error[1])
+            self.logger.info(error[0], *error[1])
 
     def _try_node_threshold_equalization(self, node, chips):
         """Run node.threshold_equalization in a try block, storing any errors.

@@ -290,11 +290,29 @@ class FunctionsTest(unittest.TestCase):
     def test_threshold_equalization(self, spawn_mock, wait_mock):
         self.e.Nodes[0].id = 1
 
-        self.e.set_gnd_fbk_cas(node_id=1, chips=[0])
+        self.e.threshold_equalization(node_id=1, chips=[0])
 
-        spawn_mock.assert_called_once_with(self.e.Nodes[0].set_gnd_fbk_cas,
-                                           [0])
+        spawn_mock.assert_called_once_with(
+            self.e._try_node_threshold_equalization, self.e.Nodes[0], [0])
         wait_mock.assert_called_once_with([spawn_mock.return_value])
+
+    @patch(util_patch_path + '.wait_for_threads')
+    @patch(util_patch_path + '.spawn_thread')
+    def test_threshold_equalization_with_errors(self, spawn_mock, wait_mock):
+        self.e.logger = MagicMock()
+        self.e.Nodes[0].id = 1
+        mock_error = IOError("Bad things happened")
+        self.e.errors = [("Threshold equalization failed for node %s.\n"
+                          "Error:\n%s", [1, mock_error])]
+
+        self.e.threshold_equalization(node_id=1, chips=[0])
+
+        spawn_mock.assert_called_once_with(
+            self.e._try_node_threshold_equalization, self.e.Nodes[0], [0])
+        wait_mock.assert_called_once_with([spawn_mock.return_value])
+        self.e.logger.info.assert_called_once_with(
+            "Threshold equalization failed for node %s.\nError:\n%s",
+            1, mock_error)
 
     @patch(util_patch_path + '.wait_for_threads')
     @patch(util_patch_path + '.spawn_thread')

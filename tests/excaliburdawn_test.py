@@ -111,6 +111,18 @@ class SimpleMethodsTest(unittest.TestCase):
         clear_mock.assert_called_once_with("Test Plot")
         self.assertNotIn("Test Plot", self.e.current_plots)
 
+    @patch('scisoftpy.plot.clear')
+    def test_clear_plot_not_in_list(self, clear_mock):
+        self.e.logger = MagicMock()
+
+        self.e.clear_plot("Test Plot")
+
+        clear_mock.assert_called_once_with("Test Plot")
+        self.assertNotIn("Test Plot", self.e.current_plots)
+        self.e.logger.info.assert_called_once_with(
+            "Cleared plot %s that wasn't in list of current plots...",
+            "Test Plot")
+
     @patch('scisoftpy.plot.addline')
     @patch('scisoftpy.plot.line')
     def test_add_plot_line_to_empty(self, line_mock, add_mock):
