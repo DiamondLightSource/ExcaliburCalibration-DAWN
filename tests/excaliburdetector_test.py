@@ -188,6 +188,21 @@ class FunctionsTest(unittest.TestCase):
         for node in self.e.Nodes:
             node.read_chip_ids.assert_called_once_with()
 
+    def test_set_dac(self):
+        self.e.Nodes[0].fem = 1
+
+        self.e.set_dac(1, "Threshold0", 5)
+
+        self.e.Nodes[0].set_dac.assert_called_once_with(range(8),
+                                                        "Threshold0", 5)
+
+    def test_read_dac(self):
+        self.e.Nodes[0].fem = 1
+
+        self.e.read_dac(1, "Threshold0")
+
+        self.e.Nodes[0].read_dac.assert_called_once_with("Threshold0")
+
     def test_set_quiet(self):
         self.e.set_quiet(True)
 
@@ -208,6 +223,28 @@ class FunctionsTest(unittest.TestCase):
         spawn_mock.assert_has_calls([call(node.load_config)
                                      for node in self.e.Nodes])
         wait_mock.assert_called_once_with([spawn_mock.return_value] * 6)
+
+    @patch(util_patch_path + '.wait_for_threads')
+    @patch(util_patch_path + '.spawn_thread')
+    def test_unequalise_pixels(self, spawn_mock, wait_mock):
+        self.e.Nodes[0].fem = 1
+
+        self.e.unequalise_pixels(1, [0])
+
+        spawn_mock.assert_called_once_with(
+            self.e.Nodes[0].unequalize_pixels, [0])
+        wait_mock.assert_called_once_with([spawn_mock.return_value])
+
+    @patch(util_patch_path + '.wait_for_threads')
+    @patch(util_patch_path + '.spawn_thread')
+    def test_unmask_pixels(self, spawn_mock, wait_mock):
+        self.e.Nodes[0].fem = 1
+
+        self.e.unmask_pixels(1, [0])
+
+        spawn_mock.assert_called_once_with(
+            self.e.Nodes[0].unmask_pixels, [0])
+        wait_mock.assert_called_once_with([spawn_mock.return_value])
 
     def test_display_status(self):
         self.e.display_status()
@@ -368,6 +405,26 @@ class UtilTest(unittest.TestCase):
 
     def setUp(self):
         self.e = ExcaliburDetector(mock_config)
+
+    def test_validate_return(self):
+        self.e.Nodes[0].fem = 1
+
+        nodes, chips = self.e._validate(1, [0, 1, 2, 3, 4, 5, 6, 7])
+
+        self.assertEqual([self.e.Nodes[0]], nodes)
+        self.assertEqual([0, 1, 2, 3, 4, 5, 6, 7], chips)
+
+    def test_validate_chips_invalid_then_error(self):
+
+        with self.assertRaises(ValueError):
+            self.e._validate(None, [8])
+
+    def test_validate_none_then_generate(self):
+
+        nodes, chips = self.e._validate(None, None)
+
+        self.assertEqual(self.e.Nodes, nodes)
+        self.assertEqual([0, 1, 2, 3, 4, 5, 6, 7], chips)
 
     @patch(util_patch_path + '.grab_slice')
     @patch(Detector_patch_path + '._generate_node_range',

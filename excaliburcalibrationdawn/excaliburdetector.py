@@ -156,12 +156,12 @@ class ExcaliburDetector(object):
         node = self._find_node(node_idx)
         node.set_dac(self.node_range, name, value)
 
-    def read_dac(self, dac_name, node_idx):
+    def read_dac(self, node_idx, dac_name):
         """Read back DAC analogue voltage for given node.
 
         Args:
-            dac_name(str): DAC value to read
             node_idx(int): Node to read for
+            dac_name(str): DAC value to read
 
         """
         node = self._find_node(node_idx)
@@ -186,7 +186,7 @@ class ExcaliburDetector(object):
         nodes, chips = self._validate(node, chips)
 
         node_threads = []
-        for node in self.Nodes:
+        for node in nodes:
             node_threads.append(
                 util.spawn_thread(node.unequalize_pixels, chips))
         util.wait_for_threads(node_threads)
@@ -203,7 +203,7 @@ class ExcaliburDetector(object):
         nodes, chips = self._validate(node, chips)
 
         node_threads = []
-        for node in self.Nodes:
+        for node in nodes:
             node_threads.append(util.spawn_thread(node.unmask_pixels, chips))
         util.wait_for_threads(node_threads)
 
