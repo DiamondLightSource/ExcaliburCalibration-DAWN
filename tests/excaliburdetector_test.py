@@ -266,23 +266,23 @@ class FunctionsTest(unittest.TestCase):
 
     @patch(util_patch_path + '.wait_for_threads')
     @patch(util_patch_path + '.spawn_thread')
-    def test_set_gnd_fbk_cas(self, spawn_mock, wait_mock):
+    def test_optimise_gnd_fbk_cas(self, spawn_mock, wait_mock):
         self.e.Nodes[0].id = 1
 
-        self.e.set_gnd_fbk_cas(node_id=1, chips=[0])
+        self.e.optimise_gnd_fbk_cas(node_id=1, chips=[0])
 
-        spawn_mock.assert_called_once_with(self.e.Nodes[0].set_gnd_fbk_cas,
-                                           [0])
+        spawn_mock.assert_called_once_with(
+            self.e.Nodes[0].optimise_gnd_fbk_cas, [0])
         wait_mock.assert_called_once_with([spawn_mock.return_value])
 
     @patch(util_patch_path + '.wait_for_threads')
     @patch(util_patch_path + '.spawn_thread')
-    def test_set_gnd_fbk_cas_default(self, spawn_mock, wait_mock):
-        self.e.set_gnd_fbk_cas()
+    def test_optimise_gnd_fbk_cas_default(self, spawn_mock, wait_mock):
+        self.e.optimise_gnd_fbk_cas()
 
-        spawn_mock.assert_has_calls([call(node.set_gnd_fbk_cas, [0, 1, 2, 3,
-                                                                 4, 5, 6, 7])
-                                     for node in self.e.Nodes])
+        spawn_mock.assert_has_calls(
+            [call(node.optimise_gnd_fbk_cas, [0, 1, 2, 3, 4, 5, 6, 7])
+             for node in self.e.Nodes])
         wait_mock.assert_called_once_with([spawn_mock.return_value] * 6)
 
     @patch(util_patch_path + '.wait_for_threads')

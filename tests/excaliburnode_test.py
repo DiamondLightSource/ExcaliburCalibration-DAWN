@@ -1683,21 +1683,22 @@ class OptimiseGNDFBKCasTest(unittest.TestCase):
         self.e = ExcaliburNode(1, mock_config)
 
     @patch(Node_patch_path + '.check_dac_read_back',
-           side_effect=[0.5, 0.6, 0.65, 0.7, 0.78, 0.9, 0.8, 0.83, 0.85])
+           side_effect=[0.5, 0.7, 0.65, 0.7, 0.78, 0.9, 0.8, 0.87, 0.86, 0.85])
     @patch(Node_patch_path + '.set_dac')
     def test_correct_calls_made(self, set_mock, check_mock):
 
         self.e.optimise_gnd_fbk_cas([0])
 
         set_mock.assert_has_calls([call([0], "GND", 145),
-                                   call([0], "GND", 146),
-                                   call([0], "GND", 147),
+                                   call([0], "GND", 150),
+                                   call([0], "GND", 148),
                                    call([0], "FBK", 190),
-                                   call([0], "FBK", 191),
-                                   call([0], "FBK", 192),
+                                   call([0], "FBK", 195),
+                                   call([0], "FBK", 200),
                                    call([0], "Cas", 180),
-                                   call([0], "Cas", 181),
-                                   call([0], "Cas", 182)])
+                                   call([0], "Cas", 185),
+                                   call([0], "Cas", 183),
+                                   call([0], "Cas", 181)])
         check_mock.assert_has_calls([call("GND", 0)] * 3 +
                                     [call("FBK", 0)] * 3 +
                                     [call("Cas", 0)] * 3)

@@ -209,12 +209,12 @@ class ExcaliburDetector(object):
             node_threads.append(util.spawn_thread(node.unmask_pixels, chips))
         util.wait_for_threads(node_threads)
 
-    def set_gnd_fbk_cas(self, node_id=None, chips=None):
-        """Set GND, FBK and CAS values from the config python script.
+    def optimise_gnd_fbk_cas(self, node_id=None, chips=None):
+        """Optimise GND, FBK and CAS for the given node and chips.
 
         Args:
-            node_id(int): Node to equalise - If None, all nodes included
-            chips(list(int)): List of chips to include in equalisation - If
+            node_id(int): Node to optimise - If None, all nodes included
+            chips(list(int)): List of chips to include in optimisation - If
                 None, all chips included
 
         """
@@ -222,7 +222,8 @@ class ExcaliburDetector(object):
 
         node_threads = []
         for node in nodes:
-            node_threads.append(util.spawn_thread(node.set_gnd_fbk_cas, chips))
+            node_threads.append(
+                util.spawn_thread(node.optimise_gnd_fbk_cas, chips))
         util.wait_for_threads(node_threads)
 
     def threshold_equalization(self, node_id=None, chips=None):

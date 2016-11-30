@@ -1856,46 +1856,60 @@ class ExcaliburNode(object):
         start_values = dict(GND=145, FBK=190, Cas=180)
         targets = dict(GND=0.650, FBK=0.900, Cas=0.850)
 
-        for dac in dacs:
-            start = start_values[dac]
-            target = targets[dac]
+        increments = [5, 2, 1]
+        for chip_idx in chips:
+            for dac in dacs:
+                dac_value = start_values[dac]
+                target = targets[dac]
 
-            for chip_idx in chips:
-                value = -1
-                previous = -1
-                current = start
+                voltage = -1
+                previous_voltage = -1
                 failed = False
-                while abs(value - target) > 0.004:
-                    self.set_dac([chip_idx], dac, current)
-                    value = self.check_dac_read_back(dac, chip_idx)
-
-                    if abs(value - previous) < 0.002:
+                state = None
+                overshoots = 0
+                while abs(voltage - target) > 0.004:
+                    self.set_dac([chip_idx], dac, dac_value)
+                    voltage = self.check_dac_read_back(dac, chip_idx)
+                    if abs(voltage - previous_voltage) < 0.002:
                         failed = True
                         break
-
-                    if value < target:
-                        current += 1
+                    if voltage < target:
+                        if state == "High":
+                            overshoots += 1
+                        state = "Low"
                     else:
-                        current -= 1
-                    previous = value
+                        if state == "Low":
+                            overshoots += 1
+                        state = "High"
+                    try:
+                        increment = increments[overshoots]
+                    except IndexError:
+                        increment = increments[-1]
+                    if state == "High":
+                        dac_value -= increment
+                    elif state == "Low":
+                        dac_value += increment
+                    previous_voltage = voltage
 
                 if failed:
-                    print("==========================================="
-                          "==========================================")
+                    print("==================================================="
+                          "==================================================")
                     print(" Could not converge {dac} for chip {idx} "
                           "fem {id}; value = {val}".format(
                               dac=dac, idx=chip_idx, id=self.id,
-                              val=value))
+                              val=voltage))
                     print(" Likely a stuck DAC")
-                    print("==========================================="
-                          "==========================================")
+                    print("==================================================="
+                          "==================================================")
                 else:
-                    print("=====================================")
+                    print("==================================================="
+                          "==================================================")
                     print("{dac} converged for chip {idx} fem {id}; "
-                          "dac = {voltage}V for a DAC of {val}".format(
+                          "voltage = {voltage}V for a DAC of {val}".format(
                               dac=dac, idx=chip_idx, id=self.id,
-                              voltage=value, val=current))
-                    print("=====================================")
+                              voltage=voltage, val=dac_value))
+                    print("==================================================="
+                          "==================================================")
 
     def rotate_config(self):
         """Rotate discbits files in EPICS calibration directory."""
