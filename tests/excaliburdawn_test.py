@@ -11,6 +11,20 @@ import numpy as np
 from excaliburcalibrationdawn import ExcaliburDAWN
 
 
+class InitTest(unittest.TestCase):
+
+    @patch('logging.getLogger')
+    @patch('scisoftpy.io')
+    @patch('scisoftpy.plot')
+    def test_init(self, plot_mock, io_mock, get_mock):
+        e = ExcaliburDAWN()
+
+        self.assertEqual(plot_mock, e.plot)
+        self.assertEqual(io_mock, e.io)
+        self.assertEqual(get_mock.return_value, e.logger)
+        get_mock.assert_called_once_with("DAWN")
+
+
 class FunctionsTest(unittest.TestCase):
 
     def setUp(self):
@@ -90,22 +104,55 @@ class SimpleMethodsTest(unittest.TestCase):
 
     @patch('scisoftpy.plot.clear')
     def test_clear_plot(self, clear_mock):
+        self.e.current_plots.append("Test Plot")
 
         self.e.clear_plot("Test Plot")
 
         clear_mock.assert_called_once_with("Test Plot")
+        self.assertNotIn("Test Plot", self.e.current_plots)
+
+    @patch('scisoftpy.plot.clear')
+    def test_clear_plot_not_in_list(self, clear_mock):
+        self.e.logger = MagicMock()
+
+        self.e.clear_plot("Test Plot")
+
+        clear_mock.assert_called_once_with("Test Plot")
+        self.assertNotIn("Test Plot", self.e.current_plots)
+        self.e.logger.info.assert_called_once_with(
+            "Cleared plot %s that wasn't in list of current plots...",
+            "Test Plot")
 
     @patch('scisoftpy.plot.addline')
-    def test_add_plot_line(self, add_mock):
+    @patch('scisoftpy.plot.line')
+    def test_add_plot_line_to_empty(self, line_mock, add_mock):
         x = MagicMock()
         y = MagicMock()
         name = "Test"
 
         self.e.add_plot_line(x, y, "X-Axis", "Y-Axis", name, "Chip 0")
 
+        line_mock.assert_called_once_with({"X-Axis": x},
+                                          {"Y-Axis": (y, "Chip 0")},
+                                          name="Test",
+                                          title="Test")
+        add_mock.assert_not_called()
+
+    @patch('scisoftpy.plot.addline')
+    @patch('scisoftpy.plot.line')
+    def test_add_plot_line_to_current(self, line_mock, add_mock):
+        x = MagicMock()
+        y = MagicMock()
+        name = "Test"
+        self.e.current_plots.append("Test")
+
+        self.e.add_plot_line(x, y, "X-Axis", "Y-Axis", name, "Chip 0")
+
         add_mock.assert_called_once_with({"X-Axis": x},
-                                         [{"Y-Axis": (y, "Chip 0")}],
-                                         name="Test", title="Test")
+                                         {"Y-Axis": (y, "Chip 0")},
+                                         name="Test",
+                                         title="Test")
+        line_mock.assert_not_called()
 
     @patch(DAWN_patch_path + '.add_plot_line')
     @patch('numpy.histogram')
@@ -237,26 +284,28 @@ class PlotDacScanTest(unittest.TestCase):
     def test_correct_calls_made(self, clear_mock, addline_mock, diff_mock):
         e = ExcaliburDAWN()
         dac_axis = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-        dac_scan_data = [np.random.randint(10, size=(256, 8*256))]
+        dac_scan_data = np.random.randint(10, size=(256, 8*256))
 
-        e.plot_dac_scan(dac_scan_data, dac_axis)
+        e.plot_dac_scan([dac_scan_data], [0], dac_axis, "Node 1 - DAC Scan")
 
-        # Check clear calls
-        self.assertEqual("DAC Scan", clear_mock.call_args_list[0][0][0])
-        self.assertEqual("DAC Scan Differential",
-                         clear_mock.call_args_list[1][0][0])
-        # Check first addline call
+        clear_mock.assert_has_calls([call("Node 1 - DAC Scan"),
+                                     call("Node 1 - DAC Scan Differential")])
+
+        addline_mock.assert_has_calls([call(ANY, ANY, "DAC Value",
+                                            "Mean Counts", "Node 1 - DAC Scan",
+                                            label="Chip 0"),
+                                       call(ANY, ANY, "DAC Value",
+                                            "Mean Counts",
+                                            "Node 1 - DAC Scan Differential",
+                                            label="Chip 0")])
         np.testing.assert_array_equal(dac_axis,
                                       addline_mock.call_args_list[0][0][0])
-        self.assertEqual(dict(label="Chip 0"),
-                         addline_mock.call_args_list[0][1])
-        # Check diff call
-        np.testing.assert_array_equal(dac_scan_data[0],
-                                      diff_mock.call_args[0][0])
-        # Check second addline call
+        np.testing.assert_array_equal(dac_scan_data,
+                                      addline_mock.call_args_list[0][0][1])
         np.testing.assert_array_equal(dac_axis[1:-1],
                                       addline_mock.call_args_list[1][0][0])
         self.assertEqual(diff_mock.return_value.__neg__.return_value[1:],
                          addline_mock.call_args_list[1][0][1])
-        self.assertEqual(dict(label="Chip 0"),
-                         addline_mock.call_args_list[1][1])
+
+        diff_mock.assert_called_once_with(ANY)
+        np.testing.assert_array_equal(dac_scan_data, diff_mock.call_args[0][0])

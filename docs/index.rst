@@ -8,12 +8,20 @@ This is a brief overview of the script usage. For more extensive instructions, s
 .. include:: quickstart.rst
 
 User Guide
-~~~~~~~~~~
+----------
 
 .. toctree::
    :maxdepth: 2
 
    userguide
+
+Developer Guide
+---------------
+
+.. toctree::
+   :maxdepth: 2
+
+   developer
 
 Code Documentation
 ------------------

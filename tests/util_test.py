@@ -37,8 +37,43 @@ class FunctionsTest(unittest.TestCase):
 
         np.testing.assert_array_equal(expected_array, self.array)
 
+    @patch(util_patch_path + '.grab_slice')
+    @patch(util_patch_path + '.generate_chip_range')
+    def test_grab_chip_slice(self, generate_mock, grab_mock):
+        array = MagicMock()
+        generate_mock.return_value = MagicMock(), MagicMock
+
+        value = util.grab_chip_slice(array, 1)
+
+        generate_mock.assert_called_once_with(1)
+        grab_mock.assert_called_once_with(array, generate_mock.return_value[0],
+                                          generate_mock.return_value[1])
+        self.assertEqual(grab_mock.return_value, value)
+
+    @patch(util_patch_path + '.set_slice')
+    @patch(util_patch_path + '.generate_chip_range')
+    def test_set_chip_slice(self, generate_mock, set_mock):
+        array = np.array([[1, 2, 3, 4, 5],
+                          [10, 20, 30, 40, 50],
+                          [100, 200, 300, 400, 500]])
+        generate_mock.return_value = MagicMock(), MagicMock
+
+        util.set_chip_slice(array, 1, 0)
+
+        generate_mock.assert_called_once_with(1)
+        set_mock.assert_called_once_with(array, generate_mock.return_value[0], generate_mock.return_value[1], 0)
+
+    def test_generate_chip_range(self):
+        expected_start = [0, 256]
+        expected_stop = [255, 511]
+
+        start, stop = util.generate_chip_range(1)
+
+        np.testing.assert_array_equal(expected_start, start)
+        np.testing.assert_array_equal(expected_stop, stop)
+
     @patch('numpy.rot90')
-    @patch('numpy.savetxt')
+    @patch(util_patch_path + '.save_array')
     @patch('numpy.loadtxt')
     def test_rotate_config(self, load_mock, save_mock, rotate_mock):
         test_path = 'path/to/config'
@@ -47,8 +82,17 @@ class FunctionsTest(unittest.TestCase):
 
         load_mock.assert_called_once_with(test_path)
         rotate_mock.assert_called_once_with(load_mock.return_value, 2)
-        save_mock.assert_called_once_with(test_path, rotate_mock.return_value,
-                                          fmt='%.18g', delimiter=' ')
+        save_mock.assert_called_once_with(test_path, rotate_mock.return_value)
+
+    @patch('numpy.savetxt')
+    def test_save_array(self, save_mock):
+        test_path = "path/to/config"
+        mock_array = MagicMock()
+
+        util.save_array(test_path, mock_array)
+
+        save_mock.assert_called_once_with(test_path, mock_array,
+                                          fmt="%.18g", delimiter=" ")
 
     datetime_mock = MagicMock()
     datetime_mock.now.return_value.isoformat.return_value = "20161020~154548.834130"
@@ -63,10 +107,11 @@ class FunctionsTest(unittest.TestCase):
         self.assertEqual(expected_time_stamp, time_stamp)
 
     @patch(util_patch_path + '.get_time_stamp', return_value="20161020~154548")
-    def test_generate_file_name(self, get_mock):
-        file_name = util.generate_file_name("TestImage")
+    def test_tag_plot_name(self, get_mock):
+        plot_name = util.tag_plot_name("TestImage", "Node 1")
 
-        self.assertEqual("20161020~154548_TestImage.hdf5", file_name)
+        get_mock.assert_called_once_with()
+        self.assertEqual("Node 1 - TestImage - 20161020~154548", plot_name)
 
     def test_to_list_given_value_then_return_list(self):
         response = util.to_list(1)
@@ -102,3 +147,71 @@ class FunctionsTest(unittest.TestCase):
                          [call[0][0] for call in sleep_mock.call_args_list])
         self.assertEqual(50, sleep_mock.call_count)
         self.assertEqual(50, isfile_mock.call_count)
+
+    @patch('filecmp.cmp')
+    def test_file_match(self, cmp_mock):
+
+        response = util.files_match("/path/to/file", "/path/to/file2")
+
+        cmp_mock.assert_called_once_with("/path/to/file", "/path/to/file2")
+        self.assertEqual(cmp_mock.return_value, response)
+
+    @patch(util_patch_path + '._ReturnThread')
+    def test_spawn_thread(self, thread_init_mock):
+        thread_mock = MagicMock()
+        thread_init_mock.return_value = thread_mock
+        function_mock = MagicMock()
+
+        response = util.spawn_thread(function_mock, "arg1", arg2="arg2")
+
+        thread_init_mock.assert_called_once_with(target=function_mock,
+                                                 args=("arg1",),
+                                                 kwargs=dict(arg2="arg2"))
+        thread_mock.start.assert_called_once_with()
+        self.assertEqual(thread_mock, response)
+
+    def test_wait_for_threads(self):
+        mocks = [MagicMock(), MagicMock(), MagicMock(), MagicMock()]
+
+        response = util.wait_for_threads(mocks)
+
+        for idx, mock in enumerate(mocks):
+            mock.join.assert_called_once_with()
+            self.assertEqual(mock.join.return_value, response[idx])
+
+
+class ReturnThreadTest(unittest.TestCase):
+
+    @patch('threading.Thread.__init__')
+    def test_init(self, thread_mock):
+        thread = util._ReturnThread(group="group", target="target",
+                                    name="name", args="args", kwargs="kwargs",
+                                    verbose="verbose")
+
+        thread_mock.assert_called_once_with("group", "target", "name", "args",
+                                            "kwargs", "verbose")
+        self.assertIsNone(thread._return)
+
+    def test_run(self):
+        function_mock = MagicMock()
+        thread = util._ReturnThread(target=function_mock,
+                                    args="args", kwargs=dict(arg2="arg2"))
+        thread._Thread__target = function_mock
+        thread._Thread__args = ["args"]
+        thread._Thread__kwargs = dict(arg2="arg2")
+
+        thread.run()
+
+        function_mock.assert_called_once_with("args", arg2="arg2")
+        self.assertEqual(thread._return, function_mock.return_value)
+
+    @patch('threading.Thread.join')
+    def test_join(self, join_mock):
+        thread = util._ReturnThread()
+        return_mock = MagicMock()
+        thread._return = return_mock
+
+        response = thread.join("timeout")
+
+        join_mock.assert_called_once_with("timeout")
+        self.assertEqual(response, return_mock)

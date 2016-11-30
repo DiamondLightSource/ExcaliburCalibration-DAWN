@@ -1,4 +1,4 @@
-"""A Python interface to the ExcaliburTestApplication command line tool
+"""A Python interface to the ExcaliburTestApplication command line tool.
 
 Command Line Options:
 
@@ -58,13 +58,10 @@ Command Line Options:
 """
 import os
 import posixpath
-import time
 import subprocess
-
-import util
-
 import logging
-logging.basicConfig(level=logging.DEBUG)
+
+from excaliburcalibrationdawn import util
 
 
 class ExcaliburTestAppInterface(object):
@@ -123,6 +120,15 @@ class ExcaliburTestAppInterface(object):
                     TPREFA='24', TPREFB='25')
 
     def __init__(self, node, ip_address, port, server_name=None):
+        """Initialise excaliburTestApp interface.
+
+        Args:
+            node(int): Specifier for node to communicate with
+            ip_address(str): IP address of node
+            port(int): Port to communicate on
+            server_name(str): Name of server to connect to
+
+        """
         self.node = node
         self.server_path = "{}.diamond.ac.uk".format(server_name)
         self.ip_address = ip_address
@@ -144,8 +150,10 @@ class ExcaliburTestAppInterface(object):
         self.dacs_loaded = None
         self.initialised = False
 
+        self.logger = logging.getLogger("ETAI")
+
         self.quiet = True  # Flag to stop printing of terminal output
-        logging.info("Set self.quiet to False to display terminal output.")
+        self.logger.info("Set self.quiet to False to display terminal output.")
 
     def _construct_command(self, chips, *cmd_args):
         """Construct a command from the base_cmd, given chips and any cmd_args.
@@ -180,8 +188,8 @@ class ExcaliburTestAppInterface(object):
         mask_hex = 0
         for chip_index in chips:
             if chip_index not in valid_index_range:
-                raise ValueError("Invalid index given, must be in " +
-                                 str(valid_index_range))
+                raise ValueError("Invalid index given, must be in {}".format(
+                    valid_index_range))
             else:
                 mask_hex += 2**(max_chip_index - chip_index)
 
@@ -200,8 +208,8 @@ class ExcaliburTestAppInterface(object):
             bool: Whether command was successful
 
         """
-        logging.debug("Sending Command:\n'%s' with kwargs %s",
-                      " ".join(command), str(cmd_kwargs))
+        self.logger.debug("Sending Command:\n'%s' with kwargs %s",
+                          " ".join(command), str(cmd_kwargs))
 
         try:
             if self.quiet and not loud_call:
@@ -209,10 +217,12 @@ class ExcaliburTestAppInterface(object):
             else:
                 subprocess.check_call(command, **cmd_kwargs)
         except subprocess.CalledProcessError as error:
-            logging.debug("Error Output:\n%s", error.output)
+            self.logger.info("Exception during in subprocess call.")
+            self.logger.info("Error Return Code: %s\nError Output:\n%s",
+                             error.returncode, error.output)
             if self.quiet:
-                logging.info("Set self.quiet to False to display terminal "
-                             "output.")
+                self.logger.info("Set self.quiet to False to display terminal "
+                                 "output.")
             return False
 
         return True
@@ -224,7 +234,7 @@ class ExcaliburTestAppInterface(object):
             lv_state(int): State to set (0 - Off, 1 - On)
 
         """
-        logging.debug("Setting LV to %s", lv_state)
+        self.logger.debug("Setting LV to %s", lv_state)
         if lv_state not in [0, 1]:
             raise ValueError("LV can only be on (0) or off (1), got "
                              "{value}".format(value=lv_state))
@@ -242,7 +252,7 @@ class ExcaliburTestAppInterface(object):
             hv_state(int): State to set (0 - Off, 1 - On)
 
         """
-        logging.debug("Setting HV to %s", hv_state)
+        self.logger.debug("Setting HV to %s", hv_state)
         if hv_state not in [0, 1]:
             raise ValueError("HV can only be on (0) or off (1), got "
                              "{value}".format(value=hv_state))
@@ -259,7 +269,7 @@ class ExcaliburTestAppInterface(object):
             hv_bias(int): Voltage to set
 
         """
-        logging.debug("Setting HV bias to %s", hv_bias)
+        self.logger.debug("Setting HV bias to %s", hv_bias)
         if hv_bias < 0 or hv_bias > 120:
             raise ValueError("HV bias must be between 0 and 120 volts, got "
                              "{value}".format(value=hv_bias))
@@ -283,12 +293,12 @@ class ExcaliburTestAppInterface(object):
             acq_time(int): Exposure time for each frame
             burst(bool): Enable burst mode capture
             pixel_mode(str): Pixel mode (SPM*, CSM = 0*, 1)
-            disc_mode(int): Discriminator mode (DiscL*, DiscH = 0*, 1)
+            disc_mode(str): Discriminator mode (discL*, discH = 0*, 1)
             depth(int): Counter depth (1, 6, 12*, 24)
             counter(int): Counter to read (0* or 1)
             equalization(int): Enable equalization (0*, 1 = off*, on)
             gain_mode(str): Gain mode (SHGM*, HGM, LGM, SLGM = 0*, 1, 2, 3)
-            read_mode(str): Readout mode (0*, 1 = sequential, continuous)
+            read_mode(str): Readout mode (sequential, continuous = 0*, 1)
             trig_mode(int): Trigger mode (internal*, shutter, sync = 0*, 1, 2)
             tp_count(int): Set test pulse count (0*)
             path(str): Path to image folder (/tmp*)
@@ -298,7 +308,7 @@ class ExcaliburTestAppInterface(object):
             list(str): Full acquire command to send to subprocess call
 
         """
-        logging.debug("Sending acquire command for chips %s", chips)
+        self.logger.debug("Sending acquire command for chips %s", chips)
         # Check detector has been initialised correctly
         if self.dacs_loaded is None:
             raise ValueError("No DAC file loaded to FEM. Call setup().")
@@ -338,10 +348,10 @@ class ExcaliburTestAppInterface(object):
             extra_params.extend([self.PATH + str(path)])
         if hdf_file is not None:
             if path is None:
-                path = "/tmp"
+                path = "/tmp"  # Default path used by excaliburTestApp
             full_path = posixpath.join(path, hdf_file)
             if os.path.isfile(full_path):
-                raise IOError("File already exists")
+                raise IOError("File '{}' already exists".format(full_path))
             else:
                 extra_params.extend([self.HDF_FILE + str(hdf_file)])
 
@@ -382,7 +392,8 @@ class ExcaliburTestAppInterface(object):
             dac_file(str): File to load DAC values from
 
         """
-        logging.debug("Sending sense command for %s on chips %s", dac, chips)
+        self.logger.debug("Sending sense command for %s on chips %s",
+                          dac, chips)
 
         # Set up DAC for sensing
         command_1 = self._construct_command(chips,
@@ -396,27 +407,28 @@ class ExcaliburTestAppInterface(object):
                                             self.READ_SLOW_PARAMS)
         self._send_command(command_2, loud_call=True)
 
-    def perform_dac_scan(self, chips, threshold, scan_range, dac_file,
-                         path, hdf_file):
+    def perform_dac_scan(self, chips, threshold, scan_range, exposure,
+                         dac_file, path, hdf_file):
         """Execute a DAC scan and save the results to the given file.
 
         Args:
             chips(list(int)): Chips to scan
             threshold(str): Threshold to scan
             scan_range(Range): Start, stop and step of scan
+            exposure(int): Exposure time for each acquisition of scan
             dac_file(str): File to load config from
             path(str): Folder to save into
             hdf_file(str): File to save to
 
         """
-        logging.debug("Sending DAC scan command")
+        self.logger.debug("Sending DAC scan command")
         scan_command = "{dac},{start},{stop},{step}".format(
             dac=int(self.dac_code[threshold]) - 1,
             start=scan_range.start, stop=scan_range.stop, step=scan_range.step)
 
         command = self._construct_command(chips,
                                           self.DAC_FILE + dac_file,
-                                          self.ACQ_TIME, "5",
+                                          self.ACQ_TIME, str(exposure),
                                           self.SCAN, scan_command,
                                           self.PATH + path,
                                           self.HDF_FILE + hdf_file)
@@ -429,7 +441,7 @@ class ExcaliburTestAppInterface(object):
             chips(list(int): Chips to read
 
         """
-        logging.debug("Sending read chip IDs command")
+        self.logger.debug("Sending read chip IDs command")
         command = self._construct_command(chips,
                                           self.RESET,
                                           self.READ_EFUSE)
@@ -444,7 +456,7 @@ class ExcaliburTestAppInterface(object):
         and DAC Out
 
         """
-        logging.debug("Sending read slow command")
+        self.logger.debug("Sending read slow command")
         command = self._construct_command(self.chip_range,
                                           self.READ_SLOW_PARAMS)
         self._send_command(command, loud_call=True, **cmd_kwargs)
@@ -457,32 +469,32 @@ class ExcaliburTestAppInterface(object):
             dac_file(str): Path to file containing DAC values
 
         """
-        logging.debug("Sending load DACs command for chips %s", chips)
+        self.logger.debug("Sending load DACs command for chips %s", chips)
         command = self._construct_command(chips, self.DAC_FILE + dac_file)
         success = self._send_command(command)
         if success:
-            self.dacs_loaded = dac_file.split('/')[-1]
+            self.dacs_loaded = dac_file
 
-    def configure_test_pulse(self, chips, tp_mask, dac_file,
+    def configure_test_pulse(self, chip, tp_mask, dac_file,
                              config_files=None):
         """Load DAC file and test mask ready acquire test.
 
         Args:
-            chips(list(int)): List of chips to configure
+            chip(list(int)): Chip to configure
             tp_mask(numpy.array): Test pulse mask to load for test pulses
             dac_file(str): Path to file containing DAC values
             config_files(dict): Config files for discL, discH and pixel mask
 
         """
-        logging.debug("Sending configure test pulse command for chips %s",
-                      chips)
+        self.logger.debug("Sending configure test pulse command for chip %s",
+                          chip)
         # TODO: Check if this really needs to be coupled to loading DACs
-        extra_params = []
+        extra_params = [self.CONFIG]
         if config_files is not None:
             extra_params.extend([self.DISC_L + config_files['discL'],
                                  self.DISC_H + config_files['discH'],
                                  self.PIXEL_MASK + config_files['pixel_mask']])
-        command = self._construct_command(chips,
+        command = self._construct_command(chip,
                                           self.DAC_FILE + dac_file,
                                           self.TP_MASK + tp_mask,
                                           *extra_params)
@@ -496,7 +508,7 @@ class ExcaliburTestAppInterface(object):
             tp_mask(str): Path to tp_mask file
 
         """
-        logging.debug("Sending load TP mask command for chips %s", chips)
+        self.logger.debug("Sending load TP mask command for chips %s", chips)
         command = self._construct_command(chips,
                                           self.CONFIG,
                                           self.TP_MASK + tp_mask)
@@ -526,7 +538,7 @@ class ExcaliburTestAppInterface(object):
             pixelmask(str): File path for pixelmask config
 
         """
-        logging.info("Loading config for chip(s) %s", chips)
+        self.logger.info("Loading config for chip(s) %s", chips)
 
         extra_parameters = [self.CONFIG]
 
@@ -544,27 +556,21 @@ class ExcaliburTestAppInterface(object):
             command = self._construct_command(chips, *extra_parameters)
             self._send_command(command)
         else:
-            print(str(discl) + " does not exist !")
+            print("{} does not exist !".format(discl))
 
-    def grab_remote_file(self, server_source):
+    def grab_remote_file(self, file_path):
         """Use scp to copy the given file from the server to the local host.
 
         Args:
-            server_source(str): File path on server
+            file_path(str): File path on server
 
         Returns:
             str: File path to local copied file
 
         """
-        logging.info("Fetching remote file")
-        file_name, extension = posixpath.splitext(server_source)
+        self.logger.info("Fetching remote file")
         full_source = "{server}:{source}".format(server=self.server_path,
-                                                 source=server_source)
-        new_file = "{base}_fem{node}{ext}".format(base=file_name,
-                                                  node=self.node,
-                                                  ext=extension)
+                                                 source=file_path)
 
-        command = ["scp", full_source, new_file]
+        command = ["scp", full_source, file_path]
         self._send_command(command)
-
-        return new_file

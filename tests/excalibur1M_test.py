@@ -12,20 +12,33 @@ Detector_patch_path = "excaliburcalibrationdawn.excaliburdetector" \
 
 class InitTest(unittest.TestCase):
 
+    @patch('logging.getLogger')
     @patch(Detector_patch_path + '.__init__')
-    def test_super_called(self, excalibur_detector_mock):
-        Excalibur1M("test-server", [1, 2], 1)
+    def test_super_called(self, excalibur_detector_mock, get_mock):
+        detector = MagicMock(name="test-detector", nodes=[1, 2], master_node=1,
+                             servers=["test-server"],
+                             ip_addresses=["192.168.0.1"])
+        config = MagicMock(detector=detector)
+        e = Excalibur1M(config)
 
-        excalibur_detector_mock.assert_called_once_with("test-server",
-                                                        [1, 2], 1)
+        get_mock.assert_called_once_with("Excalibur1M")
+        self.assertEqual(get_mock.return_value, e.logger)
+        excalibur_detector_mock.assert_called_once_with(config)
 
-    @patch(Detector_patch_path + '.__init__')
-    def test_given_too_few_nodes_then_error(self, _):
+    def test_given_too_few_nodes_then_error(self):
+        detector = MagicMock(name="test-detector", nodes=[1], master_node=1,
+                             servers=["test-server"],
+                             ip_addresses=["192.168.0.1"])
+        config = MagicMock(detector=detector)
 
         with self.assertRaises(ValueError):
-            Excalibur1M("test-server", [1], 1)
+            Excalibur1M(config)
 
-    @patch(Detector_patch_path + '.__init__')
-    def test_given_too_many_nodes_then_error(self, _):
+    def test_given_too_many_nodes_then_error(self):
+        detector = MagicMock(name="test-detector", nodes=[1, 2, 3],
+                             master_node=1, servers=["test-server"],
+                             ip_addresses=["192.168.0.1"])
+        config = MagicMock(detector=detector)
+
         with self.assertRaises(ValueError):
-            Excalibur1M("test-server", [1, 2, 3], 1)
+            Excalibur1M(config)

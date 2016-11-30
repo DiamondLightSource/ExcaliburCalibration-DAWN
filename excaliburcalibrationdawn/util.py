@@ -1,10 +1,16 @@
-"""Utility functions for excaliburcalibrationdawn"""
+"""Utility functions for excaliburcalibrationdawn."""
 import os
 import time
+import filecmp
 from datetime import datetime
+from threading import Thread
+
 import numpy as np
+
 import logging
 logging.basicConfig(level=logging.DEBUG)
+
+CHIP_SIZE = 256  # The width and height of a detector chip
 
 
 def grab_slice(array, start, stop):
@@ -38,6 +44,46 @@ def set_slice(array, start, stop, value):
     array[start[0]:stop[0] + 1, start[1]:stop[1] + 1] = value
 
 
+def grab_chip_slice(array, chip_idx):
+    """Grab a chip from a full array.
+
+    Args:
+        array(numpy.array): Array to grab from
+        chip_idx(int): Index of section of array to grab
+
+    Returns:
+        numpy.array: Sub array
+
+    """
+    start, stop = generate_chip_range(chip_idx)
+    return grab_slice(array, start, stop)
+
+
+def set_chip_slice(array, chip_idx, value):
+    """Grab a section of a 2D numpy array.
+
+    Args:
+        array(numpy.array): Array to grab from
+        chip_idx(int): Index of section of array to grab
+        value(numpy.array/int/float): Value to set slice to
+
+    """
+    start, stop = generate_chip_range(chip_idx)
+    set_slice(array, start, stop, value)
+
+
+def generate_chip_range(chip_idx):
+    """Calculate start and stop coordinates of given chip.
+
+    Args:
+        chip_idx(int): Chip to calculate range for
+
+    """
+    start = [0, chip_idx * CHIP_SIZE]
+    stop = [CHIP_SIZE - 1, (chip_idx + 1) * CHIP_SIZE - 1]
+    return start, stop
+
+
 def rotate_array(config_file):
     """Rotate array in given file 180 degrees.
 
@@ -47,12 +93,22 @@ def rotate_array(config_file):
     """
     # shutil.copy(config_file, config_file + ".backup")
     config_bits = np.loadtxt(config_file)
-    np.savetxt(config_file, np.rot90(config_bits, 2), fmt='%.18g',
-               delimiter=' ')
+    save_array(config_file, np.rot90(config_bits, 2))
+
+
+def save_array(file_path, array):
+    """Save a numpy array to file.
+
+    Args:
+        file_path(str): File to save to
+        array(numpy.array): Array to save
+
+    """
+    np.savetxt(file_path, array, fmt="%.18g", delimiter=" ")
 
 
 def get_time_stamp():
-    """Get a time stamp"""
+    """Get a time stamp."""
     iso = datetime.now().isoformat(sep="~")  # Get ISO 8601 time stamp
     iso = iso.replace(":", "").replace("-", "")  # Remove date and time seps
     time_stamp = iso.split(".")[0]  # Remove milliseconds
@@ -60,18 +116,20 @@ def get_time_stamp():
     return time_stamp
 
 
-def generate_file_name(base_name):
-    """Generate file name with a time stamp from a given base_name.
+def tag_plot_name(base_name, parent):
+    """Generate plot name with a time stamp from a given base name.
 
     Args:
-        base_name(str): Base file name - e.g. Image, DAC Scan
+        base_name(str): Base plot name - e.g. Image, DAC Scan
+        parent(str): Prefix for plot name
 
     Returns:
-        str: New file name
+        str: New plot name
 
     """
-    return "{tag}_{base_name}.hdf5".format(base_name=base_name,
-                                           tag=get_time_stamp())
+    return "{suffix} - {base_name} - {tag}".format(suffix=parent,
+                                                   base_name=base_name,
+                                                   tag=get_time_stamp())
 
 
 def to_list(value):
@@ -112,3 +170,73 @@ def wait_for_file(file_path, wait_time):
 
     logging.info("File didn't appear within given time.")
     return False
+
+
+def files_match(file1, file2):
+    """Check if two files are identical.
+
+    Args:
+        file1(str): Path to first file
+        file2(str): Path to second file
+
+    Returns:
+        bool: True if the same, else False
+
+    """
+    return filecmp.cmp(file1, file2)
+
+
+def spawn_thread(function, *args, **kwargs):
+    """Spawn a worker thread to call the given function.
+
+    Args:
+        function: Function to call
+        *args: Arguments for function call
+        **kwargs: Keyword arguments for function call
+
+    Returns:
+        Thread: Worker thread calling function
+
+    """
+    thread = _ReturnThread(target=function, args=args, kwargs=kwargs)
+    thread.start()
+    return thread
+
+
+def wait_for_threads(threads):
+    """Wait for the given threads to finish and return list of returns.
+
+    Args:
+        threads(list(_ReturnThread): Threads to wait for
+
+    Returns:
+        list: The values the functions called in the threads return
+
+    """
+    returns = []
+    for thread in threads:
+        returns.append(thread.join())
+
+    return returns
+
+
+class _ReturnThread(Thread):
+
+    """A Thread with a return value."""
+
+    def __init__(self, group=None, target=None, name=None,
+                 args=(), kwargs=None, verbose=None):
+        super(_ReturnThread, self).__init__(group, target, name, args, kwargs,
+                                            verbose)
+        self._return = None
+
+    def run(self):
+        """Override default run to store return value."""
+        if self._Thread__target is not None:
+            self._return = self._Thread__target(*self._Thread__args,
+                                                **self._Thread__kwargs)
+
+    def join(self, timeout=None):
+        """Override join to return stored return value from run."""
+        super(_ReturnThread, self).join(timeout)
+        return self._return

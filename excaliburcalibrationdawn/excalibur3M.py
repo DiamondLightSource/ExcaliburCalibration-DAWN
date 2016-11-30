@@ -2,8 +2,6 @@
 from excaliburcalibrationdawn.excaliburdetector import ExcaliburDetector
 
 import logging
-logging.basicConfig(level=logging.DEBUG)
-# logging.basicConfig(level=logging.INFO)
 
 
 class Excalibur3M(ExcaliburDetector):
@@ -12,18 +10,20 @@ class Excalibur3M(ExcaliburDetector):
 
     nodes = [1, 2, 3, 4, 5, 6]
 
-    def __init__(self, detector_name, master_node):
-        """Initialise six ExcaliburNode instances as a 3M detector.
+    def __init__(self, detector_config):
+        """Initialise detector.
 
         Args:
-            detector_name(str): Name of detector; string that gives the server
-                name for each node if the suffix is added - e.g. p99-excalibur0
-                where p99-excalibur01 is the server for node 6 (nodes reversed)
-            master_node(int): Node to assign as master
+            detector_config(module): Module in config directory containing
+                specifications of detector
 
         """
-        super(Excalibur3M, self).__init__(detector_name, self.nodes,
-                                          master_node)
+        detector = detector_config.detector
 
-        logging.debug("Creating Excalibur3M with server %s and master node %s",
-                      detector_name, master_node)
+        self.logger = logging.getLogger("Excalibur3M")
+        self.logger.debug("Creating Excalibur3M with nodes %s "
+                          "(master node is %s) on servers %s with IPs %s",
+                          detector.nodes, detector.master_node,
+                          detector.servers, detector.ip_addresses)
+
+        super(Excalibur3M, self).__init__(detector_config)
