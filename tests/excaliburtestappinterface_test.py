@@ -142,6 +142,29 @@ class SendCommandTest(unittest.TestCase):
                                                        "{'test': True}")
         call_mock.assert_called_once_with(["test_command"], test=True)
 
+    def test_capture_subp_called_and_returned(self, _, check_mock):
+        expected_message = "Sending Command:\n'%s' with kwargs %s"
+        check_mock.return_value = "Success"
+
+        self.e.quiet = False
+        response = self.e._send_command(["test_command"], capture=True,
+                                        test=True)
+
+        self.logger_mock.debug.assert_called_once_with(expected_message,
+                                                       "test_command",
+                                                       "{'test': True}")
+        check_mock.assert_called_once_with(["test_command"], test=True)
+        self.assertEqual("Success", response)
+
+    def test_capture_and_loud_then_error(self, call_mock, check_mock):
+
+        with self.assertRaises(ValueError):
+            self.e._send_command(["test_command"],
+                                 capture=True, loud_call=True)
+
+        call_mock.assert_not_called()
+        check_mock.assert_not_called()
+
     def test_error_raised_then_catch_and_log(self, call_mock, _):
         expected_message = "Sending Command:\n'%s' with kwargs %s"
         call_mock.side_effect = CalledProcessError(1, "test_command",
@@ -321,6 +344,21 @@ class APICallsTest(unittest.TestCase):
         send_mock.assert_has_calls([call(construct_mock.return_value),
                                     call(construct_mock.return_value,
                                          loud_call=True)])
+
+    def test_sense_capture(self, send_mock, construct_mock):
+        send_mock.returb_value = "Success"
+        expected_params_1 = ['--sensedac', '1', '--dacs=test_file']
+        expected_params_2 = ['--sensedac', '1', '-s']
+
+        response = self.e.sense(self.chips, "Threshold0", "test_file",
+                                capture=True)
+
+        construct_mock.assert_has_calls([call(self.chips, *expected_params_1),
+                                         call(self.chips, *expected_params_2)])
+        send_mock.assert_has_calls([call(construct_mock.return_value),
+                                    call(construct_mock.return_value,
+                                         capture=True)])
+        self.assertEqual(send_mock.return_value, response)
 
     def test_perform_dac_scan(self, send_mock, construct_mock):
         expected_params = ['--dacs=dac_file', '-t', '5', '--dacscan',

@@ -73,6 +73,7 @@ class ExcaliburTestAppInterface(object):
     PORT = "-p"  # -p 6969
     MASK = "-m"  # -m 0xff
     RESET = "-r"
+    REBOOT = "--reboot"
     LV = "--lvenable"  # --lvenable 1
     HV = "--hvenable"  # --hvenable 1
     HV_BIAS = "--hvbias"  # --hvbias 120
@@ -195,7 +196,8 @@ class ExcaliburTestAppInterface(object):
 
         return str(hex(mask_hex))
 
-    def _send_command(self, command, loud_call=False, **cmd_kwargs):
+    def _send_command(self, command, loud_call=False, capture=False,
+                      **cmd_kwargs):
         """Send a command line call and handle any subprocess.CallProcessError.
 
         Will catch any exception and log the error message. If successful, just
@@ -203,17 +205,24 @@ class ExcaliburTestAppInterface(object):
 
         Args:
             command(list(str)): List of arguments to send to command line call
+            loud_call(bool) Override quiet setting to display console output
+            capture(bool): Return console output
 
         Returns:
             bool: Whether command was successful
 
         """
+        if loud_call and capture:
+            raise(ValueError("Cannot enable loud_call and capture together"))
+
         self.logger.debug("Sending Command:\n'%s' with kwargs %s",
                           " ".join(command), str(cmd_kwargs))
 
         try:
-            if self.quiet and not loud_call:
-                subprocess.check_output(command, **cmd_kwargs)
+            if (self.quiet or capture) and not loud_call:
+                output = subprocess.check_output(command, **cmd_kwargs)
+                if capture:
+                    return output
             else:
                 subprocess.check_call(command, **cmd_kwargs)
         except subprocess.CalledProcessError as error:
@@ -224,8 +233,14 @@ class ExcaliburTestAppInterface(object):
                 self.logger.info("Set self.quiet to False to display terminal "
                                  "output.")
             return False
+        else:
+            return True
 
-        return True
+    def reboot(self):
+        """Reboot FEMs."""
+        command = self._construct_command(self.chip_range, self.REBOOT)
+        command[0] = "excaliburTestApp-new"
+        self._send_command(command)
 
     def set_lv_state(self, lv_state):
         """Set LV to given state.
@@ -383,13 +398,14 @@ class ExcaliburTestAppInterface(object):
         else:
             return True
 
-    def sense(self, chips, dac, dac_file):
+    def sense(self, chips, dac, dac_file, capture=False):
         """Read the given DAC analogue voltage.
 
         Args:
             chips(list(int)): Chips to read for
             dac(str): Name of DAC to read
             dac_file(str): File to load DAC values from
+            capture(bool): Whether to capture and return console output
 
         """
         self.logger.debug("Sending sense command for %s on chips %s",
@@ -405,7 +421,10 @@ class ExcaliburTestAppInterface(object):
         command_2 = self._construct_command(chips,
                                             self.SENSE, self.dac_code[dac],
                                             self.READ_SLOW_PARAMS)
-        self._send_command(command_2, loud_call=True)
+        if capture:
+            return self._send_command(command_2, capture=True)
+        else:
+            self._send_command(command_2, loud_call=True)
 
     def perform_dac_scan(self, chips, threshold, scan_range, exposure,
                          dac_file, path, hdf_file):
