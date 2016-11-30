@@ -210,6 +210,60 @@ class SimpleFunctionsTest(unittest.TestCase):
                                for gain in ["shgm", "hgm", "lgm", "slgm"]]
         makedirs_mock.assert_has_calls(expected_calls)
 
+    @patch('os.path.isdir', return_value=True)
+    @patch('os.makedirs')
+    @patch('logging.FileHandler')
+    @patch(util_patch_path + '.get_time_stamp', return_value="20161130~163623")
+    def test_enable_logging_to_file_exists(self, _, handler_mock,
+                                           make_mock, isdir_mock):
+        logger_mock = MagicMock()
+        app_logger_mock = MagicMock()
+        dawn_logger_mock = MagicMock()
+        self.e.logger = logger_mock
+        self.e.app.logger = app_logger_mock
+        self.e.dawn.logger = dawn_logger_mock
+
+        self.e.enable_logging_to_file()
+
+        isdir_mock.assert_called_once_with(self.e.log_output)
+        make_mock.assert_not_called()
+        handler_mock.assert_called_once_with(
+            "/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/"
+            "testdetector/logs/20161130~163623_1")
+        logger_mock.addHandler.assert_called_once_with(
+            handler_mock.return_value)
+        app_logger_mock.addHandler.assert_called_once_with(
+            handler_mock.return_value)
+        dawn_logger_mock.addHandler.assert_called_once_with(
+            handler_mock.return_value)
+
+    @patch('os.path.isdir', return_value=False)
+    @patch('os.makedirs')
+    @patch('logging.FileHandler')
+    @patch(util_patch_path + '.get_time_stamp', return_value="20161130~163623")
+    def test_enable_logging_to_file_doesnt_exist(self, _, handler_mock,
+                                                 make_mock, isdir_mock):
+        logger_mock = MagicMock()
+        app_logger_mock = MagicMock()
+        dawn_logger_mock = MagicMock()
+        self.e.logger = logger_mock
+        self.e.app.logger = app_logger_mock
+        self.e.dawn.logger = dawn_logger_mock
+
+        self.e.enable_logging_to_file()
+
+        isdir_mock.assert_called_once_with(self.e.log_output)
+        make_mock.assert_called_once_with(self.e.log_output)
+        handler_mock.assert_called_once_with(
+            "/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/"
+            "testdetector/logs/20161130~163623_1")
+        logger_mock.addHandler.assert_called_once_with(
+            handler_mock.return_value)
+        app_logger_mock.addHandler.assert_called_once_with(
+            handler_mock.return_value)
+        dawn_logger_mock.addHandler.assert_called_once_with(
+            handler_mock.return_value)
+
     @patch(Node_patch_path + '.copy_hgm_into_other_gain_modes')
     @patch(Node_patch_path + '.load_config')
     @patch(Node_patch_path + '.check_chip_ids')

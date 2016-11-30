@@ -80,6 +80,7 @@ class ExcaliburNode(object):
                 node=node))
 
         self.id = node
+        self.node_tag = "Node {}".format(node)
         if ip_address is not None:
             self.ip_address = ip_address
         else:
@@ -93,10 +94,11 @@ class ExcaliburNode(object):
             self.remote_node = False
 
         self.config = detector_config
-        self.calib_root = posixpath.join(self.root_path,
-                                         "3M-RX001/{}/calib".format(
-                                             detector_config.detector.name))
-        self.node_tag = "Node {}".format(node)
+        self.detector_root = posixpath.join(self.root_path,
+                                            "3M-RX001/{}".format(
+                                                detector_config.detector.name))
+        self.calib_root = posixpath.join(self.detector_root, "calib")
+        self.log_output = posixpath.join(self.detector_root, "logs")
 
         # Detector default settings - See excaliburtestappinterface for details
         self.settings = dict(mode="spm",  # spm or csm
@@ -178,6 +180,18 @@ class ExcaliburNode(object):
                  for gain in ["shgm", "hgm", "lgm", "slgm"]]
         for path_ in paths:
             os.makedirs(path_)
+
+    def enable_logging_to_file(self):
+        """Add a handler to log to file."""
+        if not os.path.isdir(self.log_output):
+            os.makedirs(self.log_output)
+        file_name = "{time}_{node}".format(time=util.get_time_stamp(),
+                                           node=self.id)
+        file_path = posixpath.join(self.log_output, file_name)
+        handler = logging.FileHandler(file_path)
+        self.logger.addHandler(handler)
+        self.dawn.logger.addHandler(handler)
+        self.app.logger.addHandler(handler)
 
     def setup(self):
         """Perform necessary initialisation."""
