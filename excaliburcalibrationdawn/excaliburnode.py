@@ -714,7 +714,7 @@ class ExcaliburNode(object):
         """Perform a dac scan and plot the result (mean counts vs DAC values).
 
         Args:
-            chips(Any from self.dac_number keys): Chips to scan
+            chips(list(int)): Chips to scan
             threshold(str): Threshold to scan (ThresholdX DACs - X: 0-7)
             exposure(int): Exposure time for each acquisition of scan
             dac_range(Range): Range of DAC values to scan over
