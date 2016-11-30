@@ -49,4 +49,4 @@ You can then perform calibration processes, to perform threshold equalisation on
 
 Or to run for all chips::
 
-   >>> x.threshold_equalization([0, 1, 2, 3, 4, 5, 6, 7])
+   >>> x.threshold_equalization()

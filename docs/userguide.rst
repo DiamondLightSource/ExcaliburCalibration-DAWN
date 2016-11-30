@@ -55,7 +55,7 @@ To interface with a new detector you must create a config module. Copy the detec
                         servers=["node1-server", "node2-server"],
                         ip_addresses=["node1-ip", "node2-ip"])
 
-If you have them you can update the GND, FBK and Cas arrays and the Energy-DAC arrays. Now you can instantiate an ExcaliburNode or ExcaliburDetector (1M or 3M) with this module as the detector_config and it will make the connections to each of the nodes given.
+Now you can instantiate an ExcaliburNode or ExcaliburDetector (1M or 3M) with this module as the detector_config and it will make the connections to each of the nodes given.
 
 Calibration
 -----------
