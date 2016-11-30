@@ -383,6 +383,20 @@ class APICallsTest(unittest.TestCase):
         send_cmd_mock.assert_called_once_with(construct_mock.return_value,
                                               loud_call=True)
 
+    def test_reboot(self, send_cmd_mock, construct_mock):
+        expected_params = ["--reboot"]
+        command = ["/dls/detectors/support/silicon_pixels/excaliburRX/"
+                   "TestApplication_15012015/excaliburTestApp",
+                   "--reboot", "test_ip", "-p", "test_port", "-m", "0xff"]
+        construct_mock.return_value = command
+        expected_command = command
+        expected_command[0] = "excaliburTestApp-new"
+
+        self.e.reboot()
+
+        construct_mock.assert_called_once_with(self.chips, *expected_params)
+        send_cmd_mock.assert_called_once_with(expected_command)
+
     def test_read_chip_id_with_outfile(self, send_cmd_mock, construct_mock):
         expected_params = ['-r', '-e']
         mock_outfile = MagicMock()

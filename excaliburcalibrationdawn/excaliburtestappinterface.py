@@ -137,6 +137,7 @@ class ExcaliburTestAppInterface(object):
 
         self.path = "/dls/detectors/support/silicon_pixels/excaliburRX/" \
                     "TestApplication_15012015/excaliburTestApp"
+        self.new_version_path = "excaliburTestApp-new"
 
         self.base_cmd = []
         if server_name is not None:
@@ -239,7 +240,7 @@ class ExcaliburTestAppInterface(object):
     def reboot(self):
         """Reboot FEMs."""
         command = self._construct_command(self.chip_range, self.REBOOT)
-        command[0] = "excaliburTestApp-new"
+        command[0] = self.new_version_path
         self._send_command(command)
 
     def set_lv_state(self, lv_state):
