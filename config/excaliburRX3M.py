@@ -1,4 +1,4 @@
-"""Detector Lab 1M.
+"""I13 ExcaliburRX 3M.
 
 To create a new detector module, copy this file into the same directory with a
 name specifying the new detector and fill in the correct data. Also replace
@@ -10,11 +10,11 @@ Detector = namedtuple("Detector", ["name", "nodes", "master_node",
                                    "servers", "ip_addresses"])
 
 # Detector Specification:
-detector = Detector(name="detectorlab1", nodes=[6], master_node=6,
-                    servers=["p99-excalibur01"],
-                    ip_addresses=["192.168.0.101"],
-                    root_path="/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/detectorlab1/",
-                    calib="calib")
+detector = Detector(name="excaliburRX3M", nodes=[1,2,3,4,5,6], master_node=1,
+                    servers=["i14-excalibur01","i14-excalibur02","i14-excalibur03","i14-excalibur04","i14-excalibur05","i14-excalibur06"],
+                    ip_addresses=["192.168.0.106","192.168.0.105","192.168.0.104","192.168.0.103","192.168.0.102","192.168.0.101"],
+                    root_path="/dls/detectors/support/silicon_pixels/excaliburRX/Commissioning/CommissioningSept16",
+                    calib="calib/in-progress")
 
 # Default DAC Values:
 DACS = OrderedDict([('Threshold1', 0),

@@ -47,12 +47,10 @@ class ExcaliburNode(object):
     # Shape of full row
     full_array_shape = [chip_size, num_chips * chip_size]
 
-    root_path = "/dls/detectors/support/silicon_pixels/excaliburRX/"
-    config_dir = posixpath.join(root_path, "TestApplication_15012015/config")
-    default_dacs = posixpath.join(config_dir, "Default_SPM.dacs")
-
-    output_folder = "/tmp"  # Location to save data files to
+    
     file_name = "image"  # Default base name for data files
+    config_dir = "/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/config"
+    default_dacs = posixpath.join(config_dir, "Default_SPM.dacs")
 
     # Line number used when editing dac file with new dac values
     dac_number = dict(Threshold0=1, Threshold1=2, Threshold2=3, Threshold3=4,
@@ -94,11 +92,10 @@ class ExcaliburNode(object):
             self.remote_node = False
 
         self.config = detector_config
-        self.detector_root = posixpath.join(self.root_path,
-                                            "3M-RX001/{}".format(
-                                                detector_config.detector.name))
-        self.calib_root = posixpath.join(self.detector_root, "calib")
-        self.log_output = posixpath.join(self.detector_root, "logs")
+        self.root_path = detector_config.root_path
+        self.calib_root = posixpath.join(self.root_path, detector_config.calib)
+        self.log_output = posixpath.join(self.root_path, "logs")
+        self.output_folder = posixpath.join(self.root_path, "images")
 
         # Detector default settings - See excaliburtestappinterface for details
         self.settings = dict(mode="spm",  # spm or csm
