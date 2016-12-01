@@ -1681,6 +1681,7 @@ class ROITest(unittest.TestCase):
         roi = self.e.roi(chips, 1, 1, 'rect')
         # roi = self.e.roi(chips, 0, 1, 'rect')
 
+        plot_mock.assert_called_once_with(ANY, "Roi Mask")
         np.testing.assert_array_equal(expected_array, plot_mock.call_args[0][0])
         np.testing.assert_array_equal(expected_array, roi)
 
@@ -1694,6 +1695,7 @@ class ROITest(unittest.TestCase):
 
         roi = self.e.roi(chips, 1, 1, 'spacing')
 
+        plot_mock.assert_called_once_with(ANY, "Roi Mask")
         np.testing.assert_array_equal(expected_array, plot_mock.call_args[0][0])
         np.testing.assert_array_equal(expected_array, roi)
 

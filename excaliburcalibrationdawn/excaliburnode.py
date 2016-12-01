@@ -1748,8 +1748,7 @@ class ExcaliburNode(object):
             raise NotImplementedError("Available methods are 'rect' and "
                                       "'spacing', got {}".format(roi_type))
 
-        self.dawn.plot_image(roi_full_mask,
-                             util.tag_plot_name("Roi Mask", self.node_tag))
+        self.dawn.plot_image(roi_full_mask, "Roi Mask")
 
         return roi_full_mask
 
