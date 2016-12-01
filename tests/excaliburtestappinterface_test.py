@@ -362,14 +362,18 @@ class APICallsTest(unittest.TestCase):
 
     def test_perform_dac_scan(self, send_mock, construct_mock):
         expected_params = ['--dacs=dac_file', '-t', '5', '--dacscan',
-                           '1,0,10,1', '--path=path', '--hdffile=hdf_file']
+                           '1,0,10,1', '--path=path', '--hdffile=hdf_file',
+                           '--disccsmspm', '0', '--equalization', '1',
+                           '--gainmode', '1']
         scan_range = MagicMock()
         scan_range.start = 0
         scan_range.stop = 10
         scan_range.step = 1
 
         self.e.perform_dac_scan(self.chips, "Threshold1", scan_range, 5,
-                                "dac_file", "path", "hdf_file")
+                                "dac_file", "path", "hdf_file",
+                                disc_mode="discL", equalization=1,
+                                gain_mode="hgm")
 
         construct_mock.assert_called_once_with(self.chips, *expected_params)
         send_mock.assert_called_once_with(construct_mock.return_value)

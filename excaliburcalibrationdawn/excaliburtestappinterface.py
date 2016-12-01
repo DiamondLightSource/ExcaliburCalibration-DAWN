@@ -428,7 +428,8 @@ class ExcaliburTestAppInterface(object):
             self._send_command(command_2, loud_call=True)
 
     def perform_dac_scan(self, chips, threshold, scan_range, exposure,
-                         dac_file, path, hdf_file):
+                         dac_file, path, hdf_file,
+                         disc_mode=None, equalization=None, gain_mode=None):
         """Execute a DAC scan and save the results to the given file.
 
         Args:
@@ -439,6 +440,9 @@ class ExcaliburTestAppInterface(object):
             dac_file(str): File to load config from
             path(str): Folder to save into
             hdf_file(str): File to save to
+            disc_mode(str): Discriminator mode (discL*, discH = 0*, 1)
+            equalization(int): Enable equalization (0*, 1 = off*, on)
+            gain_mode(str): Gain mode (SHGM*, HGM, LGM, SLGM = 0*, 1, 2, 3)
 
         """
         self.logger.debug("Sending DAC scan command")
@@ -446,12 +450,21 @@ class ExcaliburTestAppInterface(object):
             dac=int(self.dac_code[threshold]) - 1,
             start=scan_range.start, stop=scan_range.stop, step=scan_range.step)
 
-        command = self._construct_command(chips,
-                                          self.DAC_FILE + dac_file,
-                                          self.ACQ_TIME, str(exposure),
-                                          self.SCAN, scan_command,
-                                          self.PATH + path,
-                                          self.HDF_FILE + hdf_file)
+        extra_params = [self.DAC_FILE + dac_file,
+                        self.ACQ_TIME, str(exposure),
+                        self.SCAN, scan_command,
+                        self.PATH + path,
+                        self.HDF_FILE + hdf_file]
+
+        if self._arg_valid("Discriminator mode", disc_mode,
+                           self.disc_code.keys()):
+            extra_params.extend([self.DISC_MODE, self.disc_code[disc_mode]])
+        if self._arg_valid("Equalization", equalization, [0, 1]):
+            extra_params.extend([self.EQUALIZATION, str(equalization)])
+        if self._arg_valid("Gain Mode", gain_mode, self.gain_code.keys()):
+            extra_params.extend([self.GAIN_MODE, self.gain_code[gain_mode]])
+
+        command = self._construct_command(chips, *extra_params)
         self._send_command(command)
 
     def read_chip_ids(self, chips=range(8), **cmd_kwargs):

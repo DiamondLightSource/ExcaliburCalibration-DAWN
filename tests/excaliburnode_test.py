@@ -991,7 +991,9 @@ class ScanDacTest(unittest.TestCase):
         gen_mock.assert_called_once_with("DACScan")
         scan_mock.assert_called_once_with(self.chips, 'Threshold0',
                                           self.dac_range, 5, self.dac_file,
-                                          '/tmp', gen_mock.return_value)
+                                          '/tmp', gen_mock.return_value,
+                                          disc_mode='discL', equalization=0,
+                                          gain_mode='hgm')
         grab_mock.assert_not_called()
         wait_mock.assert_called_once_with(
             "/tmp/20161020~154548_TestImage.hdf5", 10)
@@ -1012,7 +1014,9 @@ class ScanDacTest(unittest.TestCase):
         gen_mock.assert_called_once_with("DACScan")
         scan_mock.assert_called_once_with(self.chips, 'Threshold0',
                                           self.dac_range, 5, self.dac_file,
-                                          '/tmp', gen_mock.return_value,)
+                                          '/tmp', gen_mock.return_value,
+                                          disc_mode='discL', equalization=0,
+                                          gain_mode='hgm')
         grab_mock.assert_called_once_with(expected_output)
         wait_mock.assert_called_once_with(expected_output, 10)
         load_mock.assert_called_once_with(expected_output)

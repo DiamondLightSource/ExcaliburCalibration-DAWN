@@ -789,7 +789,10 @@ class ExcaliburNode(object):
 
         dac_file = self.dacs_file
         self.app.perform_dac_scan(chips, threshold, dac_range, exposure,
-                                  dac_file, self.output_folder, dac_scan_file)
+                                  dac_file, self.output_folder, dac_scan_file,
+                                  gain_mode=self.settings['gain'],
+                                  disc_mode=self.settings['disccsmspm'],
+                                  equalization=self.settings['equalization'])
 
         file_path = posixpath.join(self.output_folder, dac_scan_file)
         if self.remote_node:
@@ -1634,17 +1637,17 @@ class ExcaliburNode(object):
             mask(numpy.array): Pixel mask to load
 
         """
-        for chip_idx in chips:
-            if disc_name == "discH":
-                discLbits = self._load_discbits(chips, "discLbits")
-                discHbits = temp_bits
-            elif disc_name == "discL":
-                discLbits = temp_bits
-                discHbits = np.zeros(self.full_array_shape)
-            else:
-                raise ValueError("Discriminator must be L or H, got {bad_disc}"
-                                 .format(bad_disc=disc_name))
+        if disc_name == "discH":
+            discLbits = self._load_discbits(chips, "discLbits")
+            discHbits = temp_bits
+        elif disc_name == "discL":
+            discLbits = temp_bits
+            discHbits = np.zeros(self.full_array_shape)
+        else:
+            raise ValueError("Discriminator must be L or H, got {bad_disc}"
+                             .format(bad_disc=disc_name))
 
+        for chip_idx in chips:
             self.load_temp_config(chip_idx,
                                   util.grab_chip_slice(discLbits, chip_idx),
                                   util.grab_chip_slice(discHbits, chip_idx),
