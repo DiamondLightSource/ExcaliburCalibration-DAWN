@@ -192,6 +192,7 @@ class ExcaliburNode(object):
         self.logger.addHandler(handler)
         self.dawn.logger.addHandler(handler)
         self.app.logger.addHandler(handler)
+        self.logger.info("Logger set up to log to file %s", file_path)
 
     def setup(self):
         """Perform necessary initialisation."""
@@ -341,6 +342,7 @@ class ExcaliburNode(object):
         util.create_hdf5_file(discLbits, template.format("discLbits"))
         util.create_hdf5_file(discHbits, template.format("discHbits"))
         util.create_hdf5_file(pixelmask, template.format("pixelmask"))
+        self.logger.info("Config images saved to calib directory")
 
     def full_calibration(self):
         """Perform the full calibration process."""
