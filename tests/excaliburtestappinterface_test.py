@@ -142,6 +142,29 @@ class SendCommandTest(unittest.TestCase):
                                                        "{'test': True}")
         call_mock.assert_called_once_with(["test_command"], test=True)
 
+    def test_capture_subp_called_and_returned(self, _, check_mock):
+        expected_message = "Sending Command:\n'%s' with kwargs %s"
+        check_mock.return_value = "Success"
+
+        self.e.quiet = False
+        response = self.e._send_command(["test_command"], capture=True,
+                                        test=True)
+
+        self.logger_mock.debug.assert_called_once_with(expected_message,
+                                                       "test_command",
+                                                       "{'test': True}")
+        check_mock.assert_called_once_with(["test_command"], test=True)
+        self.assertEqual("Success", response)
+
+    def test_capture_and_loud_then_error(self, call_mock, check_mock):
+
+        with self.assertRaises(ValueError):
+            self.e._send_command(["test_command"],
+                                 capture=True, loud_call=True)
+
+        call_mock.assert_not_called()
+        check_mock.assert_not_called()
+
     def test_error_raised_then_catch_and_log(self, call_mock, _):
         expected_message = "Sending Command:\n'%s' with kwargs %s"
         call_mock.side_effect = CalledProcessError(1, "test_command",
@@ -322,16 +345,35 @@ class APICallsTest(unittest.TestCase):
                                     call(construct_mock.return_value,
                                          loud_call=True)])
 
+    def test_sense_capture(self, send_mock, construct_mock):
+        send_mock.returb_value = "Success"
+        expected_params_1 = ['--sensedac', '1', '--dacs=test_file']
+        expected_params_2 = ['--sensedac', '1', '-s']
+
+        response = self.e.sense(self.chips, "Threshold0", "test_file",
+                                capture=True)
+
+        construct_mock.assert_has_calls([call(self.chips, *expected_params_1),
+                                         call(self.chips, *expected_params_2)])
+        send_mock.assert_has_calls([call(construct_mock.return_value),
+                                    call(construct_mock.return_value,
+                                         capture=True)])
+        self.assertEqual(send_mock.return_value, response)
+
     def test_perform_dac_scan(self, send_mock, construct_mock):
         expected_params = ['--dacs=dac_file', '-t', '5', '--dacscan',
-                           '1,0,10,1', '--path=path', '--hdffile=hdf_file']
+                           '1,0,10,1', '--path=path', '--hdffile=hdf_file',
+                           '--disccsmspm', '0', '--equalization', '1',
+                           '--gainmode', '1']
         scan_range = MagicMock()
         scan_range.start = 0
         scan_range.stop = 10
         scan_range.step = 1
 
         self.e.perform_dac_scan(self.chips, "Threshold1", scan_range, 5,
-                                "dac_file", "path", "hdf_file")
+                                "dac_file", "path", "hdf_file",
+                                disc_mode="discL", equalization=1,
+                                gain_mode="hgm")
 
         construct_mock.assert_called_once_with(self.chips, *expected_params)
         send_mock.assert_called_once_with(construct_mock.return_value)
@@ -344,6 +386,20 @@ class APICallsTest(unittest.TestCase):
         construct_mock.assert_called_once_with(self.chips, *expected_params)
         send_cmd_mock.assert_called_once_with(construct_mock.return_value,
                                               loud_call=True)
+
+    def test_reboot(self, send_cmd_mock, construct_mock):
+        expected_params = ["--reboot"]
+        command = ["/dls/detectors/support/silicon_pixels/excaliburRX/"
+                   "TestApplication_15012015/excaliburTestApp",
+                   "--reboot", "test_ip", "-p", "test_port", "-m", "0xff"]
+        construct_mock.return_value = command
+        expected_command = command
+        expected_command[0] = "excaliburTestApp-new"
+
+        self.e.reboot()
+
+        construct_mock.assert_called_once_with(self.chips, *expected_params)
+        send_cmd_mock.assert_called_once_with(expected_command)
 
     def test_read_chip_id_with_outfile(self, send_cmd_mock, construct_mock):
         expected_params = ['-r', '-e']

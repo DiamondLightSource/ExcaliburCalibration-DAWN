@@ -156,6 +156,17 @@ class FunctionsTest(unittest.TestCase):
         cmp_mock.assert_called_once_with("/path/to/file", "/path/to/file2")
         self.assertEqual(cmp_mock.return_value, response)
 
+    @patch('h5py.File')
+    def test_create_hdf5_file(self, file_mock):
+        image_path = "/path/to/image.hdf5"
+        mock_data = MagicMock()
+
+        util.create_hdf5_file(mock_data, image_path)
+
+        file_mock.assert_called_once_with(image_path, "w")
+        file_mock.return_value.__enter__.return_value.\
+            create_dataset.assert_called_once_with("data", data=mock_data)
+
     @patch(util_patch_path + '._ReturnThread')
     def test_spawn_thread(self, thread_init_mock):
         thread_mock = MagicMock()

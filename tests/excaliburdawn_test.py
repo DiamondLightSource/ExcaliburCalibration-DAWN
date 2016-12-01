@@ -59,6 +59,15 @@ class SimpleMethodsTest(unittest.TestCase):
         plot_mock.assert_called_once_with(mock_data,
                                           name="Test Plot")
 
+    @patch('scisoftpy.sum')
+    def test_sum_image(self, sum_mock):
+        mock_data = MagicMock()
+
+        response = self.e.sum_image(mock_data)
+
+        sum_mock.assert_called_once_with(mock_data)
+        self.assertEqual(sum_mock.return_value, response)
+
     @patch(DAWN_patch_path + '._add_histogram')
     @patch(DAWN_patch_path + '.clear_plot')
     def test_plot_histogram(self, clear_mock, add_mock):

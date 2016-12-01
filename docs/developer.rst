@@ -12,6 +12,18 @@ ExcaliburNode has two helper classes; ExcaliburTestAppInterface to construct and
 
 To control entire 1M or 3M detectors there are the Excalibur1M and Excalibur3M classes. These both inherit from the ExcaliburDetector class, which is where all their functionality is. These classes simply allow you to perform single operations on multiple nodes. It can calibrate each node of a detector in turn, or it can capture an image on each node and combine them into a full detector image, for example.
 
+ExcaliburDetector
+-----------------
+
+To add functionality to the ExcaliburDetector class you can most likely just follow the template of an existing function. There are three types of function at present. Functions that simply run the same named function on each node (optimise_gnd_fbk_cas), functions that run a function on the MasterNode and then a different one on the reset (setup) and function that run only on the MasterNode (enable_hv). The first type can also run in threads or not, for example read_chip_ids does not as the console output would merge together. There are also a few special cases where there is a little bit of extra logic afterwards, for example stitching images together in expose and checking for errors in threshold_equalization.
+
+Lets take an example:
+
+.. autoclass:: ExcaliburDetector
+   :members: optimise_gnd_fbk_cas
+
+Here the same named function is called on each node, in a thread so that they all run simultaneously. This is a commonly used format, there are many functions that look like this, but with node.optimise_gnd_fbk_cas replaced with a different function call.
+
 Detector Configuration Modules
 ------------------------------
 

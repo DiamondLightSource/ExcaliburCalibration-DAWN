@@ -33,6 +33,18 @@ class ExcaliburDAWN(object):
         self.plot.image(data_set, name=name)
         self.logger.info("Image plotted in DAWN as '%s'", name)
 
+    def sum_image(self, data_set):
+        """Sum counts in the given data set.
+
+        Args:
+            data_set(numpy.array): 2D numpy array
+
+        Returns:
+            int: Total counts in image
+
+        """
+        return scisoftpy.sum(data_set)
+
     def load_image(self, path):
         """Load image data in given file into a numpy array.
 
@@ -137,6 +149,9 @@ class ExcaliburDAWN(object):
             p0(list(int)): Initial guess for gaussian curve parameters
             bins(int): Bins to plot in histogram
 
+        Returns:
+            Optimal x0, sigma and a for gauss_function
+
         """
         self.logger.info("Performing Gaussian fit")
         fit_plot_name = plot_name + " (fitted)"
@@ -167,7 +182,7 @@ class ExcaliburDAWN(object):
                                    "Disc Value", "Bin Count", fit_plot_name,
                                    label="Chip {}".format(chip_idx))
 
-        return x0, sigma
+        return x0, sigma, a
 
     def plot_histogram(self, image_data, name, x_name):
         """Plot a histogram for each of the given chips.
