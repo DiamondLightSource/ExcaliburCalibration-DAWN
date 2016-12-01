@@ -393,6 +393,46 @@ class SaveConfigImage(unittest.TestCase):
         np.testing.assert_array_equal(np.tile(self.mock_array, 8),
                                       create_mock.call_args_list[2][0][0])
 
+@patch(Node_patch_path + '.expose')
+@patch(Node_patch_path + '.save_config_image')
+@patch(Node_patch_path + '.copy_hgm_into_other_gain_modes')
+@patch(Node_patch_path + '.set_dac')
+@patch(Node_patch_path + '.calibrate_disc_h')
+@patch(Node_patch_path + '.mask_pixels_using_dac_scan')
+@patch(Node_patch_path + '.load_config')
+@patch(Node_patch_path + '.threshold_equalization')
+@patch(ETAI_patch_path + '.load_dacs')
+@patch(Node_patch_path + '.read_dac')
+@patch(Node_patch_path + '.optimise_gnd_fbk_cas')
+@patch(Node_patch_path + '.enable_logging_to_file')
+@patch(Node_patch_path + '.unequalize_pixels')
+@patch(Node_patch_path + '.setup')
+class FullCalibrationTest(unittest.TestCase):
+
+    def test_correct_calls_made(self, setup_mock, unequalise_mock, enable_mock,
+                                opt_mock, read_mock, dacs_mock, equalise_mock,
+                                config_mock, mask_mock, calibrate_mock,
+                                set_mock, copy_mock, save_mock, expose_mock):
+        e = ExcaliburNode(1, mock_config)
+
+        e.full_calibration()
+
+        setup_mock.assert_called_once_with()
+        unequalise_mock.assert_called_once_with(range(8))
+        enable_mock.assert_called_once_with()
+        opt_mock.assert_called_once_with()
+        read_mock.assert_has_calls([call("GND"), call("FBK"), call("Cas")])
+        dacs_mock.assert_has_calls([call(range(8), e.dacs_file)] * 2)
+        equalise_mock.assert_called_once_with()
+        config_mock.assert_called_once_with(range(8))
+        mask_mock.assert_called_once_with(range(8), "Threshold0",
+                                          Range(30, 220, 1))
+        calibrate_mock.assert_called_once_with(range(8))
+        set_mock.assert_called_once_with(range(8), "Threshold1", 100)
+        copy_mock.assert_called_once_with()
+        save_mock.assert_called_once_with()
+        expose_mock.assert_has_calls([call()] * 2)
+
 
 @patch(Node_patch_path + '.backup_calib_dir')
 @patch(Node_patch_path + '.check_chip_ids')

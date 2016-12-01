@@ -342,6 +342,27 @@ class ExcaliburNode(object):
         util.create_hdf5_file(discHbits, template.format("discHbits"))
         util.create_hdf5_file(pixelmask, template.format("pixelmask"))
 
+    def full_calibration(self):
+        """Perform the full calibration process."""
+        self.setup()
+        self.unequalize_pixels(range(8))
+        self.enable_logging_to_file()
+        self.optimise_gnd_fbk_cas()
+        for dac in ["GND", "FBK", "Cas"]:
+            self.read_dac(dac)
+        self.app.load_dacs(range(8), self.dacs_file)
+        self.threshold_equalization()
+        self.app.load_dacs(range(8), self.dacs_file)
+        self.load_config(range(8))
+        self.mask_pixels_using_dac_scan(range(8), "Threshold0",
+                                        Range(30, 220, 1))
+        self.calibrate_disc_h(range(8))
+        self.set_dac(range(8), "Threshold1", 100)
+        self.copy_hgm_into_other_gain_modes()
+        self.save_config_image()
+        self.expose()
+        self.expose()
+
     def threshold_equalization(self, chips=range(8)):
         """Calibrate discriminator equalization.
 

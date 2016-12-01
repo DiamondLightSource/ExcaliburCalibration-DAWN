@@ -266,6 +266,35 @@ class FunctionsTest(unittest.TestCase):
 
     @patch(util_patch_path + '.wait_for_threads')
     @patch(util_patch_path + '.spawn_thread')
+    def test_full_calibration(self, spawn_mock, wait_mock):
+        self.e.Nodes[0].id = 1
+
+        self.e.full_calibration(node_id=1)
+
+        spawn_mock.assert_called_once_with(
+            self.e._try_node_full_calibration, self.e.Nodes[0])
+        wait_mock.assert_called_once_with([spawn_mock.return_value])
+
+    @patch(util_patch_path + '.wait_for_threads')
+    @patch(util_patch_path + '.spawn_thread')
+    def test_full_calibration_with_errors(self, spawn_mock, wait_mock):
+        self.e.logger = MagicMock()
+        self.e.Nodes[0].id = 1
+        mock_error = IOError("Bad things happened")
+        self.e.errors = [("Threshold equalization failed for node %s.\n"
+                          "Error:\n%s", [1, mock_error])]
+
+        self.e.full_calibration(node_id=1)
+
+        spawn_mock.assert_called_once_with(
+            self.e._try_node_full_calibration, self.e.Nodes[0])
+        wait_mock.assert_called_once_with([spawn_mock.return_value])
+        self.e.logger.info.assert_called_once_with(
+            "Threshold equalization failed for node %s.\nError:\n%s",
+            1, mock_error)
+
+    @patch(util_patch_path + '.wait_for_threads')
+    @patch(util_patch_path + '.spawn_thread')
     def test_optimise_gnd_fbk_cas(self, spawn_mock, wait_mock):
         self.e.Nodes[0].id = 1
 
