@@ -55,7 +55,7 @@ To interface with a new detector you must create a config module. Copy the detec
                         servers=["node1-server", "node2-server"],
                         ip_addresses=["node1-ip", "node2-ip"])
 
-If you have them you can update the GND, FBK and Cas arrays and the Energy-DAC arrays. Now you can instantiate an ExcaliburNode or ExcaliburDetector (1M or 3M) with this module as the detector_config and it will make the connections to each of the nodes given.
+Now you can instantiate an ExcaliburNode or ExcaliburDetector (1M or 3M) with this module as the detector_config and it will make the connections to each of the nodes given.
 
 Calibration
 -----------
@@ -96,11 +96,7 @@ Method 1: Brute-force:
     Produce monochromatic X-rays or use Fe55
     Perform a DAC scan using::
 
-        >>> chips = [0, 1, 2, 3, 4, 5, 6, 7]
-        >>> dac_scan_data = self.scan_dac(chips, "Threshold0", Range(80, 20, 1))
-        >>> [chip_dac_scan, dac_axis] = self.dawn.plot_dac_scan(chips,
-                                                                dac_scan_data,
-                                                                dac_range)
+        >>> self.scan_dac(range(8), "Threshold0", Range(80, 20, 1))
 
     This will produce 2 plots, an integral plot and a differential spectrum. Inspect the spectrum and evaluate the position of the energy peak in DAC units. Energy = 6keV for energy peak DAC = 60; since calibration is performed on noise peak, 0keV corresponds to the selected DAC target (10 by default). Perform a linear fit of the DAC as a function of energy and edit the threshold0 file in the calibration directory accordingly. Each Threshold calibration file consists of 2 rows of 8 floating point numbers; 8 gain values and 8 offset values. The DAC value to apply for a requested threshold energy value E in keV is given by::
 
@@ -126,7 +122,7 @@ To capture an image::
 
     >>> x.expose(exposure=100)
 
-The image is displayed in Image Data plot window which is opened with Window ~~~> Show Plot View ~~~> <Plot Name>.
+The image is displayed in Image Data plot window which is opened with Window > Show Plot View > <Plot Name>.
 
 Other useful functions::
 

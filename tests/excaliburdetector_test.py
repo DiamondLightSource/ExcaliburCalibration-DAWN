@@ -266,23 +266,70 @@ class FunctionsTest(unittest.TestCase):
 
     @patch(util_patch_path + '.wait_for_threads')
     @patch(util_patch_path + '.spawn_thread')
-    def test_set_gnd_fbk_cas(self, spawn_mock, wait_mock):
+    def test_full_calibration(self, spawn_mock, wait_mock):
         self.e.Nodes[0].id = 1
 
-        self.e.set_gnd_fbk_cas(node_id=1, chips=[0])
+        self.e.full_calibration(node_id=1)
 
-        spawn_mock.assert_called_once_with(self.e.Nodes[0].set_gnd_fbk_cas,
-                                           [0])
+        spawn_mock.assert_called_once_with(
+            self.e._try_node_full_calibration, self.e.Nodes[0])
         wait_mock.assert_called_once_with([spawn_mock.return_value])
 
     @patch(util_patch_path + '.wait_for_threads')
     @patch(util_patch_path + '.spawn_thread')
-    def test_set_gnd_fbk_cas_default(self, spawn_mock, wait_mock):
-        self.e.set_gnd_fbk_cas()
+    def test_full_calibration_with_errors(self, spawn_mock, wait_mock):
+        self.e.logger = MagicMock()
+        self.e.Nodes[0].id = 1
+        mock_error = IOError("Bad things happened")
+        self.e.errors = [("Threshold equalization failed for node %s.\n"
+                          "Error:\n%s", [1, mock_error])]
 
-        spawn_mock.assert_has_calls([call(node.set_gnd_fbk_cas, [0, 1, 2, 3,
-                                                                 4, 5, 6, 7])
-                                     for node in self.e.Nodes])
+        self.e.full_calibration(node_id=1)
+
+        spawn_mock.assert_called_once_with(
+            self.e._try_node_full_calibration, self.e.Nodes[0])
+        wait_mock.assert_called_once_with([spawn_mock.return_value])
+        self.e.logger.info.assert_called_once_with(
+            "Threshold equalization failed for node %s.\nError:\n%s",
+            1, mock_error)
+
+    def test_try_node_full_calibration(self):
+        node_mock = MagicMock()
+        self.e._try_node_full_calibration(node_mock)
+
+        node_mock.full_calibration.assert_called_once_with()
+
+    def test_try_node_full_calibration_error_raised_then_log(self):
+        node_mock = MagicMock()
+        error = IOError("Bad things happened.")
+        node_mock.full_calibration.side_effect = error
+
+        with self.assertRaises(IOError):
+            self.e._try_node_full_calibration(node_mock)
+
+        self.assertEqual([("Full calibration failed for node %s.\n"
+                           "Error:\n%s", [node_mock.id, error])],
+                         self.e.errors)
+
+    @patch(util_patch_path + '.wait_for_threads')
+    @patch(util_patch_path + '.spawn_thread')
+    def test_optimise_gnd_fbk_cas(self, spawn_mock, wait_mock):
+        self.e.Nodes[0].id = 1
+
+        self.e.optimise_gnd_fbk_cas(node_id=1, chips=[0])
+
+        spawn_mock.assert_called_once_with(
+            self.e.Nodes[0].optimise_gnd_fbk_cas, [0])
+        wait_mock.assert_called_once_with([spawn_mock.return_value])
+
+    @patch(util_patch_path + '.wait_for_threads')
+    @patch(util_patch_path + '.spawn_thread')
+    def test_optimise_gnd_fbk_cas_default(self, spawn_mock, wait_mock):
+        self.e.optimise_gnd_fbk_cas()
+
+        spawn_mock.assert_has_calls(
+            [call(node.optimise_gnd_fbk_cas, [0, 1, 2, 3, 4, 5, 6, 7])
+             for node in self.e.Nodes])
         wait_mock.assert_called_once_with([spawn_mock.return_value] * 6)
 
     @patch(util_patch_path + '.wait_for_threads')

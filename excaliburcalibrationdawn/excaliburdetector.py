@@ -209,12 +209,45 @@ class ExcaliburDetector(object):
             node_threads.append(util.spawn_thread(node.unmask_pixels, chips))
         util.wait_for_threads(node_threads)
 
-    def set_gnd_fbk_cas(self, node_id=None, chips=None):
-        """Set GND, FBK and CAS values from the config python script.
+    def full_calibration(self, node_id=None):
+        """Perform the full calibration process.
 
         Args:
-            node_id(int): Node to equalise - If None, all nodes included
-            chips(list(int)): List of chips to include in equalisation - If
+            node_id(int): Node to optimise - If None, all nodes included
+
+        """
+        nodes, _ = self._validate(node_id)
+
+        node_threads = []
+        for node_ in nodes:
+            node_threads.append(
+                util.spawn_thread(self._try_node_full_calibration, node_))
+        util.wait_for_threads(node_threads)
+
+        while self.errors:
+            error = self.errors.pop()
+            self.logger.info(error[0], *error[1])
+
+    def _try_node_full_calibration(self, node):
+        """Run node.full_calibration in a try block, storing any errors.
+
+        Args:
+            node(ExcaliburNode): Node to call on
+
+        """
+        try:
+            node.full_calibration()
+        except Exception as error:
+            self.errors.append(("Full calibration failed for node %s.\n"
+                                "Error:\n%s", [node.id, error]))
+            raise
+
+    def optimise_gnd_fbk_cas(self, node_id=None, chips=None):
+        """Optimise GND, FBK and CAS for the given node and chips.
+
+        Args:
+            node_id(int): Node to optimise - If None, all nodes included
+            chips(list(int)): List of chips to include in optimisation - If
                 None, all chips included
 
         """
@@ -222,7 +255,8 @@ class ExcaliburDetector(object):
 
         node_threads = []
         for node in nodes:
-            node_threads.append(util.spawn_thread(node.set_gnd_fbk_cas, chips))
+            node_threads.append(
+                util.spawn_thread(node.optimise_gnd_fbk_cas, chips))
         util.wait_for_threads(node_threads)
 
     def threshold_equalization(self, node_id=None, chips=None):
@@ -261,7 +295,7 @@ class ExcaliburDetector(object):
                                 "Error:\n%s", [node.id, error]))
             raise
 
-    def _validate(self, node, chips):
+    def _validate(self, node=None, chips=None):
         """Check node and chips are valid and generate defaults if None.
 
         Args:

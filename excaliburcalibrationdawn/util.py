@@ -6,6 +6,7 @@ from datetime import datetime
 from threading import Thread
 
 import numpy as np
+import h5py
 
 import logging
 logging.basicConfig(level=logging.DEBUG)
@@ -184,6 +185,18 @@ def files_match(file1, file2):
 
     """
     return filecmp.cmp(file1, file2)
+
+
+def create_hdf5_file(array, file_name):
+    """Save the given numpy array as a HDF5 file.
+
+    Args:
+        array(numpy.array): Array to save
+        file_name(str): File to save to
+
+    """
+    with h5py.File(file_name, "w") as hdf5_file:
+        hdf5_file.create_dataset("data", data=array)
 
 
 def spawn_thread(function, *args, **kwargs):
