@@ -10,13 +10,14 @@ Detector = namedtuple("Detector", ["name", "nodes", "master_node",
                                    "servers", "ip_addresses"])
 
 # Detector Specification:
-detector = Detector(name="excaliburRX3M", nodes=[1,2,3,4,5,6], master_node=1,
-                    servers=["i14-excalibur01","i14-excalibur02",
-                             "i14-excalibur03","i14-excalibur04",
-                             "i14-excalibur05","i14-excalibur06"],
-                    ip_addresses=["192.168.0.106","192.168.0.105",
-                                  "192.168.0.104","192.168.0.103",
-                                  "192.168.0.102","192.168.0.101"],
+detector = Detector(name="excaliburRX3M", nodes=[1, 2, 3, 4, 5, 6],
+                    master_node=1,
+                    servers=["i14-excalibur01", "i14-excalibur02",
+                             "i14-excalibur03", "i14-excalibur04",
+                             "i14-excalibur05", "i14-excalibur06"],
+                    ip_addresses=["192.168.0.106", "192.168.0.105",
+                                  "192.168.0.104", "192.168.0.103",
+                                  "192.168.0.102", "192.168.0.101"],
                     root_path="/dls/detectors/support/silicon_pixels/"
                               "excaliburRX/Commissioning/CommissioningSept16",
                     calib="calib/in-progress")

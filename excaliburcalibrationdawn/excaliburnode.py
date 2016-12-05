@@ -47,7 +47,6 @@ class ExcaliburNode(object):
     # Shape of full row
     full_array_shape = [chip_size, num_chips * chip_size]
 
-    
     file_name = "image"  # Default base name for data files
     config_dir = "/dls/detectors/support/silicon_pixels/excaliburRX/" \
                  "TestApplication_15012015/config"
@@ -201,7 +200,7 @@ class ExcaliburNode(object):
         self.copy_hgm_into_other_gain_modes()
 
     def reset(self):
-        """Reset/initialise FEMs"""
+        """Reset/initialise FEMs."""
         self.read_chip_ids()
 
     def reboot(self):
@@ -320,9 +319,7 @@ class ExcaliburNode(object):
         return image
 
     def save_config_image(self, chips=range(8)):
-        """
-        Save hdf5 image versions of config files for ease of viewing
-        """
+        """Save hdf5 image versions of config files for ease of viewing."""
         discLbits = np.zeros(self.full_array_shape)
         discHbits = np.zeros(self.full_array_shape)
         pixelmask = np.zeros(self.full_array_shape)
@@ -1482,10 +1479,9 @@ class ExcaliburNode(object):
             self.set_dac([chip_idx], threshold, opt_value)
             opt_dac_disc[chip_idx] = opt_value * opt_value_scaling
 
-            logging.info("Chip: {idx}, Gain: {gain}, Offset: {offset},"
-                         "Optimum DAC Disc: {opt}".format(
-                idx=chip_idx, gain=gain[chip_idx], offset=offset[chip_idx],
-                opt=opt_dac_disc[chip_idx]))
+            logging.info("Chip: %s, Gain: %s, Offset: %s, "
+                         "Optimum DAC Disc: %s", chip_idx, gain[chip_idx],
+                         offset[chip_idx], opt_dac_disc[chip_idx])
 
         self._display_optimization_results(chips, x0, sigma, a, gain,
                                            opt_dac_disc)
@@ -1530,15 +1526,14 @@ class ExcaliburNode(object):
         for chip_idx in chips:
             print("Chip {idx}: {shift}".format(
                 idx=chip_idx, shift=str(round(gain[chip_idx], 2))))
-            self.logger.info("Chip {idx} centroids: {c1}, {c2}, {c3}".format(
-                idx=chip_idx,
-                c1=x0[chip_idx, 0], c2=x0[chip_idx, 1], c3=x0[chip_idx, 2]))
-            self.logger.info("Chip {idx} sigmas: {s1}, {s2}, {s3}".format(
-                idx=chip_idx, s1=sigma[chip_idx, 0], s2=sigma[chip_idx, 1],
-                s3=sigma[chip_idx, 2]))
-            self.logger.info("Chip {idx} widths: {w1}, {w2}, {w3}".format(
-                idx=chip_idx, w1=a[chip_idx, 0], w2=sigma[chip_idx, 1],
-                w3=sigma[chip_idx, 2]))
+            self.logger.info("Chip %s centroids: %s, %s, %s", chip_idx,
+                             x0[chip_idx, 0], x0[chip_idx, 1], x0[chip_idx, 2])
+            self.logger.info("Chip %s sigmas: %s, %s, %s", chip_idx,
+                             sigma[chip_idx, 0], sigma[chip_idx, 1],
+                             sigma[chip_idx, 2])
+            self.logger.info("Chip %s widths: %s, %s, %s", chip_idx,
+                             a[chip_idx, 0], sigma[chip_idx, 1],
+                             sigma[chip_idx, 2])
 
         print("###############################################################"
               "########################")

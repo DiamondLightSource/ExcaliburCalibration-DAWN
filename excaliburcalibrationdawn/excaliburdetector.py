@@ -216,7 +216,7 @@ class ExcaliburDetector(object):
             node_id(int): Node to optimise - If None, all nodes included
 
         """
-        nodes, chips = self._validate(node_id)
+        nodes, _ = self._validate(node_id)
 
         node_threads = []
         for node_ in nodes:

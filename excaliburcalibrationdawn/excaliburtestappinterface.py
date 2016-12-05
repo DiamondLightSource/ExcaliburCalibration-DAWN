@@ -214,7 +214,7 @@ class ExcaliburTestAppInterface(object):
 
         """
         if loud_call and capture:
-            raise(ValueError("Cannot enable loud_call and capture together"))
+            raise ValueError("Cannot enable loud_call and capture together")
 
         self.logger.debug("Sending Command:\n'%s' with kwargs %s",
                           " ".join(command), str(cmd_kwargs))

@@ -15,6 +15,7 @@ class ExcaliburDAWN(object):
 
     def __init__(self):
         """Set up plot and io APIs."""
+        self._dnp = scisoftpy
         self.plot = scisoftpy.plot
         self.io = scisoftpy.io
 
@@ -43,7 +44,7 @@ class ExcaliburDAWN(object):
             int: Total counts in image
 
         """
-        return scisoftpy.sum(data_set)
+        return self._dnp.sum(data_set)
 
     def load_image(self, path):
         """Load image data in given file into a numpy array.
