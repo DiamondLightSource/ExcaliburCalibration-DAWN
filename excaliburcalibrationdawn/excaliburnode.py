@@ -49,7 +49,8 @@ class ExcaliburNode(object):
 
     
     file_name = "image"  # Default base name for data files
-    config_dir = "/dls/detectors/support/silicon_pixels/excaliburRX/TestApplication_15012015/config"
+    config_dir = "/dls/detectors/support/silicon_pixels/excaliburRX/" \
+                 "TestApplication_15012015/config"
     default_dacs = posixpath.join(config_dir, "Default_SPM.dacs")
 
     # Line number used when editing dac file with new dac values
@@ -92,8 +93,9 @@ class ExcaliburNode(object):
             self.remote_node = False
 
         self.config = detector_config
-        self.root_path = detector_config.root_path
-        self.calib_root = posixpath.join(self.root_path, detector_config.calib)
+        self.root_path = detector_config.detector.root_path
+        self.calib_root = posixpath.join(self.root_path,
+                                         detector_config.detector.calib)
         self.log_output = posixpath.join(self.root_path, "logs")
         self.output_folder = posixpath.join(self.root_path, "images")
 
@@ -270,7 +272,7 @@ class ExcaliburNode(object):
             IOError: If files don't match
 
         """
-        temp_file = posixpath.join(self.output_folder, "temp_id.txt")
+        temp_file = posixpath.join("/tmp/temp_id.txt")
         with open(temp_file, "w") as output_file:
             self.app.read_chip_ids(stdout=output_file)
 

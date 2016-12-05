@@ -13,7 +13,8 @@ Detector = namedtuple("Detector", ["name", "nodes", "master_node",
 detector = Detector(name="detectorlab1", nodes=[6], master_node=6,
                     servers=["p99-excalibur01"],
                     ip_addresses=["192.168.0.101"],
-                    root_path="/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/detectorlab1/",
+                    root_path="/dls/detectors/support/silicon_pixels/"
+                              "excaliburRX/3M-RX001/detectorlab1/",
                     calib="calib")
 
 # Default DAC Values:

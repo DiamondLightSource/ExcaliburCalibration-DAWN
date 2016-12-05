@@ -14,7 +14,10 @@ util_patch_path = "excaliburcalibrationdawn.util"
 
 detector = MagicMock(name="testdetector", nodes=[1],
                      master_node=1, servers=["test-server"],
-                     ip_addresses=["192.168.0.1"])
+                     ip_addresses=["192.168.0.1"],
+                     root_path="/dls/detectors/support/silicon_pixels/"
+                               "excaliburRX/3M-RX001/testdetector/",
+                     calib="calib")
 mock_config = MagicMock(detector=detector)
 # Force MagicMock to have name attribute
 type(detector).name = PropertyMock(return_value="testdetector")
@@ -656,6 +659,8 @@ class TestAppCallsTest(unittest.TestCase):
     def setUp(self):
         self.e = ExcaliburNode(1, mock_config)
         self.e.file_index = 5
+        self.images = "/dls/detectors/support/silicon_pixels/excaliburRX/" \
+                      "3M-RX001/testdetector/images"
 
     @patch(ETAI_patch_path + '.read_chip_ids')
     def test_read_chip_ids(self, read_mock):
@@ -720,8 +725,8 @@ class TestAppCallsTest(unittest.TestCase):
         acquire_mock.assert_called_once_with(
             [0, 1, 2, 3, 4, 5, 6, 7], 10, 100, trig_mode=0, gain_mode='hgm',
             burst=True, pixel_mode='spm', counter=0, equalization=0,
-            disc_mode='discL', hdf_file=gen_mock.return_value, path='/tmp',
-            depth=12, read_mode='sequential')
+            disc_mode='discL', hdf_file=gen_mock.return_value,
+            path=self.images, depth=12, read_mode='sequential')
         grab_mock.assert_not_called()
         wait_mock.assert_called_once_with(gen_mock.return_value, 10)
         load_mock.assert_called_once_with(gen_mock.return_value)
@@ -741,8 +746,8 @@ class TestAppCallsTest(unittest.TestCase):
         acquire_mock.assert_called_once_with(
             [0, 1, 2, 3, 4, 5, 6, 7], 10, 100, trig_mode=0, gain_mode='hgm',
             burst=True, pixel_mode='spm', counter=0, equalization=0,
-            disc_mode='discL', hdf_file=gen_mock.return_value, path='/tmp',
-            depth=12, read_mode='sequential')
+            disc_mode='discL', hdf_file=gen_mock.return_value,
+            path=self.images, depth=12, read_mode='sequential')
         grab_mock.assert_called_once_with(gen_mock.return_value)
         wait_mock.assert_called_once_with(gen_mock.return_value, 10)
         load_mock.assert_called_once_with(gen_mock.return_value)
@@ -758,6 +763,24 @@ class TestAppCallsTest(unittest.TestCase):
         tag_mock.assert_called_once_with("Image", "Node 1")
         plot_mock.assert_called_once_with(acquire_mock.return_value,
                                           tag_mock.return_value)
+
+    @patch('__builtin__.print')
+    @patch(DAWN_patch_path + '.sum_image')
+    @patch(util_patch_path + '.tag_plot_name')
+    @patch(DAWN_patch_path + '.plot_image')
+    @patch(Node_patch_path + '._acquire')
+    def test_sum_exposure(self, acquire_mock, plot_mock, tag_mock,
+                          sum_mock, print_mock):
+        sum_mock.return_value = 100
+
+        self.e.sum_exposure()
+
+        acquire_mock.assert_called_once_with(1, 100)
+        tag_mock.assert_called_once_with("Image", "Node 1")
+        plot_mock.assert_called_once_with(acquire_mock.return_value,
+                                          tag_mock.return_value)
+        sum_mock.assert_called_once_with(acquire_mock.return_value)
+        print_mock.assert_called_once_with("Total counts: 100")
 
     @patch(util_patch_path + '.tag_plot_name')
     @patch(DAWN_patch_path + '.plot_image')
@@ -1023,6 +1046,8 @@ class ScanDacTest(unittest.TestCase):
         self.chips = [0]
         self.dac_range = Range(1, 10, 1)
         self.e.file_index = 5
+        self.images = "/dls/detectors/support/silicon_pixels/excaliburRX/" \
+                      "3M-RX001/testdetector/images"
 
     def test_given_start_lower_than_stop(self, grab_mock, wait_mock, scan_mock,
                                          gen_mock, load_mock, display_mock):
@@ -1031,14 +1056,16 @@ class ScanDacTest(unittest.TestCase):
         gen_mock.assert_called_once_with("DACScan")
         scan_mock.assert_called_once_with(self.chips, 'Threshold0',
                                           self.dac_range, 5, self.dac_file,
-                                          '/tmp', gen_mock.return_value,
+                                          self.images, gen_mock.return_value,
                                           disc_mode='discL', equalization=0,
                                           gain_mode='hgm')
         grab_mock.assert_not_called()
         wait_mock.assert_called_once_with(
-            "/tmp/20161020~154548_TestImage.hdf5", 10)
+            "/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/"
+            "testdetector/images/20161020~154548_TestImage.hdf5", 10)
         load_mock.assert_called_once_with(
-            "/tmp/20161020~154548_TestImage.hdf5")
+            "/dls/detectors/support/silicon_pixels/excaliburRX/3M-RX001/"
+            "testdetector/images/20161020~154548_TestImage.hdf5")
         display_mock.assert_called_once_with(self.chips,
                                              load_mock.return_value,
                                              self.dac_range)
@@ -1047,14 +1074,16 @@ class ScanDacTest(unittest.TestCase):
                                               scan_mock, gen_mock,
                                               load_mock, display_mock):
         self.e.remote_node = True
-        expected_output = "/tmp/20161020~154548_TestImage.hdf5"
+        expected_output = "/dls/detectors/support/silicon_pixels/" \
+                          "excaliburRX/3M-RX001/testdetector/images/" \
+                          "20161020~154548_TestImage.hdf5"
 
         self.e.scan_dac(self.chips, 'Threshold0', self.dac_range)
 
         gen_mock.assert_called_once_with("DACScan")
         scan_mock.assert_called_once_with(self.chips, 'Threshold0',
                                           self.dac_range, 5, self.dac_file,
-                                          '/tmp', gen_mock.return_value,
+                                          self.images, gen_mock.return_value,
                                           disc_mode='discL', equalization=0,
                                           gain_mode='hgm')
         grab_mock.assert_called_once_with(expected_output)
@@ -1803,21 +1832,53 @@ class OptimiseGNDFBKCasTest(unittest.TestCase):
                                     [call("FBK", 0)] * 3 +
                                     [call("Cas", 0)] * 3)
 
-    @patch(ETAI_patch_path + '.sense',
-           return_value="Connecting to FEM at IP address 192.168.0.101 port 6969 ...\n"
-                        "**************************************************************\n"
-                        "Connecting to FEM at address 192.168.0.101\n"
-                        "Configuring 10GigE data interface: host IP: 10.0.2.1 port: 61649 FEM data IP: 10.0.2.2 port: 8 MAC: 62:00:00:00:00:01\n"
-                        "Acquisition state is IDLE at startup\n"
-                        "Reading FPGA (remote) diode temperature from FEM ... OK (40C)\n"
-                        "Reading board (local) diode temperature from FEM ... OK (37C)\n"
-                        "Reading front-end moly temperature from FEM      ... OK (34.3C)\n"
-                        "Reading front-end moly humidity from FEM         ... OK (43.9%)\n"
-                        "Reading front-end DAC channels from FEM          ... 1 : OK (0.650) 2 : OK (0.652) 3 : OK (0.649) 4 : OK (0.649) \n"
-                        "                                                     5 : OK (0.654) 6 : OK (0.650) 7 : OK (0.650) 8 : OK (0.649) \n"
-                        "Reading front-end power status from FEM          ... P1V5_AVDD_1 : OK (1) P1V5_AVDD_2 : OK (1) P1V5_AVDD_3 : OK (1) P1V5_AVDD_4 : OK (1) \n"
-                        "                                                     P1V...")
-    def test_check_dac_read_back(self, sense_mock):
+    @patch(Node_patch_path + '.check_dac_read_back',
+           side_effect=[0.65,
+                        0.8, 1.0, 0.85, 0.95, 0.87, 0.9,
+                        0.8, 0.8, 0.8, 0.8])
+    @patch(Node_patch_path + '.set_dac')
+    def test_fails_elegantly(self, set_mock, check_mock):
+
+        self.e.optimise_gnd_fbk_cas([0])
+
+        set_mock.assert_has_calls([call([0], "GND", 145),
+                                   call([0], "FBK", 190),
+                                   call([0], "FBK", 195),
+                                   call([0], "FBK", 193),
+                                   call([0], "FBK", 194),
+                                   call([0], "FBK", 193),
+                                   call([0], "FBK", 194),
+                                   call([0], "Cas", 180),
+                                   call([0], "Cas", 185)])
+        check_mock.assert_has_calls([call("GND", 0)] +
+                                    [call("FBK", 0)] * 6 +
+                                    [call("Cas", 0)] * 2)
+
+    mock_response = "Connecting to FEM at IP address 192.168.0.101 port 6969 ...\n" \
+                    "**************************************************************\n" \
+                    "Connecting to FEM at address 192.168.0.101\n" \
+                    "Configuring 10GigE data interface: host IP: 10.0.2.1 port: 61649 FEM data IP: 10.0.2.2 port: 8 MAC: 62:00:00:00:00:01\n" \
+                    "Acquisition state is IDLE at startup\n" \
+                    "Reading FPGA (remote) diode temperature from FEM ... OK (40C)\n" \
+                    "Reading board (local) diode temperature from FEM ... OK (37C)\n" \
+                    "Reading front-end moly temperature from FEM      ... OK (34.3C)\n" \
+                    "Reading front-end moly humidity from FEM         ... OK (43.9%)\n" \
+                    "Reading front-end DAC channels from FEM          ... 1 : OK (0.650) 2 : OK (0.652) 3 : OK (0.649) 4 : OK (0.649) \n" \
+                    "                                                     5 : OK (0.654) 6 : OK (0.650) 7 : OK (0.650) 8 : OK (0.649) \n" \
+                    "Reading front-end power status from FEM          ... P1V5_AVDD_1 : OK (1) P1V5_AVDD_2 : OK (1) P1V5_AVDD_3 : OK (1) P1V5_AVDD_4 : OK (1) \n" \
+                    "                                                     P1V..."
+
+    @patch(ETAI_patch_path + '.sense', return_value=mock_response)
+    def test_check_dac_read_back_first_half(self, sense_mock):
+
+        voltage = self.e.check_dac_read_back("GND", 2)
+
+        sense_mock.assert_called_once_with(range(8), "GND", self.e.dacs_file,
+                                           capture=True)
+        self.assertEqual(0.649, voltage)
+
+    @patch(ETAI_patch_path + '.sense', return_value=mock_response)
+    def test_check_dac_read_back_second_half(self, sense_mock):
 
         voltage = self.e.check_dac_read_back("GND", 6)
 

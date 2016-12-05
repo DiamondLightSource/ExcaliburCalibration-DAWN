@@ -293,6 +293,24 @@ class FunctionsTest(unittest.TestCase):
             "Threshold equalization failed for node %s.\nError:\n%s",
             1, mock_error)
 
+    def test_try_node_full_calibration(self):
+        node_mock = MagicMock()
+        self.e._try_node_full_calibration(node_mock)
+
+        node_mock.full_calibration.assert_called_once_with()
+
+    def test_try_node_full_calibration_error_raised_then_log(self):
+        node_mock = MagicMock()
+        error = IOError("Bad things happened.")
+        node_mock.full_calibration.side_effect = error
+
+        with self.assertRaises(IOError):
+            self.e._try_node_full_calibration(node_mock)
+
+        self.assertEqual([("Full calibration failed for node %s.\n"
+                           "Error:\n%s", [node_mock.id, error])],
+                         self.e.errors)
+
     @patch(util_patch_path + '.wait_for_threads')
     @patch(util_patch_path + '.spawn_thread')
     def test_optimise_gnd_fbk_cas(self, spawn_mock, wait_mock):
