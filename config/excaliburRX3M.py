@@ -7,7 +7,8 @@ the top line description of the detector.
 from collections import OrderedDict, namedtuple
 
 Detector = namedtuple("Detector", ["name", "nodes", "master_node",
-                                   "servers", "ip_addresses"])
+                                   "servers", "ip_addresses", "root_path",
+                                   "calib"])
 
 # Detector Specification:
 detector = Detector(name="excaliburRX3M", nodes=[1, 2, 3, 4, 5, 6],
