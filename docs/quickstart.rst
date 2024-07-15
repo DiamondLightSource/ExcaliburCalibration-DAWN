@@ -3,7 +3,7 @@ Repo
 
 To checkout the module from GitHub run the following command in the directory you wish to set up the repo::
 
-    $ git clone git@github.com:dls-controls/ExcaliburCalibration-DAWN.git
+    $ git clone git@github.com:DiamondLightSource/ExcaliburCalibration-DAWN.git
 
 DAWN
 ~~~~
