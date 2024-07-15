@@ -37,7 +37,7 @@ The excaliburTestApp CLI tool used in this module is a C program (using various 
 Contributing
 ------------
 
-This python package is hosted on GitHub at `ExcaliburCalibration-DAWN <https://github.com/dls-controls/ExcaliburCalibration-DAWN>`_ under continuous integration controls (`Travis <https://en.wikipedia.org/wiki/Travis_CI>`_, `Coverage <https://coverage.readthedocs.io/en/coverage-4.2/>`_ and `Landscape <https://docs.landscape.io/faq.html>`_).
+This python package is hosted on GitHub at `ExcaliburCalibration-DAWN <https://github.com/DiamondLightSource/ExcaliburCalibration-DAWN>`_ under continuous integration controls (`Travis <https://en.wikipedia.org/wiki/Travis_CI>`_, `Coverage <https://coverage.readthedocs.io/en/coverage-4.2/>`_ and `Landscape <https://docs.landscape.io/faq.html>`_).
 
 Changes should be made on a branch, tested, and then merged into master via a pull request.
 
